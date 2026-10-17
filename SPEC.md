@@ -26,6 +26,8 @@ Status: Draft v1 · 2026-10-17
 | Mobile phone layout | Phones get a blocking message (see §11). Tablets are supported. |
 | Inch units | mm everywhere, output is always `G21`. |
 | 3D carve simulation | Planned for a later phase (§14), not v1. |
+| Homing, probing, zeroing | The user zeros the bit by hand at the work origin. The `.nc` file only moves the mill (§12.3). |
+| Spoilboard surfacing | Later phase (§14). |
 
 ---
 
@@ -229,6 +231,8 @@ Persisted in `localStorage` (not cookies — cookies are size-limited to ~4 KB a
 - **Finishing pass**: roughing at `allowance` offset for all depths, then one full-depth pass on the final path with a lighter step (single pass if depth ≤ 2× depthPerPass, otherwise full depth in two steps).
 - **Entry**: *ramp* = descend along the path over a distance where the ramp angle ≤ 3° (or ≥ 2× bit diameter); closed loops ramp along the start of the loop and the ramp segment is re-cut at depth. *Plunge* = straight down at plunge feed.
 
+- **V-bit on-line ("outline engrave")**: the V-bit follows the path at a fixed depth. Groove width at the surface = `tip + 2 × depth × tan(angle / 2)`. The properties panel shows this width live, so the user picks the depth by the line width they want. Passes come from depth/pass as usual. This is the **MVP operation** (§14).
+
 ### 9.3 Tabs (profile with depth ≥ material thickness, or user enables)
 ```ts
 interface TabSettings { enabled: boolean; count: number; width: number; height: number; manual: Vec2[] | null; }
@@ -311,8 +315,8 @@ Within a bit's file:
 (Origin: bottom-left, Z0 = top of material)
 (File 2 of 2 — change bit and re-zero Z before running)
 (Est. time: 14m 30s)
+(Start: bit at X0 Y0, touching top of material, spindle off)
 G21 G90 G94 G17
-G54
 (custom header)
 G0 Z5.000
 M3 S1000
@@ -333,9 +337,13 @@ M2
 ```
 
 ### 12.3 Rules (GRBL 1.1 compatibility)
+- **The file only moves the mill.** Before running it, the user has zeroed the bit by hand and parked it at the work origin (X0 Y0, tip touching the top of the material). The file assumes the active work coordinate system is already correct and never changes it.
+  - The first motion is always `G0 Z<safeZ>` straight up, before any XY move.
+  - Spindle on/off (`M3 S…` / `M5`) is the only non-motion machine control emitted.
+  - **Never** emit homing (`$H`), `G28`/`G30`, `G92`, `G10`, work-offset selection (`G54`–`G59`), or probing (`G38.x`). The user can still put anything in the custom header/footer at their own risk.
 - Comments: **parentheses only**, no nested parens, ASCII only (sanitize object names).
-- Only emit words GRBL supports: `G0 G1 G2 G3 G4 G17 G21 G90 G94 G54 M3 M5 M2 S F X Y Z P`.
-  - **Never** emit `T`/`M6` (GRBL errors on `M6`), `G41/G42` (no cutter comp — offsets are pre-computed), `G81–G89` canned cycles, `G28` unless the user puts it in their own header.
+- Only emit words GRBL supports: `G0 G1 G2 G3 G4 G17 G21 G90 G94 M3 M5 M2 S F X Y Z P`.
+  - **Never** emit `T`/`M6` (GRBL errors on `M6`), `G41/G42` (no cutter comp — offsets are pre-computed), or `G81–G89` canned cycles.
 - Coordinates rounded to 3 decimals; feeds/speeds to integers. Trailing zeros may be trimmed (setting off by default for readability).
 - Modal output: emit `F` only when it changes; omit unchanged axes.
 - `G1 Z` approach: rapid to `Z = +0.5` above the surface, then feed down (never rapid into material).
@@ -446,12 +454,12 @@ Each phase ends in something deployable and usable.
 | Phase | Scope | Done when |
 |---|---|---|
 | **0 — Skeleton** | Vite/React/TS scaffold, lint/test setup, Firebase config, mobile gate, machine settings dialog + persistence. | Deployed empty app on Firebase; settings survive reload. |
-| **1 — MVP: SVG → Profile → G-code** | SVG import + units, canvas (stock, grid, move/scale/rotate, origin selection), flat bits + material presets, profile on/inside/outside with multi-pass, GRBL post, per-bit export, 2D preview + estimate, validation. | A real SVG cuts correctly on the 3018 via gSender (air-cut first, then wood). |
-| **2 — Real-world cutting** | Pocket (with islands), tabs (auto + click-edit), ramp/helix entry, finishing pass, climb/conventional, cut ordering, custom bits, feed overrides memory. | Cut-out parts with pockets come out clean and stay held by tabs. |
-| **3 — Text & shapes** | Bundled fonts, text tool, rect/ellipse, group/align, undo/redo polish. | Make a name sign without leaving the app. |
-| **4 — PNG trace** | Trace dialog (threshold, invert, despeckle, smoothing) in a worker. | A logo PNG becomes cuttable vectors. |
-| **5 — V-carve** | V-bit library, medial-axis V-carve, multi-pass step-down, depth warnings, preview widths. | Crisp V-carved lettering in hardwood. |
-| **6 — Later** | 3D carve simulation (heightmap stock + Three.js), arc fitting (G2/G3), trapezoidal tab ramps, flat-bottom V-carve with clearing bit, level-first ordering, raster pocket strategy, bit library import/export. | — |
+| **1 — MVP: PNG trace → V-bit outline engrave** | PNG trace dialog (threshold, invert, despeckle, smoothing) in a worker; canvas (stock, grid, move/scale/rotate, origin selection); V-bit library + material presets; V-bit on-line profile at fixed depth with multi-pass and live groove-width readout (§9.2); GRBL post; `.nc` export; 2D preview + estimate; validation. | A traced logo PNG engraves cleanly on the 3018 via gSender (air-cut first, then wood). |
+| **2 — SVG + flat-bit profiles** | SVG import + units; flat end mills; profile inside/outside with offsets; multi-bit jobs exported as one file per bit (zip). | A real SVG part is cut out to size (±0.1 mm). |
+| **3 — Real-world cutting** | Pocket (with islands), tabs (auto + click-edit), ramp/helix entry, finishing pass, climb/conventional, cut ordering, custom bits, feed overrides memory. | Cut-out parts with pockets come out clean and stay held by tabs. |
+| **4 — Text & shapes** | Bundled fonts, text tool, rect/ellipse, group/align, undo/redo polish. | Make a name sign without leaving the app. |
+| **5 — V-carve** | Medial-axis V-carve, multi-pass step-down, depth warnings, preview widths. | Crisp V-carved lettering in hardwood. |
+| **6 — Later** | Spoilboard surfacing job, 3D carve simulation (heightmap stock + Three.js), arc fitting (G2/G3), trapezoidal tab ramps, flat-bottom V-carve with clearing bit, level-first ordering, raster pocket strategy, bit library import/export. | — |
 
 ---
 
@@ -469,12 +477,10 @@ Each phase ends in something deployable and usable.
 
 Assumptions made (change any of these freely):
 - Spindle is clockwise (`M3`); no coolant/vacuum M-codes.
-- gSender handles probing/zeroing; fastCAM never emits probe moves.
+- The user zeros by hand and starts every file with the bit at the work origin; fastCAM never emits homing, probing or offset changes.
 - Default origin anchor on a new job = bottom-left (selectable per job).
 - Climb milling is the default.
 - Material preset numbers in §8 are reasonable starting points and will be tuned after test cuts.
 
-Open questions for later:
-1. Do you want a "spoilboard surfacing" quick-job (generates a facing toolpath over a rectangle)? Very handy on a 3018 and nearly free once pocketing exists.
-2. Should the app include a small first-run guide on zeroing in gSender and the bit-change flow for multi-file jobs?
-3. Any preferred name/branding beyond "fastCAM"?
+Open questions:
+1. **Name.** "fastCAM" is a working name only. FastCAM® is a registered trademark of FastCAM Inc., which sells CAD/CAM for CNC cutting, so the app needs a new name before public release. Candidates with no conflicts found: Teasel, Gnawbit.
