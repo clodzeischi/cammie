@@ -15,13 +15,10 @@ export function MachineSettingsDialog({ onClose }: MachineSettingsDialogProps) {
   const save = useMachineStore((s) => s.save);
 
   const [draft, setDraft] = useState(saved);
-  // Number fields are uncontrolled; bumping the key reloads them after a reset.
-  const [formKey, setFormKey] = useState(0);
   const errors = validateMachineConfig(draft);
 
   const resetToDefaults = () => {
     setDraft(structuredClone(DEFAULT_MACHINE_CONFIG));
-    setFormKey((k) => k + 1);
   };
 
   const handleSave = () => {
@@ -53,7 +50,7 @@ export function MachineSettingsDialog({ onClose }: MachineSettingsDialogProps) {
         </>
       }
     >
-      <MachineSettingsForm key={formKey} config={draft} errors={errors} onChange={setDraft} />
+      <MachineSettingsForm config={draft} errors={errors} onChange={setDraft} />
     </Modal>
   );
 }

@@ -1,0 +1,147 @@
+import type { Path } from '../geometry/path';
+import { DEFAULT_MACHINE_CONFIG } from '../machine/machineConfig';
+import { engravePaths, passDepths } from './engrave';
+import { estimateProgram } from './estimate';
+import { generateJob } from './generateJob';
+import { orderPaths } from './ordering';
+import { makeJob, makeObject, square } from './testFixtures';
+
+const feeds = { feed: 300, plunge: 100, depthPerPass: 0.5, rpm: 10000 };
+
+describe('passDepths', () => {
+  it('splits into equal passes no deeper than depth per pass', () => {
+    expect(passDepths(1, 0.5)).toEqual([0.5, 1]);
+    expect(passDepths(1, 0.4)).toEqual([1 / 3, 2 / 3, 1]);
+    expect(passDepths(0.3, 0.5)).toEqual([0.3]);
+  });
+});
+
+describe('engravePaths', () => {
+  it('goes round a closed loop once per pass and ends at safe Z', () => {
+    const moves = engravePaths([square(0, 0)], { depth: 1, feeds, safeZ: 5 });
+    expect(moves[0]).toEqual({ kind: 'rapid', x: 0, y: 0, z: 5 });
+    expect(moves[1]).toEqual({ kind: 'rapid', x: 0, y: 0, z: 0.5 });
+    expect(moves[2]).toEqual({ kind: 'feed', x: 0, y: 0, z: -0.5, feed: 100 });
+    // 4 sides at -0.5, plunge, 4 sides at -1
+    const cuts = moves.filter((m) => m.kind === 'feed' && m.feed === 300);
+    expect(cuts).toHaveLength(8);
+    expect(moves.at(-1)).toEqual({ kind: 'rapid', x: 0, y: 0, z: 5 });
+    expect(Math.min(...moves.map((m) => m.z))).toBe(-1);
+  });
+
+  it('runs open paths back and forth between passes', () => {
+    const line: Path = {
+      closed: false,
+      points: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+      ],
+    };
+    const moves = engravePaths([line], { depth: 1, feeds, safeZ: 5 });
+    const cutEnds = moves.filter((m) => m.kind === 'feed' && m.feed === 300).map((m) => m.x);
+    expect(cutEnds).toEqual([10, 0]);
+  });
+});
+
+describe('orderPaths', () => {
+  it('visits the nearest path next and starts loops at the nearest corner', () => {
+    const far = square(100, 0);
+    const near = square(20, 0);
+    const { paths } = orderPaths([far, near], { x: 31, y: 11 });
+    expect(paths[0]!.points[0]).toEqual({ x: 30, y: 10 });
+    expect(paths[1]!.points[0]!.x).toBe(100);
+  });
+
+  it('reverses open paths when their end is closer', () => {
+    const line: Path = {
+      closed: false,
+      points: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+      ],
+    };
+    expect(orderPaths([line], { x: 11, y: 0 }).paths[0]!.points[0]).toEqual({ x: 10, y: 0 });
+  });
+});
+
+describe('generateJob', () => {
+  it('produces one program per bit in machine coordinates', () => {
+    const { programs, diagnostics } = generateJob(makeJob(), DEFAULT_MACHINE_CONFIG);
+    expect(diagnostics).toEqual([]);
+    expect(programs).toHaveLength(1);
+    const moves = programs[0]!.sections[0]!.moves;
+    // Canvas square at (10..20, 10..20) on a 50 mm tall stock, origin bottom-left → machine Y 30..40
+    const xs = moves.map((m) => m.x);
+    const ys = moves.map((m) => m.y);
+    expect(Math.min(...xs)).toBe(10);
+    expect(Math.max(...xs)).toBe(20);
+    expect(Math.min(...ys)).toBe(30);
+    expect(Math.max(...ys)).toBe(40);
+  });
+
+  it('groups objects that share a bit', () => {
+    const job = makeJob([
+      makeObject(),
+      makeObject({
+        id: 'b',
+        operation: { type: 'engrave', bitId: 'vbit-90', depth: 1, overrides: {} },
+      }),
+      makeObject({ id: 'c' }),
+    ]);
+    const { programs } = generateJob(job, DEFAULT_MACHINE_CONFIG);
+    expect(programs.map((p) => [p.bit.id, p.sections.length])).toEqual([
+      ['vbit-60', 2],
+      ['vbit-90', 1],
+    ]);
+  });
+
+  it('errors when there is nothing to cut', () => {
+    const { diagnostics } = generateJob(
+      makeJob([makeObject({ operation: null })]),
+      DEFAULT_MACHINE_CONFIG,
+    );
+    expect(diagnostics).toEqual([expect.objectContaining({ severity: 'error' })]);
+  });
+
+  it('errors on bad depth or feeds and skips that object', () => {
+    const job = makeJob([
+      makeObject({ operation: { type: 'engrave', bitId: 'vbit-60', depth: 0, overrides: {} } }),
+      makeObject({
+        id: 'b',
+        operation: { type: 'engrave', bitId: 'vbit-60', depth: 1, overrides: { feed: Number.NaN } },
+      }),
+    ]);
+    const { programs, diagnostics } = generateJob(job, DEFAULT_MACHINE_CONFIG);
+    expect(programs).toEqual([]);
+    expect(diagnostics.map((d) => d.message)).toEqual([
+      'Logo: cut depth must be greater than 0.',
+      'Logo: Feed must be greater than 0.',
+    ]);
+  });
+
+  it('warns about off-stock cuts, spoilboard depth and clamped feeds', () => {
+    const job = makeJob([
+      makeObject({
+        transform: { x: 95, y: 10, rotation: 0, scaleX: 1, scaleY: 1 },
+        operation: { type: 'engrave', bitId: 'vbit-60', depth: 7, overrides: { feed: 5000 } },
+      }),
+    ]);
+    const messages = generateJob(job, DEFAULT_MACHINE_CONFIG).diagnostics.map((d) => d.message);
+    expect(messages).toEqual([
+      'Logo: Feed lowered from 5000 to the machine max of 1000 mm/min.',
+      'Logo: goes past the edge of the stock.',
+      'Logo: cuts 1 mm into the spoilboard.',
+    ]);
+  });
+});
+
+describe('estimateProgram', () => {
+  it('adds up feed time, rapid time and spindle dwell', () => {
+    const { programs } = generateJob(makeJob(), { ...DEFAULT_MACHINE_CONFIG, spindleDwell: 0 });
+    const stats = estimateProgram(programs[0]!, { ...DEFAULT_MACHINE_CONFIG, spindleDwell: 0 });
+    // 2 passes × 40 mm perimeter + 1.5 mm of plunges (0.5 → -0.5 → -1)
+    expect(stats.cutLength).toBeCloseTo(81.5);
+    expect(stats.maxDepth).toBe(1);
+    expect(stats.seconds).toBeGreaterThan(0);
+  });
+});

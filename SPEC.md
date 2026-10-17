@@ -117,9 +117,10 @@ interface Path { points: Vec2[]; closed: boolean; }
 - Import dialog with live preview:
   - **Threshold** slider (0–255) + **Invert** toggle; optional auto (Otsu).
   - **Despeckle** (drop blobs smaller than N px).
-  - **Smoothing** (potrace `alphamax`) and **Optimize curves** toggle.
+  - **Smoothing** (blur radius before tracing: higher = rounder outlines).
   - Target width in mm (height follows aspect), or DPI.
-- Trace with a Potrace port running in a Web Worker. Output is a normal `traced-image` object with closed paths and correct holes.
+- Trace in a Web Worker with Cammie's own tracer (`src/core/trace`): blur the grayscale image slightly, run marching squares with sub-pixel interpolation (smooth outlines instead of pixel stairs), drop specks, then simplify (Ramer–Douglas–Peucker). Chosen over a Potrace port for readability and to avoid a GPL dependency; the output is polylines either way. Holes come out as separate closed loops.
+- The new object is cropped to the artwork's bounding box, so its size and X/Y refer to the lines, not the image margins. "Artwork width" auto-fits 80% of the stock until the user types a value.
 - The original bitmap can be shown faintly behind the trace for reference (not cut).
 
 ---
@@ -189,7 +190,7 @@ Values per material for a **3.175 mm 2-flute flat**; other diameters scale (see 
 
 ## 9. CAM Operations
 
-All CAM runs in a **Web Worker** so the UI never freezes; results are cached per object and recomputed when the object, bit, material or settings change (debounced ~250 ms).
+CAM is pure, synchronous TypeScript (`generateJob`), recomputed whenever the design, material or machine settings change. Phase 1's outline engraving is fast enough for the main thread; pocketing and V-carve (phases 3 and 5) move it into a **Web Worker** so the UI never freezes.
 
 Common per-operation settings:
 ```ts
@@ -305,7 +306,7 @@ Within a bit's file:
 ### 12.1 Files
 - One file per bit, numbered in the cutting order:
   `<jobname>_<NN>_<bit-slug>.nc` → e.g. `sign_01_vbit-60.nc`, `sign_02_flat-3.175.nc`.
-- With a single bit, one file; with several, a `.zip` (JSZip) **or** sequential downloads (setting; zip default).
+- With a single bit, one file. With several, phase 1 downloads them one after another (the browser may ask once to allow multiple downloads); phase 2 adds a `.zip` option (JSZip).
 - Job name defaults to the first imported filename; editable next to Export.
 
 ### 12.2 Structure
@@ -374,7 +375,7 @@ CAM produces a machine-agnostic `ToolpathProgram` (list of moves: rapid/feed wit
 | Canvas | Konva via `react-konva` (design + 2D preview) |
 | Path offset / booleans | Clipper2 JS port (`clipper2-js`) — integer-scaled (×1000 = µm) |
 | Fonts → paths | `opentype.js` |
-| Bitmap trace | Potrace JS/WASM port (in worker) — pick one with a GPL-compatible license (repo is GPL-3.0) |
+| Bitmap trace | Own marching-squares tracer in `src/core/trace` (in a worker) |
 | Voronoi (V-carve) | `d3-delaunay` |
 | Workers | Vite native workers + `comlink` |
 | Zip export | `jszip` |

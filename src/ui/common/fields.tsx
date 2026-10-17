@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 
 interface FieldShellProps {
   label: string;
@@ -30,16 +30,31 @@ interface NumberFieldProps {
   onChange: (value: number) => void;
   unit?: string;
   step?: number;
+  min?: number;
   error?: string;
   hint?: ReactNode;
 }
 
+const formatNumber = (value: number) =>
+  Number.isFinite(value) ? String(Math.round(value * 1000) / 1000) : '';
+
 /**
  * Number input that lets the user type freely ("1.", "") without the value
- * snapping back. It's uncontrolled: remount it (via `key`) to load new values.
+ * snapping back. While focused it shows what's typed; otherwise it shows
+ * `value`, so outside changes (dragging on the canvas, a reset) appear.
  * An empty or unparseable entry is reported as NaN so validation can flag it.
  */
-export function NumberField({ label, value, onChange, unit, step, error, hint }: NumberFieldProps) {
+export function NumberField({
+  label,
+  value,
+  onChange,
+  unit,
+  step,
+  min,
+  error,
+  hint,
+}: NumberFieldProps) {
+  const [draft, setDraft] = useState<string | null>(null);
   return (
     <FieldShell label={label} error={error} hint={hint}>
       {(id) => (
@@ -49,9 +64,15 @@ export function NumberField({ label, value, onChange, unit, step, error, hint }:
             type="number"
             inputMode="decimal"
             step={step ?? 'any'}
-            defaultValue={Number.isFinite(value) ? value : ''}
+            min={min}
+            value={draft ?? formatNumber(value)}
             aria-invalid={error ? true : undefined}
-            onChange={(e) => onChange(e.target.value === '' ? Number.NaN : Number(e.target.value))}
+            onFocus={() => setDraft(formatNumber(value))}
+            onBlur={() => setDraft(null)}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              onChange(e.target.value === '' ? Number.NaN : Number(e.target.value));
+            }}
           />
           {unit && <span className="unit">{unit}</span>}
         </div>
