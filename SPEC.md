@@ -1,4 +1,4 @@
-# fastCAM — Product & Technical Spec
+# Cammie — Product & Technical Spec
 
 > A browser-based, Easel-style CAM app for hobby 3018 CNC routers running GRBL 1.1.
 > Design in the browser → get `.nc` files → run them in gSender.
@@ -37,7 +37,7 @@ Modeled on Easel: one screen, left-to-right flow.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ fastCAM   [Material ▾] [Stock 200×150×6 mm] [Bit ▾]   [⚙ Machine] [Export]│
+│ Cammie    [Material ▾] [Stock 200×150×6 mm] [Bit ▾]   [⚙ Machine] [Export]│
 ├────┬───────────────────────────────────────────────┬─────────────────────┤
 │ ⬆  │                                               │  Selected object    │
 │ T  │          Design canvas (stock rectangle,      │  ─────────────────  │
@@ -294,7 +294,7 @@ Within a bit's file:
 - If viewport width < 600 px **or** (`pointer: coarse` and width < 768 px), render only a full-screen message instead of the app:
 
   > **Stop being weird.**
-  > fastCAM needs a real computer or a tablet. Open it on something with a bigger screen.
+  > Cammie needs a real computer or a tablet. Open it on something with a bigger screen.
 
 - Tablets (≥ 768 px) get the full app; touch: one-finger select/drag, two-finger pan/pinch-zoom.
 
@@ -310,7 +310,7 @@ Within a bit's file:
 
 ### 12.2 Structure
 ```gcode
-(fastCAM v0.1.0 — sign_02_flat-3.175.nc)
+(Cammie v0.1.0 — sign_02_flat-3.175.nc)
 (Bit: Flat 3.175mm 2FL | Material: Plywood | Stock: 200x150x6mm)
 (Origin: bottom-left, Z0 = top of material)
 (File 2 of 2 — change bit and re-zero Z before running)
@@ -433,10 +433,10 @@ interface Operation<S extends OperationSettings = OperationSettings> {
 ### 13.4 Persistence (`localStorage` only)
 | Key | Contents |
 |---|---|
-| `fastcam.machine.v1` | Machine config (§9.1) |
-| `fastcam.bits.v1` | Custom bits |
-| `fastcam.feedOverrides.v1` | Per material+bit feed overrides |
-| `fastcam.prefs.v1` | Last material, stock size, origin, UI prefs |
+| `cammie.machine.v1` | Machine config (§9.1) |
+| `cammie.bits.v1` | Custom bits |
+| `cammie.feedOverrides.v1` | Per material+bit feed overrides |
+| `cammie.prefs.v1` | Last material, stock size, origin, UI prefs |
 
 All reads wrapped in try/catch with fallback to defaults (private mode / blocked storage must not break the app). The design itself is **not** persisted — a reload starts fresh (a "you have unsaved work" `beforeunload` prompt when objects exist).
 
@@ -477,10 +477,10 @@ Each phase ends in something deployable and usable.
 
 Assumptions made (change any of these freely):
 - Spindle is clockwise (`M3`); no coolant/vacuum M-codes.
-- The user zeros by hand and starts every file with the bit at the work origin; fastCAM never emits homing, probing or offset changes.
+- The user zeros by hand and starts every file with the bit at the work origin; Cammie never emits homing, probing or offset changes.
 - Default origin anchor on a new job = bottom-left (selectable per job).
 - Climb milling is the default.
 - Material preset numbers in §8 are reasonable starting points and will be tuned after test cuts.
 
 Open questions:
-1. **Name.** "fastCAM" is a working name only. FastCAM® is a registered trademark of FastCAM Inc., which sells CAD/CAM for CNC cutting, so the app needs a new name before public release. Candidates with no conflicts found: Teasel, Gnawbit.
+1. **Branding.** Logo to come: Cammie the weasel, wearing a bow tie. Use it for the favicon, the app header and the mobile-gate screen.
