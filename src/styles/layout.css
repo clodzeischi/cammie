@@ -95,8 +95,31 @@
   border-color: var(--border);
 }
 
+.tool-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+  background: transparent;
+  border-color: transparent;
+}
+
 .tool-label {
   font-size: 11px;
+}
+
+.tool-icon-text {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* Undo/redo sit apart from the drawing tools. */
+.toolbar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
 }
 
 .workspace {

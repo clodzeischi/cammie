@@ -6,6 +6,7 @@ import type {
   PocketOperation,
   ProfileOperation,
   ProfileSide,
+  ShapeParams,
   Stock,
   TabSettings,
 } from './job';
@@ -55,6 +56,27 @@ export interface NewObjectInput {
   /** Outlines in mm, anywhere in space. */
   paths: Path[];
   stock: Stock;
+  shape?: ShapeParams;
+}
+
+/** Moves paths so their bounding box starts at (0, 0); returns the box size too. */
+export function cropToBounds(paths: readonly Path[]): {
+  paths: Path[];
+  width: number;
+  height: number;
+} {
+  const b = boundsOfPaths(paths);
+  const empty = isEmptyBounds(b);
+  const ox = empty ? 0 : b.minX;
+  const oy = empty ? 0 : b.minY;
+  return {
+    paths: paths.map((path) => ({
+      closed: path.closed,
+      points: path.points.map((p) => ({ x: p.x - ox, y: p.y - oy })),
+    })),
+    width: empty ? 0 : b.maxX - b.minX,
+    height: empty ? 0 : b.maxY - b.minY,
+  };
 }
 
 /**
@@ -62,20 +84,13 @@ export interface NewObjectInput {
  * lines, not empty margins) and centres the object on the stock.
  */
 export function createObject(input: NewObjectInput): DesignObject {
-  const b = boundsOfPaths(input.paths);
-  const ox = isEmptyBounds(b) ? 0 : b.minX;
-  const oy = isEmptyBounds(b) ? 0 : b.minY;
-  const width = isEmptyBounds(b) ? 0 : b.maxX - b.minX;
-  const height = isEmptyBounds(b) ? 0 : b.maxY - b.minY;
-
+  const { paths, width, height } = cropToBounds(input.paths);
   return {
     id: input.id,
     name: input.name,
     kind: input.kind,
-    paths: input.paths.map((path) => ({
-      closed: path.closed,
-      points: path.points.map((p) => ({ x: p.x - ox, y: p.y - oy })),
-    })),
+    ...(input.shape && { shape: input.shape }),
+    paths,
     width,
     height,
     transform: {

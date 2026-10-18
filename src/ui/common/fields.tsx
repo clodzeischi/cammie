@@ -7,7 +7,8 @@ interface FieldShellProps {
   children: (id: string) => ReactNode;
 }
 
-function FieldShell({ label, error, hint, children }: FieldShellProps) {
+/** Label, hint and error around any input; `children` gets the input's id. */
+export function FieldShell({ label, error, hint, children }: FieldShellProps) {
   const id = useId();
   return (
     <div className={error ? 'field field-invalid' : 'field'}>
@@ -111,10 +112,17 @@ export function TextAreaField({ label, value, onChange, placeholder, hint }: Tex
   );
 }
 
+interface SelectOption<T extends string> {
+  value: T;
+  label: string;
+  /** Options with a group are shown under that heading. */
+  group?: string;
+}
+
 interface SelectFieldProps<T extends string> {
   label: string;
   value: T;
-  options: ReadonlyArray<{ value: T; label: string }>;
+  options: ReadonlyArray<SelectOption<T>>;
   onChange: (value: T) => void;
 }
 
@@ -124,15 +132,25 @@ export function SelectField<T extends string>({
   options,
   onChange,
 }: SelectFieldProps<T>) {
+  const renderOption = (option: SelectOption<T>) => (
+    <option key={option.value} value={option.value}>
+      {option.label}
+    </option>
+  );
+  const groups = [...new Set(options.map((o) => o.group))];
   return (
     <FieldShell label={label}>
       {(id) => (
         <select id={id} value={value} onChange={(e) => onChange(e.target.value as T)}>
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
+          {groups.map((group) =>
+            group === undefined ? (
+              options.filter((o) => o.group === undefined).map(renderOption)
+            ) : (
+              <optgroup key={group} label={group}>
+                {options.filter((o) => o.group === group).map(renderOption)}
+              </optgroup>
+            ),
+          )}
         </select>
       )}
     </FieldShell>

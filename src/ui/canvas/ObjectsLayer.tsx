@@ -1,18 +1,20 @@
 import type Konva from 'konva';
-import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { Group, Layer, Line, Rect, Transformer } from 'react-konva';
 import type { ObjectTransform } from '../../core/geometry/transform';
 import type { DesignObject } from '../../core/job/job';
+import { isBasicShape } from '../../core/shapes/shapeObjects';
+import type { SelectMode } from '../../state/jobStore';
 import type { CanvasColors } from './canvasColors';
 
 interface ObjectsLayerProps {
   objects: DesignObject[];
-  selectedId: string | null;
+  selectedIds: string[];
   /** False in preview: objects are faded and can't be moved. */
   interactive: boolean;
   colors: CanvasColors;
-  onSelect: (id: string) => void;
-  onTransform: (id: string, transform: ObjectTransform) => void;
+  onSelect: (id: string, mode: SelectMode) => void;
+  onTransform: (transforms: Record<string, ObjectTransform>) => void;
 }
 
 const readTransform = (node: Konva.Node): ObjectTransform => ({
@@ -26,8 +28,17 @@ const readTransform = (node: Konva.Node): ObjectTransform => ({
 /** Smallest size (screen px) the resize handles will shrink an object to. */
 const MIN_BOX_PX = 4;
 
+const CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+const CORNERS_AND_SIDES = [
+  ...CORNERS,
+  'top-center',
+  'bottom-center',
+  'middle-left',
+  'middle-right',
+];
+
 export function ObjectsLayer(props: ObjectsLayerProps) {
-  const { objects, selectedId, interactive, colors, onSelect, onTransform } = props;
+  const { objects, selectedIds, interactive, colors, onSelect, onTransform } = props;
   const nodes = useRef(new Map<string, Konva.Group>());
   const transformer = useRef<Konva.Transformer>(null);
   const register = useCallback((id: string, node: Konva.Group | null) => {
@@ -38,10 +49,26 @@ export function ObjectsLayer(props: ObjectsLayerProps) {
   useEffect(() => {
     const tr = transformer.current;
     if (!tr) return;
-    const node = selectedId && interactive ? nodes.current.get(selectedId) : undefined;
-    tr.nodes(node ? [node] : []);
+    const selected = interactive ? selectedIds.map((id) => nodes.current.get(id)) : [];
+    tr.nodes(selected.filter((n): n is Konva.Group => n !== undefined));
     tr.getLayer()?.batchDraw();
-  }, [selectedId, interactive, objects]);
+  }, [selectedIds, interactive, objects]);
+
+  /** Reports where the dragged object, and everything moving with it, ended up. */
+  const reportMoved = useCallback(
+    (id: string) => {
+      const attached = transformer.current?.nodes() ?? [];
+      const moved = attached.some((n) => n.id() === id) ? attached : [nodes.current.get(id)];
+      const transforms: Record<string, ObjectTransform> = {};
+      for (const node of moved) if (node) transforms[node.id()] = readTransform(node);
+      onTransform(transforms);
+    },
+    [onTransform],
+  );
+
+  // A lone rectangle or ellipse can be stretched freely; anything else keeps its proportions.
+  const only = selectedIds.length === 1 ? objects.find((o) => o.id === selectedIds[0]) : undefined;
+  const freeResize = isBasicShape(only?.shape);
 
   return (
     // Remount when switching modes: Konva doesn't rebuild a layer's hit areas when
@@ -55,19 +82,26 @@ export function ObjectsLayer(props: ObjectsLayerProps) {
         <ObjectNode
           key={object.id}
           object={object}
-          color={object.id === selectedId ? colors.pathSelected : colors.path}
+          color={selectedIds.includes(object.id) ? colors.pathSelected : colors.path}
           interactive={interactive}
           register={register}
           onSelect={onSelect}
-          onTransform={onTransform}
+          onMoved={reportMoved}
         />
       ))}
       <Transformer
         ref={transformer}
         rotationSnaps={[0, 45, 90, 135, 180, 225, 270, 315]}
-        keepRatio
+        keepRatio={!freeResize}
         flipEnabled={false}
-        enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
+        enabledAnchors={freeResize ? CORNERS_AND_SIDES : CORNERS}
+        onTransformEnd={(e) => {
+          const transforms: Record<string, ObjectTransform> = {};
+          for (const node of (e.currentTarget as Konva.Transformer).nodes()) {
+            transforms[node.id()] = readTransform(node);
+          }
+          onTransform(transforms);
+        }}
         anchorStroke={colors.pathSelected}
         borderStroke={colors.pathSelected}
         boundBoxFunc={(oldBox, newBox) =>
@@ -85,8 +119,8 @@ interface ObjectNodeProps {
   color: string;
   interactive: boolean;
   register: (id: string, node: Konva.Group | null) => void;
-  onSelect: (id: string) => void;
-  onTransform: (id: string, transform: ObjectTransform) => void;
+  onSelect: (id: string, mode: SelectMode) => void;
+  onMoved: (id: string) => void;
 }
 
 /**
@@ -94,10 +128,25 @@ interface ObjectNodeProps {
  * of points for every object on each render would be slow.
  */
 const ObjectNode = memo(function ObjectNode(props: ObjectNodeProps) {
-  const { object, color, interactive, register, onSelect, onTransform } = props;
-  const { id } = object;
-  const ref = useCallback((node: Konva.Group | null) => register(id, node), [register, id]);
-  const select = () => onSelect(id);
+  const { object, color, interactive, register, onSelect, onMoved } = props;
+  const { id, transform } = object;
+  const node = useRef<Konva.Group | null>(null);
+  const ref = useCallback(
+    (n: Konva.Group | null) => {
+      node.current = n;
+      register(id, n);
+    },
+    [register, id],
+  );
+  // react-konva only re-applies props that changed since the last render, but
+  // dragging and the transformer move the node directly. Without this, a
+  // stretched rectangle (whose scale goes back to 1 once its real size is
+  // stored) would keep the transformer's scale on screen.
+  useLayoutEffect(() => {
+    node.current?.setAttrs(transform);
+  }, [transform]);
+  const press = (e: Konva.KonvaEventObject<MouseEvent>) =>
+    onSelect(id, e.evt.shiftKey ? 'toggle' : 'keep');
   const flat = useMemo(
     () => object.paths.map((path) => path.points.flatMap((p) => [p.x, p.y])),
     [object.paths],
@@ -106,13 +155,14 @@ const ObjectNode = memo(function ObjectNode(props: ObjectNodeProps) {
   return (
     <Group
       ref={ref}
-      {...object.transform}
+      id={id}
+      {...transform}
       draggable={interactive}
-      onMouseDown={select}
-      onTap={select}
-      onDragStart={select}
-      onDragEnd={(e) => onTransform(id, readTransform(e.target))}
-      onTransformEnd={(e) => onTransform(id, readTransform(e.target))}
+      onMouseDown={press}
+      // A click that didn't drag picks just this object out of a selection.
+      onClick={(e) => !e.evt.shiftKey && onSelect(id, 'replace')}
+      onTap={() => onSelect(id, 'replace')}
+      onDragEnd={() => onMoved(id)}
     >
       {/* Invisible box so the whole object is grabbable, not just its thin lines. */}
       <Rect width={object.width} height={object.height} fill="transparent" />

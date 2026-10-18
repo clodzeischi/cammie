@@ -205,3 +205,38 @@ input[type='checkbox'] {
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* ---------- Arrange & text ---------- */
+.align-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.align-buttons .icon-button {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* A label for controls that aren't a single input (e.g. the alignment buttons). */
+.field-label {
+  font-weight: 500;
+}
+
+/* In the side panel the segmented control sits flat, like an input. */
+.segmented-flat {
+  display: flex;
+  box-shadow: none;
+}
+
+.segmented-flat .segment {
+  flex: 1;
+  padding: 5px 4px;
+  font-size: 12px;
+}

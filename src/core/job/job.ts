@@ -75,10 +75,46 @@ export interface PocketOperation extends CutBase {
 /** Later phases add V-carve. */
 export type Operation = ProfileOperation | PocketOperation;
 
+export type TextAlign = 'left' | 'center' | 'right';
+
+/** Text drawn in the app (SPEC.md §6.1). Sizes are before the object's scale. */
+export interface TextShape {
+  type: 'text';
+  text: string;
+  fontId: string;
+  /** Height of a capital letter (mm). */
+  capHeight: number;
+  /** Extra space between letters (mm); may be negative. */
+  letterSpacing: number;
+  /** Multiple of the font's normal line height. */
+  lineSpacing: number;
+  align: TextAlign;
+}
+
+export interface RectShape {
+  type: 'rect';
+  width: number;
+  height: number;
+  cornerRadius: number;
+}
+
+export interface EllipseShape {
+  type: 'ellipse';
+  width: number;
+  height: number;
+}
+
+/** Parameters of objects drawn in the app; their paths are rebuilt from these. */
+export type ShapeParams = TextShape | RectShape | EllipseShape;
+
 export interface DesignObject {
   id: string;
   name: string;
-  kind: 'traced-image' | 'svg';
+  kind: 'traced-image' | 'svg' | ShapeParams['type'];
+  /** Present for text and shapes (SPEC.md §6). */
+  shape?: ShapeParams;
+  /** Objects sharing a group id are selected and arranged together. */
+  groupId?: string;
   /** Outlines in the object's own mm space, with the bounding box starting at (0, 0). */
   paths: Path[];
   /** Natural (unscaled) size of `paths`. */

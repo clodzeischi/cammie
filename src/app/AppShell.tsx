@@ -6,6 +6,8 @@ import { useMachineStore } from '../state/machineStore';
 import { useGeneratedJob, useJob } from '../state/useGeneratedJob';
 import { MachineSettingsDialog } from '../ui/panels/MachineSettingsDialog';
 import { Sidebar } from '../ui/panels/Sidebar';
+import { DrawTools } from '../ui/toolbar/DrawTools';
+import { HistoryButtons } from '../ui/toolbar/HistoryButtons';
 import { ImportButton } from '../ui/toolbar/ImportButton';
 import { Workspace } from '../ui/Workspace';
 import { buildExportFiles, downloadFiles } from './exportFiles';
@@ -58,6 +60,8 @@ export function AppShell() {
       <div className="app-body">
         <nav className="toolbar" aria-label="Tools">
           <ImportButton />
+          <DrawTools />
+          <HistoryButtons />
         </nav>
         <Workspace />
         <Sidebar />

@@ -52,7 +52,7 @@ Modeled on Easel: one screen, left-to-right flow.
 └────┴───────────────────────────────────────────────┴─────────────────────┘
 ```
 
-- **Left toolbar**: Import (one button: SVGs come in at their real size; bitmaps open the trace dialog), Text, Rectangle, Circle/Ellipse, (Polygon/Star optional later).
+- **Left toolbar**: Import (one button: SVGs come in at their real size; bitmaps open the trace dialog), Text, Rectangle, Circle (stretch it into an ellipse), then Undo/Redo. (Polygon/Star optional later.)
 - **Canvas**: stock rectangle drawn to scale, mm grid, rulers, selectable origin marker, dashed outline of machine work area. Pan (space/middle-drag), zoom (wheel/pinch), snap to grid toggle.
 - **Right panel**: properties of selected object(s); job settings when nothing is selected (stock, origin, material).
 - **View toggle**: *Design* vs *Toolpath preview* (§10).
@@ -85,20 +85,24 @@ type OriginAnchor =
 
 interface DesignObject {
   id: string;
+  name: string;
   kind: 'svg' | 'traced-image' | 'text' | 'rect' | 'ellipse';
+  shape?: TextShape | RectShape | EllipseShape;  // params of text/shapes drawn in the app
+  groupId?: string;              // objects sharing one are selected/arranged together
+  paths: Path[];                 // flattened outlines in object-local mm, box starting at (0,0)
+  width: number; height: number; // natural size of `paths`
   transform: { x: number; y: number; rotation: number; scaleX: number; scaleY: number };
-  geometry: PathSet;             // resolved, flattened paths in object-local mm
-  source: unknown;               // kind-specific params (text string+font, rect w/h/radius, ...)
-  operation: OperationSettings | null;   // null = not cut (guide/reference only)
+  operation: Operation | null;   // null = not cut (guide/reference only)
 }
 
-interface PathSet { paths: Path[]; }
 interface Path { points: Vec2[]; closed: boolean; }
 ```
 
-- Editing source params (e.g. text content, rect size) regenerates `geometry`.
-- Grouping: multi-select + group/ungroup; an operation can be applied to a group.
-- Arrange: move, scale (lock aspect by default), rotate, duplicate, delete, align (left/center/right/top/middle/bottom), center on stock, undo/redo (in-memory command stack, ≥50 steps).
+- Editing shape params (text, font, corner radius…) rebuilds `paths`.
+- **Selection**: click selects; Shift-click adds/removes; ⌘/Ctrl-A selects all. Pressing on an already-selected object keeps the selection so several objects drag together; a click without dragging picks just that object. Several selected objects share one transformer (move/resize/rotate together).
+- **Groups**: ⌘/Ctrl-G groups the selection, ⇧⌘/Ctrl-G ungroups. A group is a selection unit (clicking any member selects all) and moves/aligns as one. Cut settings stay **per object**: select one object on its own (ungroup first) to change how it's cut.
+- **Arrange**: move, scale (lock aspect by default), rotate, duplicate (⌘/Ctrl-D, copies offset 5 mm, copied groups become new groups), delete, align left/centre/right/top/middle/bottom (several units align to their combined box; a single unit aligns to the stock), centre on stock, nudge with arrow keys (1 mm, Shift = 10 mm).
+- **Undo/redo**: ⌘/Ctrl-Z, ⇧⌘/Ctrl-Z or Ctrl-Y, toolbar buttons; 100 steps of the design (objects + selection; stock/origin/material are settings, not undone). A burst of edits to the same fields of one object within 1 s (typing a number or text, repeated nudges) is one step. Shortcuts are ignored while typing in a field, so fields keep their own undo.
 
 ---
 
@@ -134,11 +138,15 @@ interface Path { points: Vec2[]; closed: boolean; }
   - Script: Pacifico, Dancing Script, Great Vibes, Lobster
   - Display/stencil: Black Ops One, Allerta Stencil, Stardos Stencil, Permanent Marker
   - Mono: Source Code Pro
-- Properties: text (multi-line), font, size (cap height in mm), letter spacing, line spacing, alignment.
-- Glyphs → paths via `opentype.js`; overlapping glyph contours (common in script fonts) are unioned with Clipper2 so pockets/V-carves don't double-cut.
+- Font files: the regular weight, Latin subset (Western European accents included), as `.woff` from the `@fontsource/*` npm packages (OFL; licence in each package). Each is ~10–70 KB and downloads only when first used; `opentype.js` is likewise a lazily loaded chunk.
+- Properties: text (multi-line), font (grouped by style), letter height (cap height in mm), letter spacing (mm), line spacing (× the font's normal), alignment. Sizes are shown as cut, i.e. including any resizing on the canvas; letter height is effectively a proportional resize.
+- Glyphs → paths via `opentype.js`, one glyph per character with kerning (no ligatures/contextual alternates: opentype.js's shaping throws on some fonts' substitution tables). Curves flattened to 0.005 mm. Overlapping contours (script fonts, tight spacing) are unioned with Clipper2 (non-zero rule) so pockets/V-carves don't double-cut.
+- Characters the font lacks are left out and listed under the text box; blank text isn't applied.
+- When text changes width, its aligned side stays put (centred text grows both ways); the object keeps its rotation and scale. Objects and (until the user names it) the job are named after the first line of text.
 
 ### 6.2 Shapes
-- Rectangle (w, h, corner radius), Ellipse/Circle (w, h). All parametric and editable numerically.
+- Rectangle (w, h, corner radius, default 60 × 40), Circle/Ellipse (w, h, default Ø40). All parametric and editable numerically; width/height live under Placement like any object.
+- Resizing a rectangle or ellipse (canvas or fields) stores the new real size and keeps scale at 1, so corners stay round instead of squashing. On their own they get side handles for free stretching; everything else resizes proportionally from the corners. Curves are flattened to 0.01 mm.
 
 ---
 
@@ -399,7 +407,8 @@ src/
     geometry/          # Vec2, Path, PathSet, flatten (bezier/arc), transforms, bbox, clean-up
     clipper/           # thin adapter over Clipper2 (offset, union, difference) — the only file that knows Clipper
     import/            # svgParser.ts, svgUnits.ts, traceImage.ts (pure)
-    text/              # fontLoader.ts, textToPaths.ts
+    text/              # fonts.ts (catalogue), textLayout.ts (glyphs → outlines), textObject.ts
+    shapes/            # primitives.ts (rect/ellipse outlines), shapeObjects.ts
     cam/
       operations/      # Operation interface + profile.ts, pocket.ts, vcarve.ts
       strategies/      # entry (ramp/helix/plunge), tabs, ordering, multipass
@@ -412,7 +421,7 @@ src/
   data/                # materials.ts, bits.ts, fonts.ts (bundled presets)
   persistence/         # localStorage repository w/ schema versioning
   workers/             # cam.worker.ts, trace.worker.ts (thin; delegate to core/)
-public/fonts/          # bundled OFL .ttf files + licenses
+# Fonts: .woff files imported from @fontsource/* packages (ui/text/fontLoader.ts)
 ```
 
 ### 13.3 Design principles (SOLID, applied)

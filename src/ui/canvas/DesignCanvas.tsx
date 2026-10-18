@@ -1,8 +1,7 @@
 import type Konva from 'konva';
-import { useCallback, useRef } from 'react';
+import { useRef } from 'react';
 import { Stage } from 'react-konva';
 import type { ObjectTabs } from '../../core/cam/program';
-import type { ObjectTransform } from '../../core/geometry/transform';
 import { editTabsAt } from '../../core/job/tabEditing';
 import { useJobStore } from '../../state/jobStore';
 import { useCanvasColors } from './canvasColors';
@@ -40,15 +39,11 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
   const stock = useJobStore((s) => s.stock);
   const origin = useJobStore((s) => s.origin);
   const objects = useJobStore((s) => s.objects);
-  const selectedId = useJobStore((s) => s.selectedId);
+  const selectedIds = useJobStore((s) => s.selectedIds);
   const select = useJobStore((s) => s.select);
+  const setTransforms = useJobStore((s) => s.setTransforms);
   const updateObject = useJobStore((s) => s.updateObject);
   const { view, setView, fit } = useViewport(stock, size);
-
-  const onTransform = useCallback(
-    (id: string, transform: ObjectTransform) => updateObject(id, { transform }),
-    [updateObject],
-  );
 
   const onWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
@@ -98,11 +93,11 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
           <StockLayer stock={stock} origin={origin} scale={view.scale} colors={colors} />
           <ObjectsLayer
             objects={objects}
-            selectedId={selectedId}
+            selectedIds={selectedIds}
             interactive={!preview}
             colors={colors}
             onSelect={select}
-            onTransform={onTransform}
+            onTransform={setTransforms}
           />
           {preview && <ToolpathLayer {...preview} scale={view.scale} colors={colors} />}
           {preview && <TabMarkers tabs={preview.tabs} scale={view.scale} colors={colors} />}

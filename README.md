@@ -36,3 +36,6 @@ Keep files under ~500 lines (ESLint warns past that) and split by responsibility
 ## License
 
 GPL-3.0. See [LICENSE](LICENSE).
+
+The text tool's fonts are Google Fonts under the SIL Open Font License, bundled from the
+[Fontsource](https://fontsource.org) packages (each package includes its licence).

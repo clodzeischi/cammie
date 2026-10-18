@@ -38,6 +38,15 @@ export function regionOf(paths: readonly Path[]): Path[] {
 }
 
 /**
+ * Merges overlapping outlines using the non-zero rule, the way fonts are
+ * filled: where two letters of a script font overlap, the result is one
+ * outline instead of two crossing ones. Same orientation rules as `regionOf`.
+ */
+export function unionNonZero(paths: readonly Path[]): Path[] {
+  return fromClipper(unionD(toClipper(paths), [], FillRule.NonZero, PRECISION));
+}
+
+/**
  * Grows (delta > 0) or shrinks (delta < 0) a region by `delta` mm with round
  * corners. Parts narrower than 2·|delta| disappear when shrinking.
  * Same orientation rules as `regionOf`.
