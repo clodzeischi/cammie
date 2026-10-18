@@ -43,11 +43,13 @@ export function pocketRings(
   const step = (diameter * stepoverPercent) / 100;
   const first = offsetRegion(region, -(radius + allowance));
 
+  // Each ring is offset from the original shape, not from the previous ring:
+  // re-offsetting re-rounds every corner and the vertex count snowballs.
   const levels: Path[][] = [];
   for (
     let ring = first;
     ring.length > 0 && levels.length < 10_000;
-    ring = offsetRegion(ring, -step)
+    ring = offsetRegion(region, -(radius + allowance + step * levels.length))
   ) {
     levels.push(ring);
   }

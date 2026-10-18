@@ -178,4 +178,19 @@ describe('pockets', () => {
     const tiny = makeJob([makeObject({ paths: [square(0, 0, 2)], operation: pocketOp() })]);
     expect(generateJob(tiny, machine).diagnostics[0]!.message).toContain('too small');
   });
+
+  it('keeps ring vertex counts flat instead of growing ring by ring', () => {
+    // Regression: offsetting each ring from the previous one re-rounded every
+    // corner, so a 1 mm bit through-pocket made ~800k moves and froze the page.
+    const circle = {
+      closed: true,
+      points: Array.from({ length: 64 }, (_, i) => ({
+        x: 20 + 6 * Math.cos((i / 64) * 2 * Math.PI),
+        y: 20 + 6 * Math.sin((i / 64) * 2 * Math.PI),
+      })),
+    };
+    const { levels } = pocketRings([square(0, 0, 40), circle], 1, 40, 0, 'climb');
+    const vertices = levels.map((ring) => ring.reduce((n, p) => n + p.points.length, 0));
+    expect(Math.max(...vertices)).toBeLessThan(400);
+  });
 });

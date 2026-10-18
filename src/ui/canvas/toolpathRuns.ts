@@ -32,7 +32,8 @@ export function buildPreview(program: BitProgram, origin: Vec2): ProgramPreview 
   let current: ToolpathRun | null = null;
 
   for (const section of program.sections) {
-    const depth = Math.max(0, ...section.moves.map((m) => -m.z));
+    // reduce, not Math.max(...moves): big programs overflow the argument stack.
+    const depth = section.moves.reduce((deepest, m) => Math.max(deepest, -m.z), 0);
     const width = grooveWidth(program.bit, depth);
     for (const move of section.moves) {
       const from = positions[positions.length - 1]!;

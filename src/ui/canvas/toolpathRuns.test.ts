@@ -31,4 +31,17 @@ describe('buildPreview', () => {
     expect(partial[1]!.points).toHaveLength(4);
     expect(completedRuns(preview, preview.moveCount)).toEqual(preview.runs);
   });
+
+  it('handles programs with hundreds of thousands of moves', () => {
+    // Regression: Math.max(...moves) overflowed the call stack on big pockets.
+    const moves = Array.from({ length: 500_000 }, (_, i) => ({
+      kind: 'feed' as const,
+      x: i % 100,
+      y: 0,
+      z: -1,
+      feed: 500,
+    }));
+    const big = { ...program, sections: [{ label: 'Big', rpm: 10000, moves }] };
+    expect(buildPreview(big, origin).moveCount).toBe(500_000);
+  });
 });
