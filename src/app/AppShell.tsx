@@ -28,7 +28,10 @@ export function AppShell() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <span className="app-name">Cammie</span>
+        <span className="app-name">
+          <img src="/Cammie_Logo.png" alt="" className="app-logo" />
+          Cammie
+        </span>
         <input
           className="job-name"
           aria-label="Job name"

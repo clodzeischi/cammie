@@ -31,7 +31,21 @@
   background: var(--surface-sunken);
 }
 
+.app-logo {
+  width: 28px;
+  height: 28px;
+}
+
+.mobile-gate-logo {
+  width: 96px;
+  height: 96px;
+  align-self: center;
+}
+
 .app-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-weight: 700;
   font-size: 18px;
   letter-spacing: 0.02em;
