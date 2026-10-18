@@ -1,19 +1,12 @@
-import {
-  boundsOfPaths,
-  isEmptyBounds,
-  unionBounds,
-  EMPTY_BOUNDS,
-  type Bounds,
-} from '../geometry/path';
-import { transformPaths } from '../geometry/transform';
-import { anchorPoint, canvasToMachine, type DesignObject, type Job } from '../job/job';
+import { isEmptyBounds, unionBounds, EMPTY_BOUNDS, type Bounds, type Vec2 } from '../geometry/path';
+import { anchorPoint, type Job } from '../job/job';
 import type { MachineConfig } from '../machine/machineConfig';
 import { findMaterial } from '../materials/materials';
-import { BUILT_IN_BITS, findBit, type Bit } from '../tools/bits';
-import { engravePaths } from './engrave';
+import { BUILT_IN_BITS, type Bit } from '../tools/bits';
+import { followPaths } from './followPaths';
+import { planObjectCut, type ObjectCut } from './objectCut';
 import { orderPaths } from './ordering';
 import type { BitProgram, Diagnostic, GeneratedJob, ProgramSection } from './program';
-import { feedLabel, resolveFeeds } from './resolveFeeds';
 
 /** Slack for floating-point noise when checking that cuts stay on the stock. */
 const EPSILON = 0.01;
@@ -30,108 +23,76 @@ export function generateJob(
   bits: readonly Bit[] = BUILT_IN_BITS,
 ): GeneratedJob {
   const diagnostics: Diagnostic[] = [];
-  const programs = new Map<string, BitProgram>();
-  const origin = anchorPoint(job.stock, job.origin);
   const material = findMaterial(job.materialId);
-  let cutBounds: Bounds = EMPTY_BOUNDS;
-  let maxDepth = 0;
-
-  if (!material) diagnostics.push({ severity: 'error', message: 'Pick a material.' });
-
-  for (const object of job.objects) {
-    const { operation } = object;
-    if (!operation || !material) continue;
-    const problem = (severity: Diagnostic['severity'], message: string) =>
-      diagnostics.push({ severity, message: `${object.name}: ${message}`, objectId: object.id });
-
-    const bit = findBit(operation.bitId, bits);
-    if (!bit) {
-      problem('error', 'its bit no longer exists. Pick another one.');
-      continue;
-    }
-    if (!Number.isFinite(operation.depth) || operation.depth <= 0) {
-      problem('error', 'cut depth must be greater than 0.');
-      continue;
-    }
-    const { feeds, clamped, invalid } = resolveFeeds(material, bit, operation.overrides, machine);
-    if (invalid.length > 0) {
-      problem('error', `${invalid.map(feedLabel).join(', ')} must be greater than 0.`);
-      continue;
-    }
-    clamped.forEach((note) => problem('warning', note));
-
-    const canvasPaths = transformPaths(object.paths, object.transform);
-    if (canvasPaths.every((p) => p.points.length === 0)) {
-      problem('warning', 'has no outlines, so nothing will be cut.');
-      continue;
-    }
-    const bounds = boundsOfPaths(canvasPaths);
-    checkOnStock(bounds, job, problem);
-    cutBounds = unionBounds(cutBounds, bounds);
-    maxDepth = Math.max(maxDepth, operation.depth);
-
-    if (operation.depth > job.stock.thickness + EPSILON) {
-      problem('warning', `cuts ${fmt(operation.depth - job.stock.thickness)} into the spoilboard.`);
-    }
-
-    const machinePaths = canvasPaths.map((path) => ({
-      closed: path.closed,
-      points: path.points.map((p) => canvasToMachine(p, origin)),
-    }));
-    const program = programs.get(bit.id) ?? { bit, sections: [] };
-    programs.set(bit.id, program);
-    program.sections.push(
-      engraveSection(object, machinePaths, feeds, operation.depth, machine, program),
-    );
+  if (!material) {
+    return { programs: [], diagnostics: [{ severity: 'error', message: 'Pick a material.' }] };
   }
 
-  if (programs.size === 0 && !diagnostics.some((d) => d.severity === 'error')) {
+  const origin = anchorPoint(job.stock, job.origin);
+  const cuts: ObjectCut[] = [];
+  for (const object of job.objects) {
+    const report = (severity: Diagnostic['severity'], message: string) =>
+      diagnostics.push({ severity, message: `${object.name}: ${message}`, objectId: object.id });
+    const cut = planObjectCut(object, { job, machine, material, bits, origin }, report);
+    if (!cut) continue;
+    if (!onStock(cut.cutBounds, job)) report('warning', 'goes past the edge of the stock.');
+    cuts.push(cut);
+  }
+
+  if (cuts.length === 0 && !diagnostics.some((d) => d.severity === 'error')) {
     diagnostics.push({
       severity: 'error',
-      message: 'Nothing to cut yet. Import an image and give it an operation.',
+      message: 'Nothing to cut yet. Import a file and give it an operation.',
     });
   }
-  checkMachineFits(cutBounds, maxDepth, machine, diagnostics);
-
-  return { programs: [...programs.values()], diagnostics };
+  checkMachineFits(cuts, machine, diagnostics);
+  return { programs: buildPrograms(cuts, machine), diagnostics };
 }
 
-function engraveSection(
-  object: DesignObject,
-  machinePaths: Parameters<typeof orderPaths>[0],
-  feeds: ReturnType<typeof resolveFeeds>['feeds'],
-  depth: number,
-  machine: MachineConfig,
-  program: BitProgram,
-): ProgramSection {
-  // Continue from where the previous section on this bit left off.
-  const previous = program.sections.at(-1)?.moves.at(-1);
-  const start = previous ? { x: previous.x, y: previous.y } : { x: 0, y: 0 };
-  const { paths } = orderPaths(machinePaths, start);
-  return {
-    label: `Engrave: ${object.name}`,
-    rpm: feeds.rpm,
-    moves: engravePaths(paths, { depth, feeds, safeZ: machine.safeZ }),
-  };
+/**
+ * One program per bit. Files are ordered by their earliest kind of cut (so
+ * detail work comes before cutting parts free), and within a file the cuts run
+ * by priority, keeping design order for ties.
+ */
+function buildPrograms(cuts: ObjectCut[], machine: MachineConfig): BitProgram[] {
+  const byBit = new Map<string, ObjectCut[]>();
+  for (const cut of cuts) byBit.set(cut.bit.id, [...(byBit.get(cut.bit.id) ?? []), cut]);
+
+  const groups = [...byBit.values()]
+    .map((group) => [...group].sort((a, b) => a.priority - b.priority))
+    .sort((a, b) => a[0]!.priority - b[0]!.priority);
+
+  return groups.map((group) => {
+    let position: Vec2 = { x: 0, y: 0 };
+    const sections: ProgramSection[] = group.map((cut) => {
+      const ordered = orderPaths(cut.paths, position);
+      position = ordered.end;
+      return {
+        label: cut.label,
+        rpm: cut.feeds.rpm,
+        moves: followPaths(ordered.paths, {
+          depth: cut.depth,
+          feeds: cut.feeds,
+          safeZ: machine.safeZ,
+        }),
+      };
+    });
+    return { bit: group[0]!.bit, sections };
+  });
 }
 
-function checkOnStock(
-  b: Bounds,
-  job: Job,
-  problem: (severity: Diagnostic['severity'], message: string) => void,
-) {
+function onStock(b: Bounds, job: Job): boolean {
   const { width, height } = job.stock;
-  if (
-    b.minX < -EPSILON ||
-    b.minY < -EPSILON ||
-    b.maxX > width + EPSILON ||
-    b.maxY > height + EPSILON
-  ) {
-    problem('warning', 'goes past the edge of the stock.');
-  }
+  return (
+    b.minX >= -EPSILON &&
+    b.minY >= -EPSILON &&
+    b.maxX <= width + EPSILON &&
+    b.maxY <= height + EPSILON
+  );
 }
 
-function checkMachineFits(b: Bounds, depth: number, machine: MachineConfig, out: Diagnostic[]) {
+function checkMachineFits(cuts: ObjectCut[], machine: MachineConfig, out: Diagnostic[]) {
+  const b = cuts.reduce<Bounds>((acc, cut) => unionBounds(acc, cut.cutBounds), EMPTY_BOUNDS);
   if (isEmptyBounds(b)) return;
   const { x, y, z } = machine.workArea;
   if (b.maxX - b.minX > x || b.maxY - b.minY > y) {
@@ -140,6 +101,7 @@ function checkMachineFits(b: Bounds, depth: number, machine: MachineConfig, out:
       message: `The cuts span ${fmt(b.maxX - b.minX)} × ${fmt(b.maxY - b.minY)}, more than the machine's ${x} × ${y} mm work area.`,
     });
   }
+  const depth = Math.max(...cuts.map((c) => c.depth));
   if (depth + machine.safeZ > z) {
     out.push({
       severity: 'warning',

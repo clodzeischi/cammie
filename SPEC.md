@@ -52,7 +52,7 @@ Modeled on Easel: one screen, left-to-right flow.
 └────┴───────────────────────────────────────────────┴─────────────────────┘
 ```
 
-- **Left toolbar**: Import (SVG/PNG), Text, Rectangle, Circle/Ellipse, (Polygon/Star optional later).
+- **Left toolbar**: Import (one button: SVGs come in at their real size; bitmaps open the trace dialog), Text, Rectangle, Circle/Ellipse, (Polygon/Star optional later).
 - **Canvas**: stock rectangle drawn to scale, mm grid, rulers, selectable origin marker, dashed outline of machine work area. Pan (space/middle-drag), zoom (wheel/pinch), snap to grid toggle.
 - **Right panel**: properties of selected object(s); job settings when nothing is selected (stock, origin, material).
 - **View toggle**: *Design* vs *Toolpath preview* (§10).
@@ -111,7 +111,7 @@ interface Path { points: Vec2[]; closed: boolean; }
 - **Scale**: honor `width`/`height` units (`mm`, `cm`, `in`, `pt`, `pc`, `px`) + `viewBox`. Unitless/px → assume 96 DPI. After import, user can type an exact width/height.
 - Curves (cubic/quadratic Bézier, arcs) are flattened to polylines with a chord tolerance of **0.01 mm** (configurable in Advanced).
 - Clean-up on import: join path segments whose endpoints are within 0.01 mm, mark as closed if start≈end, drop zero-length segments, drop duplicate points.
-- Fill rule: respect `fill-rule` (`nonzero` / `evenodd`) when determining islands/holes for pockets and V-carve.
+- Fill rule: an object's closed paths are read with the **even-odd** rule (nested outlines alternate solid/hole), which matches traced images and how most design apps export holes. Per-element `fill-rule` isn't honoured; overlapping separate shapes in one SVG therefore cancel where they overlap.
 
 ### 5.2 PNG (and JPG/WebP — browser decodes for free) → vector trace
 - Import dialog with live preview:
@@ -226,7 +226,7 @@ Persisted in `localStorage` (not cookies — cookies are size-limited to ~4 KB a
 
 ### 9.2 Profile (outline)
 - **On line**: tool center follows the path. Works on open or closed paths.
-- **Outside / Inside**: offset closed path by ±(bitRadius + allowance) with Clipper2 (round joins for outside, miter/round for inside). Inside profiles that collapse (feature smaller than bit) → warning + skipped.
+- **Outside / Inside**: offset the object's even-odd region by ±bitRadius with Clipper2 (round joins). Outside grows the solid (holes shrink, so a part with holes comes out right); inside shrinks it. Details narrower than the bit vanish and raise a warning. Open paths are skipped with a warning (error if there are no closed shapes). V-bits are limited to on-line.
 - Multi-pass: `ceil(depth / depthPerPass)` equal passes; final pass at exact depth.
 - Direction: for a CW-spindle, **climb** = outside paths CW / inside paths CCW (machine coords); conventional reverses.
 - **Finishing pass**: roughing at `allowance` offset for all depths, then one full-depth pass on the final path with a lighter step (single pass if depth ≤ 2× depthPerPass, otherwise full depth in two steps).
@@ -306,7 +306,7 @@ Within a bit's file:
 ### 12.1 Files
 - One file per bit, numbered in the cutting order:
   `<jobname>_<NN>_<bit-slug>.nc` → e.g. `sign_01_vbit-60.nc`, `sign_02_flat-3.175.nc`.
-- With a single bit, one file. With several, phase 1 downloads them one after another (the browser may ask once to allow multiple downloads); phase 2 adds a `.zip` option (JSZip).
+- With a single bit, one `.nc` file. With several, one `<job>.zip` containing the numbered files (JSZip, loaded only when needed).
 - Job name defaults to the first imported filename; editable next to Export.
 
 ### 12.2 Structure
@@ -373,7 +373,7 @@ CAM produces a machine-agnostic `ToolpathProgram` (list of moves: rapid/feed wit
 | UI | React 18 |
 | State | Zustand (small slices: job, selection, ui, settings) |
 | Canvas | Konva via `react-konva` (design + 2D preview) |
-| Path offset / booleans | Clipper2 JS port (`clipper2-js`) — integer-scaled (×1000 = µm) |
+| Path offset / booleans | Clipper2 TypeScript port (`@countertype/clipper2-ts`, Boost licence), float API at 1 µm precision, behind `src/core/clipper` |
 | Fonts → paths | `opentype.js` |
 | Bitmap trace | Own marching-squares tracer in `src/core/trace` (in a worker) |
 | Voronoi (V-carve) | `d3-delaunay` |

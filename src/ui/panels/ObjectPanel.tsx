@@ -1,6 +1,6 @@
 import type { DesignObject } from '../../core/job/job';
 import { useJobStore } from '../../state/jobStore';
-import { EngraveFields } from './EngraveFields';
+import { CutFields } from './CutFields';
 import { PlacementFields } from './PlacementFields';
 
 interface ObjectPanelProps {
@@ -27,7 +27,7 @@ export function ObjectPanel({ object }: ObjectPanelProps) {
         object={object}
         onTransform={(transform) => updateObject(object.id, { transform })}
       />
-      <EngraveFields
+      <CutFields
         operation={object.operation}
         onChange={(operation) => updateObject(object.id, { operation })}
       />

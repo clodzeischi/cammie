@@ -21,23 +21,30 @@ export interface Stock {
 }
 
 /**
- * V-bit (or any bit) following the path at a fixed depth: SPEC.md §9.2 "on line".
- * Later phases add inside/outside profiles, pockets and V-carve.
+ * Where the tool runs relative to the drawn line (SPEC.md §9.2):
+ * - `on`: the tool centre follows the line (engraving; works on open paths).
+ * - `outside`: the cut sits outside the shape, so the shape comes out at its
+ *   drawn size (cutting a part out).
+ * - `inside`: the cut sits inside the shape (cutting a hole of the drawn size).
  */
-export interface EngraveOperation {
-  type: 'engrave';
+export type ProfileSide = 'on' | 'outside' | 'inside';
+
+export interface ProfileOperation {
+  type: 'profile';
+  side: ProfileSide;
   bitId: string;
   depth: number;
   /** Values the user changed from the material preset. */
   overrides: Partial<Feeds>;
 }
 
-export type Operation = EngraveOperation;
+/** Later phases add pockets and V-carve. */
+export type Operation = ProfileOperation;
 
 export interface DesignObject {
   id: string;
   name: string;
-  kind: 'traced-image';
+  kind: 'traced-image' | 'svg';
   /** Outlines in the object's own mm space, with the bounding box starting at (0, 0). */
   paths: Path[];
   /** Natural (unscaled) size of `paths`. */

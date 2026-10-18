@@ -34,7 +34,7 @@ describe('grblPost', () => {
       (Start with the bit at X0 Y0, touching the top of the material)
       G21 G90 G94 G17
       G0 Z5.000
-      (Engrave: Logo)
+      (On the line: Logo)
       M3 S1000
       G4 P3
       G0 X10.000 Y30.000
@@ -84,7 +84,13 @@ describe('grblPost', () => {
       makeObject(),
       makeObject({
         id: 'b',
-        operation: { type: 'engrave', bitId: 'vbit-60', depth: 1, overrides: { rpm: 5000 } },
+        operation: {
+          type: 'profile',
+          side: 'on',
+          bitId: 'vbit-60',
+          depth: 1,
+          overrides: { rpm: 5000 },
+        },
       }),
     ]);
     const text = render(machine, job);

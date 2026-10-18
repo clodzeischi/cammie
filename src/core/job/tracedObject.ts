@@ -1,9 +1,6 @@
-import { boundsOfPaths, isEmptyBounds, type Path } from '../geometry/path';
-import { DEFAULT_VBIT_ID } from '../tools/bits';
+import { boundsOfPaths, isEmptyBounds, scalePaths, type Path } from '../geometry/path';
 import type { DesignObject, Stock } from './job';
-
-/** New engravings start shallow: a fine line that's easy to deepen. */
-export const DEFAULT_ENGRAVE_DEPTH = 0.5;
+import { createObject } from './objectFactory';
 
 /** Size of the traced artwork itself (not the image), in pixels. */
 export function artworkSize(paths: readonly Path[]): { width: number; height: number } {
@@ -23,44 +20,16 @@ export interface TracedObjectInput {
   stock: Stock;
 }
 
-/**
- * A traced image cropped to its artwork, scaled to size, centred on the stock
- * and set to V-bit engrave. Cropping means X/Y and size refer to the actual
- * lines, not the image's empty margins.
- */
+/** A traced image scaled so its artwork is `widthMm` wide, cropped and centred. */
 export function createTracedObject(input: TracedObjectInput): DesignObject {
-  const b = boundsOfPaths(input.paths);
-  const mmPerPixel = input.widthMm / (b.maxX - b.minX);
-  const paths = input.paths.map((path) => ({
-    closed: path.closed,
-    points: path.points.map((p) => ({
-      x: (p.x - b.minX) * mmPerPixel,
-      y: (p.y - b.minY) * mmPerPixel,
-    })),
-  }));
-  const width = input.widthMm;
-  const height = (b.maxY - b.minY) * mmPerPixel;
-  return {
+  const mmPerPixel = input.widthMm / artworkSize(input.paths).width;
+  return createObject({
     id: input.id,
     name: input.name,
     kind: 'traced-image',
-    paths,
-    width,
-    height,
-    transform: {
-      x: (input.stock.width - width) / 2,
-      y: (input.stock.height - height) / 2,
-      rotation: 0,
-      scaleX: 1,
-      scaleY: 1,
-    },
-    operation: {
-      type: 'engrave',
-      bitId: DEFAULT_VBIT_ID,
-      depth: DEFAULT_ENGRAVE_DEPTH,
-      overrides: {},
-    },
-  };
+    paths: scalePaths(input.paths, mmPerPixel),
+    stock: input.stock,
+  });
 }
 
 /** A starting width that fits comfortably on the stock, keeping the artwork's aspect. */

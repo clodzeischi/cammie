@@ -1,6 +1,6 @@
 import type { Path } from '../geometry/path';
 import { DEFAULT_MACHINE_CONFIG } from '../machine/machineConfig';
-import { engravePaths, passDepths } from './engrave';
+import { followPaths, passDepths } from './followPaths';
 import { estimateProgram } from './estimate';
 import { generateJob } from './generateJob';
 import { orderPaths } from './ordering';
@@ -16,9 +16,9 @@ describe('passDepths', () => {
   });
 });
 
-describe('engravePaths', () => {
+describe('followPaths', () => {
   it('goes round a closed loop once per pass and ends at safe Z', () => {
-    const moves = engravePaths([square(0, 0)], { depth: 1, feeds, safeZ: 5 });
+    const moves = followPaths([square(0, 0)], { depth: 1, feeds, safeZ: 5 });
     expect(moves[0]).toEqual({ kind: 'rapid', x: 0, y: 0, z: 5 });
     expect(moves[1]).toEqual({ kind: 'rapid', x: 0, y: 0, z: 0.5 });
     expect(moves[2]).toEqual({ kind: 'feed', x: 0, y: 0, z: -0.5, feed: 100 });
@@ -37,7 +37,7 @@ describe('engravePaths', () => {
         { x: 10, y: 0 },
       ],
     };
-    const moves = engravePaths([line], { depth: 1, feeds, safeZ: 5 });
+    const moves = followPaths([line], { depth: 1, feeds, safeZ: 5 });
     const cutEnds = moves.filter((m) => m.kind === 'feed' && m.feed === 300).map((m) => m.x);
     expect(cutEnds).toEqual([10, 0]);
   });
@@ -84,7 +84,7 @@ describe('generateJob', () => {
       makeObject(),
       makeObject({
         id: 'b',
-        operation: { type: 'engrave', bitId: 'vbit-90', depth: 1, overrides: {} },
+        operation: { type: 'profile', side: 'on', bitId: 'vbit-90', depth: 1, overrides: {} },
       }),
       makeObject({ id: 'c' }),
     ]);
@@ -105,10 +105,18 @@ describe('generateJob', () => {
 
   it('errors on bad depth or feeds and skips that object', () => {
     const job = makeJob([
-      makeObject({ operation: { type: 'engrave', bitId: 'vbit-60', depth: 0, overrides: {} } }),
+      makeObject({
+        operation: { type: 'profile', side: 'on', bitId: 'vbit-60', depth: 0, overrides: {} },
+      }),
       makeObject({
         id: 'b',
-        operation: { type: 'engrave', bitId: 'vbit-60', depth: 1, overrides: { feed: Number.NaN } },
+        operation: {
+          type: 'profile',
+          side: 'on',
+          bitId: 'vbit-60',
+          depth: 1,
+          overrides: { feed: Number.NaN },
+        },
       }),
     ]);
     const { programs, diagnostics } = generateJob(job, DEFAULT_MACHINE_CONFIG);
@@ -123,14 +131,20 @@ describe('generateJob', () => {
     const job = makeJob([
       makeObject({
         transform: { x: 95, y: 10, rotation: 0, scaleX: 1, scaleY: 1 },
-        operation: { type: 'engrave', bitId: 'vbit-60', depth: 7, overrides: { feed: 5000 } },
+        operation: {
+          type: 'profile',
+          side: 'on',
+          bitId: 'vbit-60',
+          depth: 7,
+          overrides: { feed: 5000 },
+        },
       }),
     ]);
     const messages = generateJob(job, DEFAULT_MACHINE_CONFIG).diagnostics.map((d) => d.message);
     expect(messages).toEqual([
       'Logo: Feed lowered from 5000 to the machine max of 1000 mm/min.',
-      'Logo: goes past the edge of the stock.',
       'Logo: cuts 1 mm into the spoilboard.',
+      'Logo: goes past the edge of the stock.',
     ]);
   });
 });

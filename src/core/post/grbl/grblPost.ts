@@ -45,7 +45,9 @@ class ModalWriter {
 }
 
 const describeBit = (bit: Bit) =>
-  bit.type === 'vbit' ? `${bit.name}, tip ${bit.tipDiameter}mm` : `${bit.name}, ${bit.diameter}mm`;
+  bit.type === 'vbit'
+    ? `${bit.name}, tip ${bit.tipDiameter}mm`
+    : `${bit.name}, ${bit.flutes}-flute`;
 
 /** GRBL 1.1 dialect for gSender and similar senders (SPEC.md §12). */
 export const grblPost: PostProcessor = {

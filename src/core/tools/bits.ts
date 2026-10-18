@@ -32,11 +32,25 @@ const vbit = (angle: number, tip: number): VBit => ({
   flutes: 1,
 });
 
+const flat = (diameter: number, flutes = 2): FlatBit => ({
+  id: flutes === 2 ? `flat-${diameter}` : `flat-${diameter}-${flutes}f`,
+  name: `End mill ${diameter} mm${flutes === 2 ? '' : `, ${flutes}-flute`}`,
+  type: 'flat',
+  diameter,
+  flutes,
+});
+
+/** Typical 3018 bits, all on a 1/8" (3.175 mm) shank. */
 export const BUILT_IN_BITS: readonly Bit[] = [
   vbit(20, 0.1),
   vbit(30, 0.1),
   vbit(60, 0.2),
   vbit(90, 0.2),
+  flat(1),
+  flat(1.5),
+  flat(2),
+  flat(3.175),
+  flat(3.175, 1),
 ];
 
 export const DEFAULT_VBIT_ID = 'vbit-60';
@@ -57,5 +71,4 @@ export function grooveWidth(bit: Bit, depth: number): number {
 }
 
 /** Short filesystem-friendly label, e.g. "vbit-60" or "flat-3.175". */
-export const bitSlug = (bit: Bit): string =>
-  bit.type === 'vbit' ? `vbit-${bit.angle}` : `flat-${bit.diameter}`;
+export const bitSlug = (bit: Bit): string => bit.id.replace(/[^a-z0-9.-]+/gi, '-');

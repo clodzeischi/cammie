@@ -22,7 +22,7 @@ describe('createTracedObject', () => {
     expect(object.height).toBe(40);
     expect(boundsOfPaths(object.paths)).toEqual({ minX: 0, minY: 0, maxX: 80, maxY: 40 });
     expect(object.transform).toMatchObject({ x: 60, y: 30 });
-    expect(object.operation).toMatchObject({ type: 'engrave', bitId: 'vbit-60' });
+    expect(object.operation).toMatchObject({ type: 'profile', side: 'on', bitId: 'vbit-60' });
   });
 });
 

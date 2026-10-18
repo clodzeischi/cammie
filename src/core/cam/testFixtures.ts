@@ -22,7 +22,7 @@ export function makeObject(overrides: Partial<DesignObject> = {}): DesignObject 
     width: 10,
     height: 10,
     transform: { x: 10, y: 10, rotation: 0, scaleX: 1, scaleY: 1 },
-    operation: { type: 'engrave', bitId: 'vbit-60', depth: 1, overrides: {} },
+    operation: { type: 'profile', side: 'on', bitId: 'vbit-60', depth: 1, overrides: {} },
     ...overrides,
   };
 }

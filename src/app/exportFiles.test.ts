@@ -3,7 +3,7 @@ import { makeJob, makeObject } from '../core/cam/testFixtures';
 import { DEFAULT_MACHINE_CONFIG } from '../core/machine/machineConfig';
 import { grblPost } from '../core/post/grbl/grblPost';
 import { lintGcode } from '../core/post/grbl/lintGcode';
-import { buildExportFiles, slugify } from './exportFiles';
+import { buildExportFiles, slugify, zipFiles } from './exportFiles';
 
 describe('slugify', () => {
   it('makes safe file names', () => {
@@ -19,7 +19,7 @@ describe('buildExportFiles', () => {
       makeObject(),
       makeObject({
         id: 'b',
-        operation: { type: 'engrave', bitId: 'vbit-90', depth: 0.3, overrides: {} },
+        operation: { type: 'profile', side: 'on', bitId: 'vbit-90', depth: 0.3, overrides: {} },
       }),
     ]);
     const { programs } = generateJob(job, DEFAULT_MACHINE_CONFIG);
@@ -28,5 +28,18 @@ describe('buildExportFiles', () => {
     expect(files.map((f) => f.name)).toEqual(['owl_01_vbit-60.nc', 'owl_02_vbit-90.nc']);
     expect(files[1]!.text).toContain('(File 2 of 2: change the bit and re-zero Z before running)');
     files.forEach((f) => expect(lintGcode(f.text, DEFAULT_MACHINE_CONFIG)).toEqual([]));
+  });
+});
+
+describe('zipFiles', () => {
+  it('bundles every file', async () => {
+    const JSZip = (await import('jszip')).default;
+    const blob = await zipFiles([
+      { name: 'a.nc', text: 'G0 Z5\n' },
+      { name: 'b.nc', text: 'M2\n' },
+    ]);
+    const zip = await JSZip.loadAsync(blob);
+    expect(Object.keys(zip.files).sort()).toEqual(['a.nc', 'b.nc']);
+    expect(await zip.file('b.nc')!.async('string')).toBe('M2\n');
   });
 });

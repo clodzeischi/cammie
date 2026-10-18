@@ -50,16 +50,29 @@ export function buildExportFiles(
   });
 }
 
-/** Browsers may ask once before allowing several downloads from one click. */
-export function downloadFiles(files: ExportFile[]): void {
-  files.forEach((file, i) => {
-    setTimeout(() => {
-      const url = URL.createObjectURL(new Blob([file.text], { type: 'text/plain' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = file.name;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }, i * 300);
-  });
+function downloadBlob(name: string, blob: Blob): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Bundles several files into one zip, named after the job. */
+export async function zipFiles(files: ExportFile[]): Promise<Blob> {
+  const { default: JSZip } = await import('jszip');
+  const zip = new JSZip();
+  files.forEach((file) => zip.file(file.name, file.text));
+  return zip.generateAsync({ type: 'blob' });
+}
+
+/** One file downloads as-is; several come as `<job>.zip` (SPEC.md §12.1). */
+export async function downloadFiles(files: ExportFile[], jobName: string): Promise<void> {
+  if (files.length === 0) return;
+  if (files.length === 1) {
+    downloadBlob(files[0]!.name, new Blob([files[0]!.text], { type: 'text/plain' }));
+    return;
+  }
+  downloadBlob(`${slugify(jobName)}.zip`, await zipFiles(files));
 }

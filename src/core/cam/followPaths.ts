@@ -11,19 +11,19 @@ export function passDepths(depth: number, depthPerPass: number): number[] {
   return Array.from({ length: count }, (_, i) => (depth * (i + 1)) / count);
 }
 
-export interface EngraveParams {
+export interface FollowParams {
   depth: number;
   feeds: Feeds;
   safeZ: number;
 }
 
 /**
- * Follows each path at a fixed depth (SPEC.md §9.2 "on line"), stepping down
- * in passes. Closed loops go round once per pass; open paths go back and forth,
+ * Runs the tool along each path at a fixed depth, stepping down in passes.
+ * Used by every profile cut: the paths are the line itself or its offset. Closed loops go round once per pass; open paths go back and forth,
  * so the tool stays in the groove between passes. Paths must be in machine
  * coordinates and already ordered. Starts and ends at safe Z.
  */
-export function engravePaths(paths: readonly Path[], params: EngraveParams): Move[] {
+export function followPaths(paths: readonly Path[], params: FollowParams): Move[] {
   const { feeds, safeZ } = params;
   const depths = passDepths(params.depth, feeds.depthPerPass);
   const approachZ = Math.min(APPROACH_CLEARANCE, safeZ);

@@ -261,8 +261,18 @@ legend {
   transform: translateX(-50%);
   z-index: 10;
   padding: 10px 16px;
+  max-width: min(560px, calc(100vw - 32px));
   border-radius: var(--radius);
-  background: var(--danger);
   color: #fff;
   cursor: pointer;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.2);
+}
+
+.toast-error {
+  background: var(--danger);
+}
+
+.toast-info {
+  background: var(--text);
+  color: var(--bg);
 }

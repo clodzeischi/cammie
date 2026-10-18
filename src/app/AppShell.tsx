@@ -6,7 +6,7 @@ import { useMachineStore } from '../state/machineStore';
 import { useGeneratedJob, useJob } from '../state/useGeneratedJob';
 import { MachineSettingsDialog } from '../ui/panels/MachineSettingsDialog';
 import { Sidebar } from '../ui/panels/Sidebar';
-import { ImportImageButton } from '../ui/toolbar/ImportImageButton';
+import { ImportButton } from '../ui/toolbar/ImportButton';
 import { Workspace } from '../ui/Workspace';
 import { buildExportFiles, downloadFiles } from './exportFiles';
 import { useAppShortcuts } from './useAppShortcuts';
@@ -22,7 +22,7 @@ export function AppShell() {
 
   const blocked = hasErrors(generated.diagnostics) || generated.programs.length === 0;
   const exportJob = () =>
-    downloadFiles(buildExportFiles(generated.programs, job, machine, jobName, grblPost));
+    downloadFiles(buildExportFiles(generated.programs, job, machine, jobName, grblPost), jobName);
   const fileCount = generated.programs.length;
 
   return (
@@ -50,14 +50,14 @@ export function AppShell() {
             title={blocked ? 'Fix the items under Checks first' : undefined}
             onClick={exportJob}
           >
-            Export{fileCount > 1 ? ` ${fileCount} files` : ''}
+            Export{fileCount > 1 ? ` ${fileCount} files (.zip)` : ''}
           </button>
         </div>
       </header>
 
       <div className="app-body">
         <nav className="toolbar" aria-label="Tools">
-          <ImportImageButton />
+          <ImportButton />
         </nav>
         <Workspace />
         <Sidebar />
