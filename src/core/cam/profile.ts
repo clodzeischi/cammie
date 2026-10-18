@@ -1,8 +1,6 @@
 import { offsetRegion, regionOf } from '../clipper/clipper';
 import type { Path } from '../geometry/path';
-import type { ProfileSide } from '../job/job';
-
-export type CutDirection = 'climb' | 'conventional';
+import type { CutDirection, ProfileSide } from '../job/job';
 
 export interface ProfileResult {
   /** Toolpath loops (or the original paths for `on`), not yet ordered. */

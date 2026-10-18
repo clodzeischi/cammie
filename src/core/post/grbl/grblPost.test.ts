@@ -1,4 +1,4 @@
-import { makeJob, makeObject } from '../../cam/testFixtures';
+import { makeJob } from '../../cam/testFixtures';
 import { generateJob } from '../../cam/generateJob';
 import { DEFAULT_MACHINE_CONFIG, type MachineConfig } from '../../machine/machineConfig';
 import type { PostContext } from '../PostProcessor';
@@ -39,16 +39,20 @@ describe('grblPost', () => {
       G4 P3
       G0 X10.000 Y30.000
       G0 Z0.500
-      G1 Z-0.500 F200
-      G1 Y40.000 F330
+      G1 Z0.000 F200
+      G1 Y39.541 Z-0.500 F330
+      G1 Y40.000
       G1 X20.000
       G1 Y30.000
       G1 X10.000
-      G1 Z-1.000 F200
-      G1 Y40.000 F330
+      G1 Y39.541
+      G1 Y40.000 Z-0.524
+      G1 X19.081 Z-1.000
       G1 X20.000
       G1 Y30.000
       G1 X10.000
+      G1 Y40.000
+      G1 X19.081
       G0 Z5.000
       M5
       G0 X0.000 Y0.000
@@ -80,20 +84,10 @@ describe('grblPost', () => {
 
   it('maps RPM onto the $30 range and changes speed between sections', () => {
     const machine = { ...DEFAULT_MACHINE_CONFIG, maxSValue: 255 };
-    const job = makeJob([
-      makeObject(),
-      makeObject({
-        id: 'b',
-        operation: {
-          type: 'profile',
-          side: 'on',
-          bitId: 'vbit-60',
-          depth: 1,
-          overrides: { rpm: 5000 },
-        },
-      }),
-    ]);
-    const text = render(machine, job);
+    const { programs } = generateJob(makeJob(), machine);
+    const section = programs[0]!.sections[0]!;
+    const program = { ...programs[0]!, sections: [section, { ...section, rpm: 5000 }] };
+    const text = grblPost.render(program, context(machine));
     expect(text).toContain('M3 S255');
     expect(text).toMatch(/^S128$/m);
   });

@@ -4,6 +4,7 @@ import type { GeneratedJob } from '../core/cam/program';
 import type { Job } from '../core/job/job';
 import { useJobStore } from './jobStore';
 import { useMachineStore } from './machineStore';
+import { useToolingStore } from './toolingStore';
 
 /** The current design's job data (stable while nothing changes). */
 export function useJob(): Job {
@@ -19,11 +20,16 @@ export function useJob(): Job {
 
 /**
  * Toolpaths and diagnostics for the current design, recomputed when the design
- * or machine changes. Engraving is cheap enough for the main thread; heavier
- * operations (pocket, V-carve) will move this into a worker.
+ * machine, bits or remembered feeds change. Even busy pockets take well under
+ * 100 ms, so this runs on the main thread; V-carve may need a worker.
  */
 export function useGeneratedJob(): GeneratedJob {
   const job = useJob();
   const machine = useMachineStore((s) => s.config);
-  return useMemo(() => generateJob(job, machine), [job, machine]);
+  const bits = useToolingStore((s) => s.bits);
+  const feedOverrides = useToolingStore((s) => s.feedOverrides);
+  return useMemo(
+    () => generateJob(job, machine, bits, feedOverrides),
+    [job, machine, bits, feedOverrides],
+  );
 }

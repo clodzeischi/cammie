@@ -44,7 +44,13 @@ export function ObjectsLayer(props: ObjectsLayerProps) {
   }, [selectedId, interactive, objects]);
 
   return (
-    <Layer opacity={interactive ? 1 : 0.35} listening={interactive}>
+    // Remount when switching modes: Konva doesn't rebuild a layer's hit areas when
+    // `listening` flips back on, which left objects unclickable after a preview.
+    <Layer
+      key={interactive ? 'edit' : 'view'}
+      opacity={interactive ? 1 : 0.35}
+      listening={interactive}
+    >
       {objects.map((object) => (
         <ObjectNode
           key={object.id}

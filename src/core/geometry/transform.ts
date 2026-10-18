@@ -57,3 +57,16 @@ export function transformPaths(paths: readonly Path[], t: ObjectTransform): Path
     points: path.points.map((p) => applyMatrix(m, p)),
   }));
 }
+
+/** Inverse of an affine matrix (objects never have zero scale, so it always exists). */
+export function invertMatrix(m: Matrix): Matrix {
+  const det = m.a * m.d - m.b * m.c;
+  return {
+    a: m.d / det,
+    b: -m.b / det,
+    c: -m.c / det,
+    d: m.a / det,
+    e: (m.c * m.f - m.d * m.e) / det,
+    f: (m.b * m.e - m.a * m.f) / det,
+  };
+}

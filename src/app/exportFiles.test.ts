@@ -1,5 +1,5 @@
 import { generateJob } from '../core/cam/generateJob';
-import { makeJob, makeObject } from '../core/cam/testFixtures';
+import { makeJob, makeObject, profileOp } from '../core/cam/testFixtures';
 import { DEFAULT_MACHINE_CONFIG } from '../core/machine/machineConfig';
 import { grblPost } from '../core/post/grbl/grblPost';
 import { lintGcode } from '../core/post/grbl/lintGcode';
@@ -19,7 +19,7 @@ describe('buildExportFiles', () => {
       makeObject(),
       makeObject({
         id: 'b',
-        operation: { type: 'profile', side: 'on', bitId: 'vbit-90', depth: 0.3, overrides: {} },
+        operation: profileOp({ side: 'on', bitId: 'vbit-90', depth: 0.3 }),
       }),
     ]);
     const { programs } = generateJob(job, DEFAULT_MACHINE_CONFIG);

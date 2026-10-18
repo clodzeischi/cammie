@@ -1,3 +1,4 @@
+import type { Path, Vec2 } from '../geometry/path';
 import type { Bit } from '../tools/bits';
 
 /**
@@ -36,9 +37,18 @@ export interface Diagnostic {
   objectId?: string;
 }
 
+/** Tab positions for one object, in canvas coordinates, for the preview editor. */
+export interface ObjectTabs {
+  objectId: string;
+  /** Loops a tab can sit on (the finished contour). */
+  loops: Path[];
+  centres: Vec2[];
+}
+
 export interface GeneratedJob {
   programs: BitProgram[];
   diagnostics: Diagnostic[];
+  tabs: ObjectTabs[];
 }
 
 export const hasErrors = (diagnostics: readonly Diagnostic[]): boolean =>

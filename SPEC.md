@@ -166,7 +166,7 @@ type Bit =
 
 ## 8. Materials & Feeds/Speeds
 
-Presets are **conservative starting points for a stock 3018 (~10k RPM 775 spindle, flexible frame)**. Every value is overridable per job; overrides for a material+bit pair are remembered in `localStorage`.
+Presets are **conservative starting points for a stock 3018 (~10k RPM 775 spindle, flexible frame)**. Feeds are edited per **material + bit pair**, not per object: a change applies to every cut using that pair and is remembered in `localStorage` (`cammie.feedOverrides.v1`). "Reset" returns the pair to the preset.
 
 Values per material for a **3.175 mm 2-flute flat**; other diameters scale (see below).
 
@@ -190,7 +190,7 @@ Values per material for a **3.175 mm 2-flute flat**; other diameters scale (see 
 
 ## 9. CAM Operations
 
-CAM is pure, synchronous TypeScript (`generateJob`), recomputed whenever the design, material or machine settings change. Phase 1's outline engraving is fast enough for the main thread; pocketing and V-carve (phases 3 and 5) move it into a **Web Worker** so the UI never freezes.
+CAM is pure, synchronous TypeScript (`generateJob`), recomputed whenever the design, material, machine settings, bits or remembered feeds change. Measured at phase 3: a busy traced design (65 loops) pockets in ~45 ms and profiles with tabs in ~30 ms, so it stays on the main thread. V-carve (phase 5) moves it into a **Web Worker** if it needs to.
 
 Common per-operation settings:
 ```ts
@@ -230,7 +230,7 @@ Persisted in `localStorage` (not cookies — cookies are size-limited to ~4 KB a
 - Multi-pass: `ceil(depth / depthPerPass)` equal passes; final pass at exact depth.
 - Direction: for a CW-spindle, **climb** = outside paths CW / inside paths CCW (machine coords); conventional reverses.
 - **Finishing pass**: roughing at `allowance` offset for all depths, then one full-depth pass on the final path with a lighter step (single pass if depth ≤ 2× depthPerPass, otherwise full depth in two steps).
-- **Entry**: *ramp* = descend along the path over a distance where the ramp angle ≤ 3° (or ≥ 2× bit diameter); closed loops ramp along the start of the loop and the ramp segment is re-cut at depth. *Plunge* = straight down at plunge feed.
+- **Entry**: *ramp* (default for closed loops) = descend along the loop at ≤ 3°, wrapping round as many laps as needed, then do one full lap at depth (which re-cuts the sloped section flat). The next pass picks up where the last ended. *Plunge* = straight down at plunge feed. Open paths always plunge. Finishing passes plunge (the slot is already open).
 
 - **V-bit on-line ("outline engrave")**: the V-bit follows the path at a fixed depth. Groove width at the surface = `tip + 2 × depth × tan(angle / 2)`. The properties panel shows this width live, so the user picks the depth by the line width they want. Passes come from depth/pass as usual. This is the **MVP operation** (§14).
 
@@ -239,15 +239,15 @@ Persisted in `localStorage` (not cookies — cookies are size-limited to ~4 KB a
 interface TabSettings { enabled: boolean; count: number; width: number; height: number; manual: Vec2[] | null; }
 ```
 - Defaults: enabled when depth ≥ stock thickness; count by perimeter (≈ 1 per 100 mm, min 3, max 8); width = 4 mm + bit Ø; height = 1.5 mm.
-- Auto-placement: evenly spaced along perimeter, nudged away from tight corners (prefer straight segments).
-- **Manual editing**: in preview mode, clicking on a toolpath adds a tab there; clicking an existing tab removes it. Switching to manual freezes the auto positions as a starting point.
-- Implementation: only passes below `-(thickness - tabHeight)` lift over tabs; lift is a vertical move (simple, robust) — trapezoidal ramps over tabs are a later improvement.
+- Auto-placement: per loop (outer contours **and** the slugs of inside cuts), count = perimeter/100 mm clamped to 3–8 and reduced so tabs keep at least one tab-length apart; positions evenly spaced, each nudged up to ¼ spacing away from corners sharper than 20°.
+- **Manual editing**: in preview, clicking within 10 px of a tab removes it; clicking within 10 px of a tabbable loop adds one at the nearest point. The first edit freezes the current automatic tabs as hand-placed ones, stored in the object's own coordinates so they move with it. "Go back to automatic tabs" clears them.
+- Implementation: only passes below `-(thickness - tabHeight)` lift over tabs; the lift is a vertical move at the tab edges (trapezoidal ramps over tabs are a later improvement). Tabs are planned on the finished contour and snap onto the roughing loops too. With tabs active, the "through cut, hold the part down" warning goes away.
 
 ### 9.4 Pocket
 - Closed paths only (open paths → error on that object). Islands/holes respected via fill rule.
 - Strategy: **contour-parallel offset** — repeatedly offset inward by `stepover × Ø` with Clipper2 until empty; link rings inside→out (or out→in), stay down between rings when the link stays inside the pocket, otherwise retract.
 - Finishing pass: wall pass at final boundary after roughing with allowance; floor gets the final ring.
-- Entry: **helix** (radius ≤ 0.4×Ø… up to 0.9×Ø based on available space, ≤ 3° pitch); falls back to ramp, then plunge if no room.
+- Entry: **ramp along the innermost ring** at ≤ 3°, wrapping round it as many laps as needed (a helix on round pockets), so the tool always enters inside the area being cleared. Disconnected rings at a depth get their own ramp entry; neighbouring rings are linked at depth when the link is ≤ 2 × stepover and doesn't cross a wall or island.
 - Material left behind in corners narrower than the bit → warning highlighting the area (compare pocket region vs union of swept tool area).
 
 ### 9.5 V-carve

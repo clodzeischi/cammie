@@ -33,6 +33,8 @@ interface NumberFieldProps {
   min?: number;
   error?: string;
   hint?: ReactNode;
+  /** Shown when the value is empty (NaN), e.g. "Auto". */
+  placeholder?: string;
 }
 
 const formatNumber = (value: number) =>
@@ -53,6 +55,7 @@ export function NumberField({
   min,
   error,
   hint,
+  placeholder,
 }: NumberFieldProps) {
   const [draft, setDraft] = useState<string | null>(null);
   return (
@@ -65,6 +68,7 @@ export function NumberField({
             inputMode="decimal"
             step={step ?? 'any'}
             min={min}
+            placeholder={placeholder}
             value={draft ?? formatNumber(value)}
             aria-invalid={error ? true : undefined}
             onFocus={() => setDraft(formatNumber(value))}

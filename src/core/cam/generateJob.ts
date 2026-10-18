@@ -3,9 +3,10 @@ import { anchorPoint, type Job } from '../job/job';
 import type { MachineConfig } from '../machine/machineConfig';
 import { findMaterial } from '../materials/materials';
 import { BUILT_IN_BITS, type Bit } from '../tools/bits';
-import { followPaths } from './followPaths';
-import { planObjectCut, type ObjectCut } from './objectCut';
-import { orderPaths } from './ordering';
+import type { FeedOverrides } from '../materials/feedOverrides';
+import { executePlan, type ObjectCut } from './cutPlan';
+import { planObjectCut } from './objectCut';
+import { MoveWriter } from './toolpath/moveWriter';
 import type { BitProgram, Diagnostic, GeneratedJob, ProgramSection } from './program';
 
 /** Slack for floating-point noise when checking that cuts stay on the stock. */
@@ -21,11 +22,16 @@ export function generateJob(
   job: Job,
   machine: MachineConfig,
   bits: readonly Bit[] = BUILT_IN_BITS,
+  feedOverrides: FeedOverrides = {},
 ): GeneratedJob {
   const diagnostics: Diagnostic[] = [];
   const material = findMaterial(job.materialId);
   if (!material) {
-    return { programs: [], diagnostics: [{ severity: 'error', message: 'Pick a material.' }] };
+    return {
+      programs: [],
+      diagnostics: [{ severity: 'error', message: 'Pick a material.' }],
+      tabs: [],
+    };
   }
 
   const origin = anchorPoint(job.stock, job.origin);
@@ -33,7 +39,11 @@ export function generateJob(
   for (const object of job.objects) {
     const report = (severity: Diagnostic['severity'], message: string) =>
       diagnostics.push({ severity, message: `${object.name}: ${message}`, objectId: object.id });
-    const cut = planObjectCut(object, { job, machine, material, bits, origin }, report);
+    const cut = planObjectCut(
+      object,
+      { job, machine, material, bits, feedOverrides, origin },
+      report,
+    );
     if (!cut) continue;
     if (!onStock(cut.cutBounds, job)) report('warning', 'goes past the edge of the stock.');
     cuts.push(cut);
@@ -46,7 +56,8 @@ export function generateJob(
     });
   }
   checkMachineFits(cuts, machine, diagnostics);
-  return { programs: buildPrograms(cuts, machine), diagnostics };
+  const tabs = cuts.flatMap((cut) => (cut.tabs ? [{ objectId: cut.objectId, ...cut.tabs }] : []));
+  return { programs: buildPrograms(cuts, machine), diagnostics, tabs };
 }
 
 /**
@@ -65,17 +76,10 @@ function buildPrograms(cuts: ObjectCut[], machine: MachineConfig): BitProgram[] 
   return groups.map((group) => {
     let position: Vec2 = { x: 0, y: 0 };
     const sections: ProgramSection[] = group.map((cut) => {
-      const ordered = orderPaths(cut.paths, position);
-      position = ordered.end;
-      return {
-        label: cut.label,
-        rpm: cut.feeds.rpm,
-        moves: followPaths(ordered.paths, {
-          depth: cut.depth,
-          feeds: cut.feeds,
-          safeZ: machine.safeZ,
-        }),
-      };
+      const writer = new MoveWriter(machine.safeZ, cut.feeds, position);
+      executePlan(writer, cut.plan);
+      position = writer.position;
+      return { label: cut.label, rpm: cut.feeds.rpm, moves: writer.moves };
     });
     return { bit: group[0]!.bit, sections };
   });

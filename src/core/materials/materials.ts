@@ -8,6 +8,8 @@ export interface Feeds {
   plunge: number;
   depthPerPass: number;
   rpm: number;
+  /** Pocket ring spacing as a percentage of the bit diameter. */
+  stepover: number;
 }
 
 export interface Material {
@@ -25,38 +27,42 @@ export const MATERIALS: readonly Material[] = [
   {
     id: 'softwood',
     name: 'Softwood (pine)',
-    base: { feed: 700, plunge: 250, depthPerPass: 1.0, rpm: 10000 },
+    base: { feed: 700, plunge: 250, depthPerPass: 1.0, rpm: 10000, stepover: 40 },
   },
   {
     id: 'hardwood',
     name: 'Hardwood (oak, maple, walnut)',
-    base: { feed: 450, plunge: 150, depthPerPass: 0.5, rpm: 10000 },
+    base: { feed: 450, plunge: 150, depthPerPass: 0.5, rpm: 10000, stepover: 40 },
   },
-  { id: 'mdf', name: 'MDF', base: { feed: 700, plunge: 250, depthPerPass: 1.0, rpm: 10000 } },
+  {
+    id: 'mdf',
+    name: 'MDF',
+    base: { feed: 700, plunge: 250, depthPerPass: 1.0, rpm: 10000, stepover: 45 },
+  },
   {
     id: 'plywood',
     name: 'Plywood (birch)',
-    base: { feed: 550, plunge: 200, depthPerPass: 0.8, rpm: 10000 },
+    base: { feed: 550, plunge: 200, depthPerPass: 0.8, rpm: 10000, stepover: 40 },
   },
   {
     id: 'acrylic',
     name: 'Acrylic (cast)',
-    base: { feed: 400, plunge: 120, depthPerPass: 0.5, rpm: 9000 },
+    base: { feed: 400, plunge: 120, depthPerPass: 0.5, rpm: 9000, stepover: 35 },
   },
   {
     id: 'hdpe',
     name: 'HDPE / plastics',
-    base: { feed: 600, plunge: 200, depthPerPass: 1.0, rpm: 9000 },
+    base: { feed: 600, plunge: 200, depthPerPass: 1.0, rpm: 9000, stepover: 40 },
   },
   {
     id: 'aluminum',
     name: 'Aluminum (6061), expert',
-    base: { feed: 150, plunge: 40, depthPerPass: 0.15, rpm: 10000 },
+    base: { feed: 150, plunge: 40, depthPerPass: 0.15, rpm: 10000, stepover: 20 },
   },
   {
     id: 'foam',
     name: 'Foam / soft wax',
-    base: { feed: 1200, plunge: 400, depthPerPass: 3.0, rpm: 8000 },
+    base: { feed: 1200, plunge: 400, depthPerPass: 3.0, rpm: 8000, stepover: 50 },
   },
 ];
 

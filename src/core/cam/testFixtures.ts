@@ -1,5 +1,6 @@
 import type { Path } from '../geometry/path';
-import type { DesignObject, Job } from '../job/job';
+import type { DesignObject, Job, PocketOperation, ProfileOperation } from '../job/job';
+import { defaultOperation } from '../job/objectFactory';
 
 /** Shared test data for CAM and post-processor tests. */
 
@@ -22,7 +23,7 @@ export function makeObject(overrides: Partial<DesignObject> = {}): DesignObject 
     width: 10,
     height: 10,
     transform: { x: 10, y: 10, rotation: 0, scaleX: 1, scaleY: 1 },
-    operation: { type: 'profile', side: 'on', bitId: 'vbit-60', depth: 1, overrides: {} },
+    operation: profileOp({ depth: 1 }),
     ...overrides,
   };
 }
@@ -35,3 +36,15 @@ export function makeJob(objects: DesignObject[] = [makeObject()]): Job {
     objects,
   };
 }
+
+/** A profile operation: defaults (V-bit on the line, climb, ramp) plus changes. */
+export const profileOp = (changes: Partial<ProfileOperation> = {}): ProfileOperation => ({
+  ...defaultOperation(),
+  ...changes,
+});
+
+/** A pocket with a 3.175 mm end mill unless told otherwise. */
+export const pocketOp = (changes: Partial<PocketOperation> = {}): PocketOperation => {
+  const { direction, entry, finishing } = defaultOperation();
+  return { type: 'pocket', bitId: 'flat-3.175', depth: 3, direction, entry, finishing, ...changes };
+};

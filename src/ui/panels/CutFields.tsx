@@ -1,22 +1,32 @@
-import type { ProfileOperation, ProfileSide } from '../../core/job/job';
-import { defaultOperation } from '../../core/job/objectFactory';
-import { findMaterial, presetFeeds } from '../../core/materials/materials';
-import { BUILT_IN_BITS, findBit, grooveWidth, vbitMaxDepth, type Bit } from '../../core/tools/bits';
+import { useState } from 'react';
+import { defaultTabWidth } from '../../core/cam/profilePlan';
+import type { Operation } from '../../core/job/job';
+import {
+  cutKindOf,
+  defaultOperation,
+  withCutKind,
+  type CutKind,
+} from '../../core/job/objectFactory';
+import { findMaterial } from '../../core/materials/materials';
+import { findBit, grooveWidth, vbitMaxDepth, type Bit } from '../../core/tools/bits';
 import { useJobStore } from '../../state/jobStore';
+import { useToolingStore } from '../../state/toolingStore';
 import { NumberField, SelectField } from '../common/fields';
+import { AdvancedCutFields } from './AdvancedCutFields';
+import { BitLibraryDialog } from './BitLibraryDialog';
 import { FeedsFields } from './FeedsFields';
+import { TabFields } from './TabFields';
 
 interface CutFieldsProps {
-  operation: ProfileOperation | null;
-  onChange: (operation: ProfileOperation | null) => void;
+  operation: Operation | null;
+  onChange: (operation: Operation | null) => void;
 }
 
-const BIT_OPTIONS = BUILT_IN_BITS.map((b) => ({ value: b.id, label: b.name }));
-
-const SIDE_OPTIONS: ReadonlyArray<{ value: ProfileSide; label: string }> = [
+const KIND_OPTIONS: ReadonlyArray<{ value: CutKind; label: string }> = [
   { value: 'on', label: 'On the line (engrave)' },
   { value: 'outside', label: 'Outside the line (cut out a part)' },
   { value: 'inside', label: 'Inside the line (cut a hole)' },
+  { value: 'pocket', label: 'Pocket (clear the inside)' },
 ];
 
 /** How deep past the stock a "cut through" goes, to clean up the bottom edge. */
@@ -32,10 +42,12 @@ function depthHint(bit: Bit, depth: number): string {
     : `Line width at the surface: ${round2(grooveWidth(bit, depth))} mm`;
 }
 
-/** Bit, where the cut runs relative to the line, depth and feeds. */
+/** Bit, cut type, depth, feeds, advanced options and tabs for one object. */
 export function CutFields({ operation, onChange }: CutFieldsProps) {
   const materialId = useJobStore((s) => s.materialId);
   const thickness = useJobStore((s) => s.stock.thickness);
+  const bits = useToolingStore((s) => s.bits);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   if (!operation) {
     return (
@@ -49,28 +61,40 @@ export function CutFields({ operation, onChange }: CutFieldsProps) {
     );
   }
 
-  const bit = findBit(operation.bitId);
+  const kind = cutKindOf(operation);
+  const bit = findBit(operation.bitId, bits);
   const material = findMaterial(materialId);
-  const set = (patch: Partial<ProfileOperation>) => onChange({ ...operation, ...patch });
-  // V-bits only engrave on the line; switching to one resets the side.
-  const setBit = (bitId: string) =>
-    set(findBit(bitId)?.type === 'vbit' ? { bitId, side: 'on' } : { bitId });
-  const sideOptions = bit?.type === 'vbit' ? SIDE_OPTIONS.slice(0, 1) : SIDE_OPTIONS;
+  const set = (patch: Partial<Pick<Operation, 'bitId' | 'depth'>>) =>
+    onChange({ ...operation, ...patch });
+  // V-bits only engrave on the line; switching to one resets the cut type.
+  const setBit = (bitId: string) => {
+    const next = { ...operation, bitId };
+    onChange(findBit(bitId, bits)?.type === 'vbit' ? withCutKind(next, 'on') : next);
+  };
+  const kindOptions = bit?.type === 'vbit' ? KIND_OPTIONS.slice(0, 1) : KIND_OPTIONS;
   const throughDepth = round2(thickness + THROUGH_EXTRA);
   const depthValid = Number.isFinite(operation.depth) && operation.depth > 0;
 
   return (
     <fieldset>
       <legend>Cut</legend>
-      <SelectField label="Bit" value={operation.bitId} options={BIT_OPTIONS} onChange={setBit} />
+      <SelectField
+        label="Bit"
+        value={operation.bitId}
+        options={bits.map((b) => ({ value: b.id, label: b.name }))}
+        onChange={setBit}
+      />
+      <button type="button" className="link-button" onClick={() => setLibraryOpen(true)}>
+        Manage bits…
+      </button>
       <SelectField
         label="Cut type"
-        value={operation.side}
-        options={sideOptions}
-        onChange={(side) => set({ side })}
+        value={kind}
+        options={kindOptions}
+        onChange={(k) => onChange(withCutKind(operation, k))}
       />
       {bit?.type === 'vbit' && (
-        <p className="field-hint">Pick an end mill to cut parts out or cut holes.</p>
+        <p className="field-hint">Pick an end mill to cut parts out, cut holes or clear pockets.</p>
       )}
       <NumberField
         label="Depth"
@@ -88,17 +112,22 @@ export function CutFields({ operation, onChange }: CutFieldsProps) {
       )}
 
       {bit && material && (
-        <FeedsFields
-          preset={presetFeeds(material, bit)}
-          overrides={operation.overrides}
-          material={material}
-          onChange={(overrides) => set({ overrides })}
+        <FeedsFields material={material} bit={bit} showStepover={kind === 'pocket'} />
+      )}
+      <AdvancedCutFields operation={operation} onChange={onChange} />
+      {operation.type === 'profile' && kind !== 'on' && bit && (
+        <TabFields
+          tabs={operation.tabs}
+          autoWidth={defaultTabWidth(bit)}
+          through={operation.depth > thickness - operation.tabs.height}
+          onChange={(tabs) => onChange({ ...operation, tabs })}
         />
       )}
 
       <button type="button" className="link-button" onClick={() => onChange(null)}>
         Don't cut this object
       </button>
+      {libraryOpen && <BitLibraryDialog onClose={() => setLibraryOpen(false)} />}
     </fieldset>
   );
 }

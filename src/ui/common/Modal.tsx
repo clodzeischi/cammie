@@ -40,7 +40,7 @@ export function Modal({ title, onClose, children, footer, wide }: ModalProps) {
           </button>
         </header>
         <div className="modal-body">{children}</div>
-        <footer className="modal-footer">{footer}</footer>
+        {footer && <footer className="modal-footer">{footer}</footer>}
       </div>
     </div>,
     document.body,

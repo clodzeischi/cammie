@@ -1,6 +1,5 @@
 import type { Path, Vec2 } from '../geometry/path';
 import type { ObjectTransform } from '../geometry/transform';
-import type { Feeds } from '../materials/materials';
 
 /** Where machine X0 Y0 sits on the stock. Z0 is always the top of the material. */
 export type OriginAnchor =
@@ -29,17 +28,52 @@ export interface Stock {
  */
 export type ProfileSide = 'on' | 'outside' | 'inside';
 
-export interface ProfileOperation {
-  type: 'profile';
-  side: ProfileSide;
-  bitId: string;
-  depth: number;
-  /** Values the user changed from the material preset. */
-  overrides: Partial<Feeds>;
+/** With a clockwise (M3) spindle, climb keeps the finished wall on the right of travel. */
+export type CutDirection = 'climb' | 'conventional';
+
+/** How the tool gets down to each new depth: straight down, or easing in at a shallow angle. */
+export type EntryStyle = 'ramp' | 'plunge';
+
+export interface FinishingPass {
+  enabled: boolean;
+  /** Material left on the walls by the roughing passes, taken off by the finishing pass (mm). */
+  allowance: number;
 }
 
-/** Later phases add pockets and V-carve. */
-export type Operation = ProfileOperation;
+/** Small bridges that hold a cut-out part in place (SPEC.md §9.3). */
+export interface TabSettings {
+  enabled: boolean;
+  /** Tabs per loop; null = based on the loop's length. */
+  count: number | null;
+  /** Length of tool path lifted over each tab (mm); null = 4 mm + bit diameter. */
+  width: number | null;
+  /** Measured up from the bottom of the stock (mm). */
+  height: number;
+  /** Hand-placed tab centres in the object's own space; null = automatic. */
+  manual: Vec2[] | null;
+}
+
+interface CutBase {
+  bitId: string;
+  depth: number;
+  direction: CutDirection;
+  entry: EntryStyle;
+  finishing: FinishingPass;
+}
+
+export interface ProfileOperation extends CutBase {
+  type: 'profile';
+  side: ProfileSide;
+  tabs: TabSettings;
+}
+
+/** Clears all the material inside closed shapes, leaving islands standing (SPEC.md §9.4). */
+export interface PocketOperation extends CutBase {
+  type: 'pocket';
+}
+
+/** Later phases add V-carve. */
+export type Operation = ProfileOperation | PocketOperation;
 
 export interface DesignObject {
   id: string;

@@ -1,51 +1,43 @@
 import { boundsOfPaths, type Bounds, type Path, type Vec2 } from '../geometry/path';
 import { transformPaths } from '../geometry/transform';
-import { canvasToMachine, type DesignObject, type Job, type ProfileSide } from '../job/job';
+import { canvasToMachine, type DesignObject, type Job, type Operation } from '../job/job';
 import type { MachineConfig } from '../machine/machineConfig';
-import type { Feeds, Material } from '../materials/materials';
+import { overridesFor, type FeedOverrides } from '../materials/feedOverrides';
+import type { Material } from '../materials/materials';
 import { findBit, grooveWidth, type Bit } from '../tools/bits';
-import { profilePaths } from './profile';
+import type { ObjectCut } from './cutPlan';
+import { planPocket } from './pocketPlan';
+import { planProfile } from './profilePlan';
 import type { Diagnostic } from './program';
 import { feedLabel, resolveFeeds } from './resolveFeeds';
-
-/** Everything needed to cut one object, before ordering and pass generation. */
-export interface ObjectCut {
-  objectId: string;
-  label: string;
-  bit: Bit;
-  /** Lower runs first within a file (SPEC.md §9.7). */
-  priority: number;
-  depth: number;
-  feeds: Feeds;
-  /** Tool-centre paths in machine coordinates. */
-  paths: Path[];
-  /** What the cut touches, in canvas coordinates (includes the tool's width). */
-  cutBounds: Bounds;
-}
 
 export interface CutContext {
   job: Job;
   machine: MachineConfig;
   material: Material;
   bits: readonly Bit[];
+  feedOverrides: FeedOverrides;
   origin: Vec2;
 }
 
 type Report = (severity: Diagnostic['severity'], message: string) => void;
 
-/** Holes and details first, then lines, then parts get cut free. */
-const PRIORITY: Record<ProfileSide, number> = { inside: 2, on: 3, outside: 4 };
+/** Pockets and holes first, then lines, then parts get cut free (SPEC.md §9.7). */
+const PRIORITY = { pocket: 1, inside: 2, on: 3, outside: 4 } as const;
 
-const SIDE_LABEL: Record<ProfileSide, string> = {
+const LABEL = {
+  pocket: 'Pocket',
+  inside: 'Inside',
   on: 'On the line',
   outside: 'Outside',
-  inside: 'Inside',
-};
+} as const;
+
+const kindOf = (op: Operation) => (op.type === 'pocket' ? 'pocket' : op.side);
 
 const fmt = (mm: number) => `${Math.round(mm * 100) / 100} mm`;
 
 /**
- * Validates one object's operation and computes its tool-centre paths.
+ * Validates one object's operation and plans its cut.
  * Returns null (after reporting why) when the object can't be cut.
  */
 export function planObjectCut(
@@ -55,27 +47,22 @@ export function planObjectCut(
 ): ObjectCut | null {
   const { operation } = object;
   if (!operation) return null;
+  const kind = kindOf(operation);
 
   const bit = findBit(operation.bitId, ctx.bits);
   if (!bit) return fail(report, 'its bit no longer exists. Pick another one.');
   if (!Number.isFinite(operation.depth) || operation.depth <= 0) {
     return fail(report, 'cut depth must be greater than 0.');
   }
-  if (bit.type === 'vbit' && operation.side !== 'on') {
-    return fail(
-      report,
-      'V-bits only cut on the line. Pick an end mill for inside or outside cuts.',
-    );
+  if (bit.type === 'vbit' && kind !== 'on') {
+    return fail(report, 'V-bits only cut on the line. Pick an end mill for this cut.');
   }
 
-  const { feeds, clamped, invalid } = resolveFeeds(
-    ctx.material,
-    bit,
-    operation.overrides,
-    ctx.machine,
-  );
-  if (invalid.length > 0)
+  const overrides = overridesFor(ctx.feedOverrides, ctx.material.id, bit.id);
+  const { feeds, clamped, invalid } = resolveFeeds(ctx.material, bit, overrides, ctx.machine);
+  if (invalid.length > 0) {
     return fail(report, `${invalid.map(feedLabel).join(', ')} must be greater than 0.`);
+  }
   clamped.forEach((note) => report('warning', note));
   if (bit.type === 'flat' && feeds.depthPerPass > bit.diameter / 2) {
     report(
@@ -88,47 +75,53 @@ export function planObjectCut(
     closed: path.closed,
     points: path.points.map((p) => canvasToMachine(p, ctx.origin)),
   }));
-  const sourcePaths = selectPaths(machinePaths, operation.side, report);
-  if (!sourcePaths) return null;
+  const paths = selectPaths(machinePaths, kind === 'on', report);
+  if (!paths) return null;
 
-  const profile = profilePaths(sourcePaths, operation.side, bit.diameter);
-  if (profile.paths.length === 0) {
-    return fail(report, `it's too small for the ${bit.name}, so nothing will be cut.`, 'warning');
-  }
-  if (profile.lostDetail) {
-    report(
-      'warning',
-      `some details are narrower than the ${bit.name} and won't come out as drawn.`,
-    );
-  }
+  const { thickness } = ctx.job.stock;
+  const planned =
+    operation.type === 'pocket'
+      ? planPocket(operation, bit, feeds, paths, report)
+      : planProfile(
+          { object, operation, bit, feeds, paths, thickness, origin: ctx.origin },
+          report,
+        );
+  if (!planned) return null;
 
-  checkDepth(operation.depth, operation.side, ctx.job.stock.thickness, report);
+  checkDepth(operation.depth, kind, thickness, planned.tabsHold, report);
 
   return {
     objectId: object.id,
-    label: `${SIDE_LABEL[operation.side]}: ${object.name}`,
+    label: `${LABEL[kind]}: ${object.name}`,
     bit,
-    priority: PRIORITY[operation.side],
+    priority: PRIORITY[kind],
     depth: operation.depth,
     feeds,
-    paths: profile.paths,
-    cutBounds: canvasCutBounds(profile.paths, grooveWidth(bit, operation.depth) / 2, ctx.origin),
+    plan: planned.plan,
+    cutBounds: canvasCutBounds(planned.allPaths, grooveWidth(bit, operation.depth) / 2, ctx.origin),
+    tabs: planned.tabs,
   };
 }
 
 /** Through cuts may skim the spoilboard a little; anything more deserves a note. */
 const SPOILBOARD_ALLOWANCE = 0.5;
 
-function checkDepth(depth: number, side: ProfileSide, thickness: number, report: Report) {
+function checkDepth(
+  depth: number,
+  kind: keyof typeof PRIORITY,
+  thickness: number,
+  tabsHold: boolean,
+  report: Report,
+) {
   const extra = depth - thickness;
-  const through = side !== 'on' && extra >= 0;
+  const through = kind !== 'on' && extra >= 0;
   if (extra > (through ? SPOILBOARD_ALLOWANCE : 0.01)) {
     report('warning', `cuts ${fmt(extra)} into the spoilboard.`);
   }
-  if (through) {
+  if (through && (kind === 'outside' || kind === 'inside') && !tabsHold) {
     report(
       'warning',
-      "cuts all the way through and tabs aren't available yet. Hold the part down with tape or clamps so it can't come loose.",
+      "cuts all the way through with no tabs. Hold the part down with tape or clamps so it can't come loose.",
     );
   }
 }
@@ -138,24 +131,24 @@ function fail(report: Report, message: string, severity: Diagnostic['severity'] 
   return null;
 }
 
-/** Inside/outside cuts need closed shapes; open lines are skipped with a note. */
-function selectPaths(paths: Path[], side: ProfileSide, report: Report): Path[] | null {
+/** Everything but "on the line" needs closed shapes; open lines are skipped with a note. */
+function selectPaths(paths: Path[], allowOpen: boolean, report: Report): Path[] | null {
   const nonEmpty = paths.filter((p) => p.points.length > 1);
   if (nonEmpty.length === 0)
     return fail(report, 'has no outlines, so nothing will be cut.', 'warning');
-  if (side === 'on') return nonEmpty;
+  if (allowOpen) return nonEmpty;
 
   const closed = nonEmpty.filter((p) => p.closed);
   if (closed.length === 0) {
     return fail(
       report,
-      'has only open lines. Inside and outside cuts need closed shapes; use "On the line" instead.',
+      'has only open lines. This cut needs closed shapes; use "On the line" instead.',
     );
   }
   if (closed.length < nonEmpty.length) {
     report(
       'warning',
-      `${nonEmpty.length - closed.length} open line(s) skipped: inside and outside cuts need closed shapes.`,
+      `${nonEmpty.length - closed.length} open line(s) skipped: this cut needs closed shapes.`,
     );
   }
   return closed;

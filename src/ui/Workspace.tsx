@@ -15,7 +15,7 @@ export function Workspace() {
   const stock = useJobStore((s) => s.stock);
   const origin = useJobStore((s) => s.origin);
   const machine = useMachineStore((s) => s.config);
-  const { programs } = useGeneratedJob();
+  const { programs, tabs } = useGeneratedJob();
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [progress, setProgress] = useState(1);
@@ -51,7 +51,7 @@ export function Workspace() {
         ))}
       </div>
       <DesignCanvas
-        preview={inPreview ? { previews, activeIndex: active, done, showCutWidth } : null}
+        preview={inPreview ? { previews, activeIndex: active, done, showCutWidth, tabs } : null}
       />
       {inPreview && (
         <PreviewBar

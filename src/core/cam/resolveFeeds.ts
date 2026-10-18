@@ -15,9 +15,10 @@ const LABELS: Record<keyof Feeds, string> = {
   plunge: 'Plunge',
   depthPerPass: 'Depth per pass',
   rpm: 'Spindle speed',
+  stepover: 'Stepover',
 };
 
-/** Material preset → user overrides → machine limits. */
+/** Material preset → remembered overrides for this material + bit → machine limits. */
 export function resolveFeeds(
   material: Material,
   bit: Bit,
@@ -33,7 +34,9 @@ export function resolveFeeds(
   const limit = (key: keyof Feeds, max: number, unit: string) => {
     if (wanted[key] > max) {
       clamped.push(
-        `${LABELS[key]} lowered from ${wanted[key]} to the machine max of ${max} ${unit}.`,
+        key === 'stepover'
+          ? `Stepover lowered from ${wanted[key]}% to 100% of the bit.`
+          : `${LABELS[key]} lowered from ${wanted[key]} to the machine max of ${max} ${unit}.`,
       );
       return max;
     }
@@ -46,6 +49,7 @@ export function resolveFeeds(
       plunge: limit('plunge', machine.maxFeedZ, 'mm/min'),
       depthPerPass: wanted.depthPerPass,
       rpm: limit('rpm', machine.maxSpindleRpm, 'RPM'),
+      stepover: limit('stepover', 100, '%'),
     },
     clamped,
     invalid,

@@ -157,3 +157,51 @@ input[type='range'] {
 input[type='checkbox'] {
   accent-color: var(--accent);
 }
+
+/* ---------- Bit library ---------- */
+.bit-library {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel-subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.bit-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.bit-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+}
+
+.bit-list li + li {
+  border-top: 1px solid var(--border);
+}
+
+.bit-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

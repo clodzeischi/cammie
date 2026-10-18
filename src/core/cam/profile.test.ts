@@ -1,9 +1,9 @@
 import { boundsOfPaths, signedArea, type Path } from '../geometry/path';
-import type { DesignObject } from '../job/job';
+import type { DesignObject, ProfileOperation } from '../job/job';
 import { DEFAULT_MACHINE_CONFIG } from '../machine/machineConfig';
 import { generateJob } from './generateJob';
 import { profilePaths } from './profile';
-import { makeJob, makeObject, square } from './testFixtures';
+import { makeJob, makeObject, profileOp, square } from './testFixtures';
 
 const ccw = (p: Path) => signedArea(p.points) > 0;
 const frame = [square(0, 0, 20), square(5, 5, 10)]; // 20 mm square with a 10 mm hole
@@ -55,18 +55,11 @@ describe('profilePaths', () => {
   });
 });
 
-const cutOut = (overrides: Partial<DesignObject['operation'] & object> = {}): DesignObject =>
+const cutOut = (changes: Partial<ProfileOperation> = {}): DesignObject =>
   makeObject({
     id: 'part',
     name: 'Part',
-    operation: {
-      type: 'profile',
-      side: 'outside',
-      bitId: 'flat-3.175',
-      depth: 3,
-      overrides: {},
-      ...overrides,
-    },
+    operation: profileOp({ side: 'outside', bitId: 'flat-3.175', depth: 3, ...changes }),
   });
 
 describe('generateJob with profiles', () => {
@@ -84,13 +77,7 @@ describe('generateJob with profiles', () => {
       makeObject({
         id: 'hole',
         name: 'Hole',
-        operation: {
-          type: 'profile',
-          side: 'inside',
-          bitId: 'flat-3.175',
-          depth: 3,
-          overrides: {},
-        },
+        operation: profileOp({ side: 'inside', bitId: 'flat-3.175', depth: 3 }),
       }),
       makeObject({ id: 'text', name: 'Text' }),
     ]);
@@ -112,7 +99,7 @@ describe('generateJob with profiles', () => {
           ],
         },
       ],
-      operation: { type: 'profile', side: 'outside', bitId: 'flat-2', depth: 1, overrides: {} },
+      operation: profileOp({ side: 'outside', bitId: 'flat-2', depth: 1 }),
     });
     const job = makeJob([cutOut({ bitId: 'vbit-60' }), open]);
     const errors = generateJob(job, DEFAULT_MACHINE_CONFIG).diagnostics.filter(
@@ -121,9 +108,12 @@ describe('generateJob with profiles', () => {
     expect(errors.map((e) => e.objectId)).toEqual(['part', 'line']);
   });
 
-  it('warns about through cuts without tabs, and greedy depth per pass', () => {
-    const job = makeJob([cutOut({ depth: 6.2, overrides: { depthPerPass: 2 } })]);
-    const messages = generateJob(job, DEFAULT_MACHINE_CONFIG).diagnostics.map((d) => d.message);
+  it('warns about through cuts with tabs off, and greedy depth per pass', () => {
+    const job = makeJob([cutOut({ depth: 6.2, tabs: { ...profileOp().tabs, enabled: false } })]);
+    const overrides = { 'plywood|flat-3.175': { depthPerPass: 2 } };
+    const messages = generateJob(job, DEFAULT_MACHINE_CONFIG, undefined, overrides).diagnostics.map(
+      (d) => d.message,
+    );
     expect(messages.some((m) => m.includes('half the bit'))).toBe(true);
     expect(messages.some((m) => m.includes('all the way through'))).toBe(true);
   });
@@ -140,7 +130,7 @@ describe('generateJob with profiles', () => {
       paths: [square(0, 0, 1)],
       width: 1,
       height: 1,
-      operation: { type: 'profile', side: 'inside', bitId: 'flat-2', depth: 1, overrides: {} },
+      operation: profileOp({ side: 'inside', bitId: 'flat-2', depth: 1 }),
     });
     const { programs, diagnostics } = generateJob(makeJob([tiny]), DEFAULT_MACHINE_CONFIG);
     expect(programs).toEqual([]);

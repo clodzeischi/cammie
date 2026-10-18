@@ -1,17 +1,52 @@
 import { boundsOfPaths, isEmptyBounds, type Path } from '../geometry/path';
 import { DEFAULT_VBIT_ID } from '../tools/bits';
-import type { DesignObject, ProfileOperation, Stock } from './job';
+import type {
+  DesignObject,
+  Operation,
+  PocketOperation,
+  ProfileOperation,
+  ProfileSide,
+  Stock,
+  TabSettings,
+} from './job';
 
 /** New objects start as a shallow V-bit engrave: a fine line that's easy to deepen. */
 export const DEFAULT_ENGRAVE_DEPTH = 0.5;
+/** Finishing passes take this much (mm) off the walls by default. */
+export const DEFAULT_ALLOWANCE = 0.2;
+
+export const defaultTabs = (): TabSettings => ({
+  enabled: true,
+  count: null,
+  width: null,
+  height: 1.5,
+  manual: null,
+});
 
 export const defaultOperation = (): ProfileOperation => ({
   type: 'profile',
   side: 'on',
   bitId: DEFAULT_VBIT_ID,
   depth: DEFAULT_ENGRAVE_DEPTH,
-  overrides: {},
+  direction: 'climb',
+  entry: 'ramp',
+  finishing: { enabled: false, allowance: DEFAULT_ALLOWANCE },
+  tabs: defaultTabs(),
 });
+
+/** The choices in the "Cut type" menu. */
+export type CutKind = ProfileSide | 'pocket';
+
+export const cutKindOf = (op: Operation): CutKind => (op.type === 'pocket' ? 'pocket' : op.side);
+
+/** Switches an operation's cut type, keeping bit, depth and the shared settings. */
+export function withCutKind(op: Operation, kind: CutKind): Operation {
+  const { bitId, depth, direction, entry, finishing } = op;
+  const base = { bitId, depth, direction, entry, finishing };
+  if (kind === 'pocket') return { ...base, type: 'pocket' } satisfies PocketOperation;
+  const tabs = op.type === 'profile' ? op.tabs : defaultTabs();
+  return { ...base, type: 'profile', side: kind, tabs } satisfies ProfileOperation;
+}
 
 export interface NewObjectInput {
   id: string;
