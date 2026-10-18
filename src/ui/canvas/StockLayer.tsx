@@ -1,4 +1,5 @@
 import { Arrow, Circle, Layer, Line, Rect } from 'react-konva';
+import { gridLines, majorEvery } from '../../core/job/grid';
 import { anchorPoint, type OriginAnchor, type Stock } from '../../core/job/job';
 import type { CanvasColors } from './canvasColors';
 
@@ -7,41 +8,42 @@ interface StockLayerProps {
   origin: OriginAnchor;
   /** Screen pixels per mm, so markers keep a constant on-screen size. */
   scale: number;
+  /** Grid cell size (mm). */
+  gridSpacing: number;
   colors: CanvasColors;
 }
 
-const GRID_MM = 10;
-const MAJOR_EVERY = 5;
+/** Grid lines closer together than this on screen (px) are left out. */
+const MIN_LINE_GAP_PX = 6;
 
-/** The material: board, 10 mm grid, and the X0 Y0 marker with axis arrows. */
-export function StockLayer({ stock, origin, scale, colors }: StockLayerProps) {
-  const lines = [];
-  for (let x = GRID_MM; x < stock.width; x += GRID_MM) {
-    const major = Math.round(x / GRID_MM) % MAJOR_EVERY === 0;
-    lines.push(
-      <Line
-        key={`x${x}`}
-        points={[x, 0, x, stock.height]}
-        stroke={major ? colors.gridMajor : colors.grid}
-        strokeWidth={1}
-        strokeScaleEnabled={false}
-      />,
-    );
-  }
-  for (let y = GRID_MM; y < stock.height; y += GRID_MM) {
-    const major = Math.round(y / GRID_MM) % MAJOR_EVERY === 0;
-    lines.push(
-      <Line
-        key={`y${y}`}
-        points={[0, y, stock.width, y]}
-        stroke={major ? colors.gridMajor : colors.grid}
-        strokeWidth={1}
-        strokeScaleEnabled={false}
-      />,
-    );
-  }
-
+/** The material: board, grid (through the work origin), and the X0 Y0 marker with axis arrows. */
+export function StockLayer({ stock, origin, scale, gridSpacing, colors }: StockLayerProps) {
   const o = anchorPoint(stock, origin);
+  // Zoomed far out, a fine grid would be a grey smear: keep only the major lines.
+  const showMinor = gridSpacing * scale >= MIN_LINE_GAP_PX;
+  const showMajor = gridSpacing * majorEvery(gridSpacing) * scale >= MIN_LINE_GAP_PX;
+  const visible = (major: boolean) => (major ? showMajor : showMinor);
+  const inside = (at: number, size: number) => at > 1e-9 && at < size - 1e-9;
+
+  const line = (key: string, points: number[], major: boolean) => (
+    <Line
+      key={key}
+      points={points}
+      stroke={major ? colors.gridMajor : colors.grid}
+      strokeWidth={1}
+      strokeScaleEnabled={false}
+      perfectDrawEnabled={false}
+    />
+  );
+  const lines = [
+    ...gridLines(0, stock.width, o.x, gridSpacing)
+      .filter(({ at, major }) => inside(at, stock.width) && visible(major))
+      .map(({ at, major }) => line(`x${at}`, [at, 0, at, stock.height], major)),
+    ...gridLines(0, stock.height, o.y, gridSpacing)
+      .filter(({ at, major }) => inside(at, stock.height) && visible(major))
+      .map(({ at, major }) => line(`y${at}`, [0, at, stock.width, at], major)),
+  ];
+
   const px = (screenPixels: number) => screenPixels / scale;
 
   return (

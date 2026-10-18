@@ -53,7 +53,10 @@ Modeled on Easel: one screen, left-to-right flow.
 ```
 
 - **Left toolbar**: Import (one button: SVGs come in at their real size; bitmaps open the trace dialog), Text, Rectangle, Circle (stretch it into an ellipse), then Undo/Redo. (Polygon/Star optional later.)
-- **Canvas**: stock rectangle drawn to scale, mm grid, rulers, selectable origin marker, dashed outline of machine work area. Pan (space/middle-drag), zoom (wheel/pinch), snap to grid toggle.
+- **Canvas**: stock rectangle drawn to scale, mm grid, rulers, selectable origin marker, dashed outline of machine work area. Pan (space/middle-drag), zoom (wheel/pinch).
+- **Grid & snapping** (controls beside the zoom buttons; remembered in localStorage as `cammie.grid.v1`):
+  - Grid size: 0.5, 1, 2, 5, 10 (default), 20, 25 or 50 mm. Lines run through the work origin, so snapped objects get round X/Y values. Darker major lines every round 5/10/25/50/100… mm. Lines closer than 6 px on screen are left out (only major lines when zoomed far out).
+  - Snap (on by default): dragging moves the object so whichever of its box edges is nearest a grid line lands on it (per axis); resize handles land on grid points; rotation isn't snapped. Hold Alt/Option while dragging to place freely. Typed positions and arrow-key nudges are never snapped.
 - **Right panel**: properties of selected object(s); job settings when nothing is selected (stock, origin, material).
 - **View toggle**: *Design* vs *Toolpath preview* (§10).
 - **Warnings tray**: non-blocking issues (§9.6). Blocking errors disable Export with a reason.

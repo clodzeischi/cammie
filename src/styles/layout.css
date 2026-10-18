@@ -260,3 +260,23 @@
 .mobile-gate h1 {
   font-size: 28px;
 }
+
+/* Snap toggle and grid size, left of the zoom buttons. */
+.grid-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 6px;
+  margin-right: 4px;
+  border-right: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.grid-controls select {
+  font: inherit;
+  padding: 3px 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+}

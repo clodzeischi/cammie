@@ -6,6 +6,7 @@ import type { DesignObject } from '../../core/job/job';
 import { isBasicShape } from '../../core/shapes/shapeObjects';
 import type { SelectMode } from '../../state/jobStore';
 import type { CanvasColors } from './canvasColors';
+import { snapAnchor, snapDrag, type SnapGrid } from './snapping';
 
 interface ObjectsLayerProps {
   objects: DesignObject[];
@@ -15,6 +16,7 @@ interface ObjectsLayerProps {
   colors: CanvasColors;
   onSelect: (id: string, mode: SelectMode) => void;
   onTransform: (transforms: Record<string, ObjectTransform>) => void;
+  snap: SnapGrid | null;
 }
 
 const readTransform = (node: Konva.Node): ObjectTransform => ({
@@ -38,7 +40,7 @@ const CORNERS_AND_SIDES = [
 ];
 
 export function ObjectsLayer(props: ObjectsLayerProps) {
-  const { objects, selectedIds, interactive, colors, onSelect, onTransform } = props;
+  const { objects, selectedIds, interactive, colors, onSelect, onTransform, snap } = props;
   const nodes = useRef(new Map<string, Konva.Group>());
   const transformer = useRef<Konva.Transformer>(null);
   const register = useCallback((id: string, node: Konva.Group | null) => {
@@ -87,14 +89,20 @@ export function ObjectsLayer(props: ObjectsLayerProps) {
           register={register}
           onSelect={onSelect}
           onMoved={reportMoved}
+          snap={snap}
         />
       ))}
       <Transformer
         ref={transformer}
         rotationSnaps={[0, 45, 90, 135, 180, 225, 270, 315]}
         keepRatio={!freeResize}
+        // Measure objects without their outline's stroke, so sizes stay exact.
+        ignoreStroke
         flipEnabled={false}
         enabledAnchors={freeResize ? CORNERS_AND_SIDES : CORNERS}
+        anchorDragBoundFunc={(_old, pos, evt) =>
+          transformer.current ? snapAnchor(transformer.current, pos, snap, evt) : pos
+        }
         onTransformEnd={(e) => {
           const transforms: Record<string, ObjectTransform> = {};
           for (const node of (e.currentTarget as Konva.Transformer).nodes()) {
@@ -121,6 +129,7 @@ interface ObjectNodeProps {
   register: (id: string, node: Konva.Group | null) => void;
   onSelect: (id: string, mode: SelectMode) => void;
   onMoved: (id: string) => void;
+  snap: SnapGrid | null;
 }
 
 /**
@@ -128,7 +137,7 @@ interface ObjectNodeProps {
  * of points for every object on each render would be slow.
  */
 const ObjectNode = memo(function ObjectNode(props: ObjectNodeProps) {
-  const { object, color, interactive, register, onSelect, onMoved } = props;
+  const { object, color, interactive, register, onSelect, onMoved, snap } = props;
   const { id, transform } = object;
   const node = useRef<Konva.Group | null>(null);
   const ref = useCallback(
@@ -158,6 +167,7 @@ const ObjectNode = memo(function ObjectNode(props: ObjectNodeProps) {
       id={id}
       {...transform}
       draggable={interactive}
+      dragBoundFunc={(pos, evt) => (node.current ? snapDrag(node.current, pos, snap, evt) : pos)}
       onMouseDown={press}
       // A click that didn't drag picks just this object out of a selection.
       onClick={(e) => !e.evt.shiftKey && onSelect(id, 'replace')}

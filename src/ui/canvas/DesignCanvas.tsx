@@ -1,11 +1,15 @@
 import type Konva from 'konva';
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { Stage } from 'react-konva';
 import type { ObjectTabs } from '../../core/cam/program';
+import { anchorPoint } from '../../core/job/job';
 import { editTabsAt } from '../../core/job/tabEditing';
+import { useGridStore } from '../../state/gridStore';
 import { useJobStore } from '../../state/jobStore';
 import { useCanvasColors } from './canvasColors';
+import { GridControls } from './GridControls';
 import { ObjectsLayer } from './ObjectsLayer';
+import type { SnapGrid } from './snapping';
 import { StockLayer } from './StockLayer';
 import { TabMarkers } from './TabMarkers';
 import { ToolpathLayer } from './ToolpathLayer';
@@ -44,6 +48,12 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
   const setTransforms = useJobStore((s) => s.setTransforms);
   const updateObject = useJobStore((s) => s.updateObject);
   const { view, setView, fit } = useViewport(stock, size);
+  const gridSpacing = useGridStore((s) => s.spacing);
+  const snapOn = useGridStore((s) => s.snap);
+  const snap = useMemo<SnapGrid | null>(
+    () => (snapOn ? { origin: anchorPoint(stock, origin), spacing: gridSpacing } : null),
+    [snapOn, stock, origin, gridSpacing],
+  );
 
   const onWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
@@ -90,7 +100,13 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
           onClick={onPreviewClick}
           onTap={(e) => isStage(e) && select(null)}
         >
-          <StockLayer stock={stock} origin={origin} scale={view.scale} colors={colors} />
+          <StockLayer
+            stock={stock}
+            origin={origin}
+            scale={view.scale}
+            gridSpacing={gridSpacing}
+            colors={colors}
+          />
           <ObjectsLayer
             objects={objects}
             selectedIds={selectedIds}
@@ -98,12 +114,14 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
             colors={colors}
             onSelect={select}
             onTransform={setTransforms}
+            snap={snap}
           />
           {preview && <ToolpathLayer {...preview} scale={view.scale} colors={colors} />}
           {preview && <TabMarkers tabs={preview.tabs} scale={view.scale} colors={colors} />}
         </Stage>
       )}
       <div className="canvas-zoom">
+        {!preview && <GridControls />}
         <button
           type="button"
           className="icon-button"
