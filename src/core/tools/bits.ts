@@ -101,6 +101,14 @@ export function grooveWidth(bit: Bit, depth: number): number {
   return Math.min(bit.diameter, bit.tipDiameter + 2 * d * Math.tan(halfAngle));
 }
 
+const tanHalf = (bit: VBit) => Math.tan((bit.angle * Math.PI) / 360);
+
+/** How far a chamfer `depth` mm deep reaches in from the edge at the surface. */
+export const chamferWidth = (bit: VBit, depth: number): number => depth * tanHalf(bit);
+
+/** The depth that gives a chamfer `width` mm wide. */
+export const chamferDepth = (bit: VBit, width: number): number => width / tanHalf(bit);
+
 /** One line about the bit's shape, e.g. "60° V · tip 0.2 mm" or "Ø 3.175 mm · 2-flute". */
 export function bitDetail(bit: Bit): string {
   if (bit.type === 'vbit') return `${bit.angle}° V · tip ${bit.tipDiameter} mm · Ø ${bit.diameter} mm`;

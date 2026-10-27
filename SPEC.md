@@ -55,7 +55,7 @@ Pro
 ```
 
 - **Ribbon (Pro)**: *Shapes* (Import, Text, Rectangle, Circle · Duplicate, Group, Ungroup, Delete ·
-  Undo, Redo), *Toolpaths* (Engrave, Profile outside, Profile inside, Pocket · Simulate), *Setup*
+  Undo, Redo), *Toolpaths* (Engrave, Profile outside, Profile inside, Pocket, Chamfer, Drill · Simulate), *Setup*
   (Stock & material, Bits, Machine). Every button has a text label.
 - **Toolpath list (Pro)**: the whole plan in cut order. One group per bit (= one `.nc` file), with
   a "Change bit, then re-zero Z" step between groups. Rows and whole files move up/down; rows
@@ -65,6 +65,7 @@ Pro
   one bit sit in the header. Selecting shapes asks "How should this be cut?" with four plain
   choices (Engrave line, Cut out, Cut hole, Clear area); choices the bit can't do stay visible,
   disabled with the reason. Only depth (and tabs) are shown; feeds and entry come from presets.
+  Chamfers and drilling are Pro only.
 - **Mode rules**: Easy → Pro never changes anything. A job with more than one bit, or more than one
   cut on a shape, opens read-only in Easy with a "Switch to Pro" button. Nothing is deleted.
 - **Canvas**: stock rectangle drawn to scale, mm grid, rulers, selectable origin marker, dashed outline of machine work area. Pan (space/middle-drag), zoom (wheel/pinch).
@@ -197,6 +198,8 @@ One table in `core/job/bitCapabilities.ts` drives CAM validation and which choic
 | Profile on the line (engrave) | ✅ | ✅ | ✅ (rounded groove) |
 | Profile inside/outside | ✅ | ❌ | ❌ |
 | Pocket | ✅ | ❌ | ❌ |
+| Chamfer | ❌ | ✅ | ❌ |
+| Drill | ✅ | ❌ | ✅ |
 | V-carve | ❌ | ✅ | ❌ |
 
 ---
@@ -232,7 +235,7 @@ CAM is pure, synchronous TypeScript (`generateJob`), recomputed whenever the des
 Common per-operation settings:
 ```ts
 interface OperationSettings {
-  type: 'profile' | 'pocket' | 'vcarve';
+  type: 'profile' | 'pocket' | 'chamfer' | 'drill' | 'vcarve';
   bitId: string;
   depth: number;                  // total cut depth, mm (positive number; emitted as negative Z)
   feeds: FeedOverrides;           // feed, plunge, depthPerPass, rpm, stepover (from material preset unless overridden)
@@ -240,7 +243,7 @@ interface OperationSettings {
   entry: 'plunge' | 'ramp' | 'helix';    // default: ramp (profile), helix (pocket)
   finishingPass: { enabled: boolean; allowance: number; };  // default off; allowance 0.2 mm
   // op-specific:
-  profileSide?: 'outside' | 'inside' | 'on';
+  profileSide?: 'outside' | 'inside' | 'on';   // chamfer: 'outside' | 'inside'
   tabs?: TabSettings;
 }
 ```
@@ -310,9 +313,18 @@ Warnings (export allowed):
 
 ### 9.7 Ordering
 Within a bit's file:
-1. Operation order: V-carve → Pocket → Profile inside → Profile on-line → Profile outside (inside features before parts get cut free).
+1. Operation order: Drill → V-carve → Pocket → Profile inside → Profile on-line → Chamfer → Profile outside (inside features before parts get cut free). New toolpaths are inserted in this order; the user can reorder them in Pro.
 2. Within a group: nearest-neighbor ordering from the previous end point to cut rapid travel; for closed loops, choose the start point nearest the previous end (subject to tab/ramp constraints).
 3. Depth order: all passes of one contour before moving on (keeps parts rigid; standard hobby approach). (Option "level-first" can be added later.)
+
+### 9.8 Chamfer (Pro)
+- V-bits only, closed paths only. Bevels the edges of a shape: **outside** = the shape's own edges (a part, holes included), **inside** = the rim of a hole of this shape.
+- The user sets the **chamfer width** (how far the bevel reaches in from the edge at the surface); it's stored as the depth `width / tan(angle / 2)`, so changing to a V-bit with another angle keeps the width. Wider than the cone can reach → error with the maximum width.
+- Tool centre = the region offset by half the tip's flat (outward for outside, inward for inside), so the flat cuts down to the drawn line and the cone bevels the kept side. Passes by depth/pass, ramp entry, climb/conventional as for profiles; no finishing pass, no tabs.
+
+### 9.9 Drill (Pro)
+- End mills and round-nose bits; closed paths only. One hole the size of the bit at the centre of each closed path's bounding box (duplicates within 0.01 mm merge, so a ring is one hole). A shape more than 0.5 mm wider than the bit gets a note to use Profile inside instead.
+- **Peck drilling**: feed down by depth/pass at plunge feed, pull up to +0.5 mm after every peck but the last to clear chips, feed back down (never a rapid below Z0, §12.3). Holes run nearest-neighbour.
 
 ---
 

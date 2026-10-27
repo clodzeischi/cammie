@@ -2,13 +2,14 @@ import { defaultTabWidth } from '../../core/cam/profilePlan';
 import { canCut } from '../../core/job/bitCapabilities';
 import type { Operation } from '../../core/job/job';
 import { cutKindOf, THROUGH_EXTRA, type CutKind } from '../../core/job/objectFactory';
+import { EASY_CUT_KINDS } from '../../core/job/toolpaths';
 import { findBit } from '../../core/tools/bits';
 import { setEasyCut } from '../../state/cutActions';
 import { useJobStore } from '../../state/jobStore';
 import { easyBitId, useModeStore } from '../../state/modeStore';
 import { useToolingStore } from '../../state/toolingStore';
 import { NumberField } from '../common/fields';
-import { CUT_KIND_ORDER, CUT_KINDS } from '../cutKinds';
+import { CUT_KINDS } from '../cutKinds';
 import { Icon } from '../icons/Icon';
 import { depthHint, round2 } from './describeCut';
 import { TabFields } from './TabFields';
@@ -48,7 +49,7 @@ export function EasyCutFields({ objectIds }: EasyCutFieldsProps) {
     <fieldset>
       <legend>{count > 1 ? `How should these ${count} be cut?` : 'How should this be cut?'}</legend>
       <div className="cut-choices">
-        {CUT_KIND_ORDER.map((k: CutKind) => {
+        {EASY_CUT_KINDS.map((k: CutKind) => {
           const info = CUT_KINDS[k];
           const disabled = bit ? !canCut(bit, k) : false;
           return (

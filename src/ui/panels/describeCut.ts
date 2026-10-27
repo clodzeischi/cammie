@@ -1,12 +1,14 @@
 import type { Operation } from '../../core/job/job';
-import { fullWidthDepth, grooveWidth, type Bit } from '../../core/tools/bits';
+import type { CutKind } from '../../core/job/objectFactory';
+import { chamferWidth, fullWidthDepth, grooveWidth, type Bit } from '../../core/tools/bits';
 
 export const round2 = (v: number) => Math.round(v * 100) / 100;
 
 const mm = (v: number) => `${round2(v)} mm`;
 
-/** The note under a depth field: how wide the cut is at the surface. */
-export function depthHint(bit: Bit, depth: number): string {
+/** The note under a depth field: how wide the cut is at the surface (or, drilling, the hole). */
+export function depthHint(bit: Bit, depth: number, kind: CutKind = 'on'): string {
+  if (kind === 'drill') return `Drills a ${bit.diameter} mm hole, pecking down by the depth per pass.`;
   if (bit.type === 'flat') return `Cut width: ${bit.diameter} mm`;
   const maxDepth = fullWidthDepth(bit);
   const part = bit.type === 'vbit' ? 'cone' : 'rounded tip';
@@ -29,6 +31,15 @@ export function describeCut(
   const depth = mm(op.depth);
   if (op.type === 'pocket') {
     return `Clears everything inside “${name}” down to ${depth}, leaving any islands standing, with the ${bitName}.`;
+  }
+  if (op.type === 'drill') {
+    const size = bit ? `${mm(bit.diameter)} ` : '';
+    return `Drills a ${size}hole ${op.depth >= thickness ? 'right through the stock' : `${depth} deep`} at the centre of each shape in “${name}”.`;
+  }
+  if (op.type === 'chamfer') {
+    const width = bit?.type === 'vbit' ? `${mm(chamferWidth(bit, op.depth))} ` : '';
+    const edge = op.side === 'outside' ? `the edges of “${name}”` : `the rim of the “${name}” hole`;
+    return `Bevels ${edge} ${width}wide with the ${bitName}.`;
   }
   if (op.side === 'on') {
     const width = bit ? grooveWidth(bit, op.depth) : null;

@@ -1,5 +1,13 @@
 import type { Path } from '../geometry/path';
-import type { DesignObject, Job, Operation, PocketOperation, ProfileOperation } from '../job/job';
+import type {
+  ChamferOperation,
+  DesignObject,
+  DrillOperation,
+  Job,
+  Operation,
+  PocketOperation,
+  ProfileOperation,
+} from '../job/job';
 import { defaultOperation } from '../job/objectFactory';
 import { insertToolpath } from '../job/toolpaths';
 
@@ -61,4 +69,25 @@ export const profileOp = (changes: Partial<ProfileOperation> = {}): ProfileOpera
 export const pocketOp = (changes: Partial<PocketOperation> = {}): PocketOperation => {
   const { direction, entry, finishing } = defaultOperation();
   return { type: 'pocket', bitId: 'flat-3.175', depth: 3, direction, entry, finishing, ...changes };
+};
+
+/** A 1 mm deep chamfer on the shape's edges with a 90° V-bit (so 1 mm wide). */
+export const chamferOp = (changes: Partial<ChamferOperation> = {}): ChamferOperation => {
+  const { direction, entry, finishing } = defaultOperation();
+  return {
+    type: 'chamfer',
+    side: 'outside',
+    bitId: 'vbit-90',
+    depth: 1,
+    direction,
+    entry,
+    finishing,
+    ...changes,
+  };
+};
+
+/** A 2 mm deep drill with a 3.175 mm end mill. */
+export const drillOp = (changes: Partial<DrillOperation> = {}): DrillOperation => {
+  const { direction, entry, finishing } = defaultOperation();
+  return { type: 'drill', bitId: 'flat-3.175', depth: 2, direction, entry, finishing, ...changes };
 };

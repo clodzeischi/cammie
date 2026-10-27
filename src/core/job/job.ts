@@ -72,8 +72,28 @@ export interface PocketOperation extends CutBase {
   type: 'pocket';
 }
 
+/**
+ * Bevels the edges of a closed shape with a V-bit (SPEC.md §9.8). `outside`
+ * bevels the shape's own edges (a part); `inside` bevels the rim of a hole of
+ * this shape. `depth` sets the width: width = depth × tan(half the bit's angle).
+ * The finishing pass doesn't apply.
+ */
+export interface ChamferOperation extends CutBase {
+  type: 'chamfer';
+  side: 'outside' | 'inside';
+}
+
+/**
+ * Drills one hole the size of the bit at the centre of each closed shape,
+ * pecking down by the depth per pass (SPEC.md §9.9). Direction, entry and the
+ * finishing pass don't apply; they're kept so switching cut types loses nothing.
+ */
+export interface DrillOperation extends CutBase {
+  type: 'drill';
+}
+
 /** Later phases add V-carve. */
-export type Operation = ProfileOperation | PocketOperation;
+export type Operation = ProfileOperation | PocketOperation | ChamferOperation | DrillOperation;
 
 export type TextAlign = 'left' | 'center' | 'right';
 

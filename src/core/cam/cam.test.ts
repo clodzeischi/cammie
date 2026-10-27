@@ -186,7 +186,7 @@ describe('generateJob', () => {
       expect.objectContaining({
         severity: 'error',
         toolpathId: 'tp-b',
-        message: 'Logo: Round-nose bits only cut on the line. Pick an end mill for this cut.',
+        message: 'Logo: Round-nose bits only cut on the line and drill. Pick an end mill for this cut.',
       }),
     );
   });

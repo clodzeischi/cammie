@@ -88,6 +88,22 @@ const ICONS = {
       <path d="M7.5 7.5h9v3h-9v3h9v3h-9" />
     </>
   ),
+  chamfer: (
+    <>
+      <path d="M4 20V9l5-5h11v16z" {...F} />
+      <path d="M4 20V9l5-5h11" />
+      <path d="M4 9h5V4" strokeDasharray="2 2" />
+    </>
+  ),
+  drill: (
+    <>
+      <circle cx="7.5" cy="16.5" r="2.5" {...F} />
+      <circle cx="7.5" cy="16.5" r="2.5" />
+      <circle cx="16.5" cy="7.5" r="2.5" {...F} />
+      <circle cx="16.5" cy="7.5" r="2.5" />
+      <path d="M7.5 3v5M5 5.5h5M16.5 16v5M14 18.5h5" />
+    </>
+  ),
   preview: (
     <>
       <circle cx="12" cy="12" r="8.5" />

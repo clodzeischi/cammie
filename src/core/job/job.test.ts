@@ -62,7 +62,8 @@ describe('bits', () => {
     expect(canCut(ball, 'on')).toBe(true);
     expect(canCut(ball, 'pocket')).toBe(false);
     expect(canCut(v60, 'outside')).toBe(false);
-    expect(cantCutReason(ball)).toMatch(/Round-nose bits only cut on the line/);
+    expect(cantCutReason(ball, 'pocket')).toMatch(/Round-nose bits only cut on the line and drill/);
+    expect(cantCutReason(flat, 'chamfer')).toMatch(/need a V-bit/);
   });
 });
 

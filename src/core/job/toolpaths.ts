@@ -1,8 +1,18 @@
 import type { Operation, Toolpath } from './job';
 import { cutKindOf, type CutKind } from './objectFactory';
 
-/** Pockets and holes first, then lines, then parts get cut free (SPEC.md §9.7). */
-export const CUT_PRIORITY: Record<CutKind, number> = { pocket: 1, inside: 2, on: 3, outside: 4 };
+/**
+ * Drilling, pockets and holes first, then lines and chamfers, then parts get
+ * cut free (SPEC.md §9.7).
+ */
+export const CUT_PRIORITY: Record<CutKind, number> = {
+  drill: 1,
+  pocket: 2,
+  inside: 3,
+  on: 4,
+  chamfer: 5,
+  outside: 6,
+};
 
 export const cutPriority = (op: Operation) => CUT_PRIORITY[cutKindOf(op)];
 
@@ -71,14 +81,22 @@ export function moveGroup(list: readonly Toolpath[], bitId: string, delta: -1 | 
 export const toolpathsOf = (list: readonly Toolpath[], objectId: string) =>
   list.filter((t) => t.objectId === objectId);
 
+/** The cuts Easy mode offers, in its order. Chamfers and drilling are Pro only. */
+export const EASY_CUT_KINDS: readonly CutKind[] = ['on', 'outside', 'inside', 'pocket'];
+
 /**
- * Easy mode handles one bit and at most one cut per object. Anything more is a
- * Pro job, which Easy shows read-only rather than simplifying away.
+ * Easy mode handles one bit, at most one cut per object, and only its own
+ * kinds of cut. Anything more is a Pro job, which Easy shows read-only rather
+ * than simplifying away.
  */
 export function fitsEasyMode(job: { toolpaths: readonly Toolpath[] }): boolean {
   const bits = new Set(job.toolpaths.map((t) => t.operation.bitId));
   const objects = new Set(job.toolpaths.map((t) => t.objectId));
-  return bits.size <= 1 && objects.size === job.toolpaths.length;
+  return (
+    bits.size <= 1 &&
+    objects.size === job.toolpaths.length &&
+    job.toolpaths.every((t) => EASY_CUT_KINDS.includes(cutKindOf(t.operation)))
+  );
 }
 
 /** The toolpaths for copied objects: same cuts, new ids, placed in natural order. */
