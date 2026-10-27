@@ -1,5 +1,6 @@
 import { useJobStore } from '../../state/jobStore';
 import { MOD_KEY } from '../common/platform';
+import { RibbonButton } from '../ribbon/RibbonButton';
 
 export function HistoryButtons() {
   const canUndo = useJobStore((s) => s.history.past.length > 0);
@@ -8,27 +9,21 @@ export function HistoryButtons() {
   const redo = useJobStore((s) => s.redo);
 
   return (
-    <div className="toolbar-group" role="group" aria-label="History">
-      <button
-        type="button"
-        className="tool-button"
+    <>
+      <RibbonButton
+        icon="undo"
+        label="Undo"
         title={`Undo (${MOD_KEY}Z)`}
         disabled={!canUndo}
         onClick={undo}
-      >
-        <span aria-hidden="true">↶</span>
-        <span className="tool-label">Undo</span>
-      </button>
-      <button
-        type="button"
-        className="tool-button"
+      />
+      <RibbonButton
+        icon="redo"
+        label="Redo"
         title={`Redo (${MOD_KEY}⇧Z)`}
         disabled={!canRedo}
         onClick={redo}
-      >
-        <span aria-hidden="true">↷</span>
-        <span className="tool-label">Redo</span>
-      </button>
-    </div>
+      />
+    </>
   );
 }

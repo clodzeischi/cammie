@@ -4,7 +4,14 @@ import { editTabsAt } from './tabEditing';
 
 // Object moved to (10, 10) and doubled in size; its loop in canvas space is 0..40 around (10,10).
 const object = makeObject({ transform: { x: 10, y: 10, rotation: 30, scaleX: 2, scaleY: 2 } });
-const tabs = [{ objectId: object.id, loops: [square(10, 10, 40)], centres: [{ x: 30, y: 10 }] }];
+const tabs = [
+  {
+    toolpathId: 'tp-1',
+    objectId: object.id,
+    loops: [square(10, 10, 40)],
+    centres: [{ x: 30, y: 10 }],
+  },
+];
 
 describe('invertMatrix', () => {
   it('undoes the transform', () => {
@@ -20,7 +27,7 @@ describe('editTabsAt', () => {
 
   it('removes the tab under the click', () => {
     const edit = editTabsAt({ x: 31, y: 10.5 }, tabs, [object], 2);
-    expect(edit).toEqual({ objectId: object.id, manual: [] });
+    expect(edit).toEqual({ toolpathId: 'tp-1', objectId: object.id, manual: [] });
   });
 
   it('adds a tab on the nearest loop, stored in object space', () => {

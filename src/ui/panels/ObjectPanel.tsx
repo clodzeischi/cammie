@@ -1,7 +1,9 @@
 import type { DesignObject } from '../../core/job/job';
 import { useJobStore } from '../../state/jobStore';
 import { ArrangeFields } from './ArrangeFields';
-import { CutFields } from './CutFields';
+import { useModeStore } from '../../state/modeStore';
+import { EasyCutFields } from './EasyCutFields';
+import { ObjectToolpaths } from './ObjectToolpaths';
 import { PlacementFields } from './PlacementFields';
 import { RectFields } from './RectFields';
 import { TextFields } from './TextFields';
@@ -15,6 +17,7 @@ export function ObjectPanel({ object }: ObjectPanelProps) {
   const updateObject = useJobStore((s) => s.updateObject);
   const removeObjects = useJobStore((s) => s.removeObjects);
   const select = useJobStore((s) => s.select);
+  const mode = useModeStore((s) => s.mode);
   const setTransform = (transform: DesignObject['transform']) =>
     updateObject(object.id, { transform });
   const { shape } = object;
@@ -41,12 +44,13 @@ export function ObjectPanel({ object }: ObjectPanelProps) {
           }
         />
       )}
+      {mode === 'easy' ? (
+        <EasyCutFields objectIds={[object.id]} />
+      ) : (
+        <ObjectToolpaths objectId={object.id} />
+      )}
       <PlacementFields object={object} onTransform={setTransform} />
       <ArrangeFields />
-      <CutFields
-        operation={object.operation}
-        onChange={(operation) => updateObject(object.id, { operation })}
-      />
       <button
         type="button"
         className="button button-danger"

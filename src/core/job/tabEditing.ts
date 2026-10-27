@@ -5,6 +5,7 @@ import { applyMatrix, invertMatrix, toMatrix } from '../geometry/transform';
 import type { DesignObject } from './job';
 
 export interface TabEdit {
+  toolpathId: string;
   objectId: string;
   /** The object's new hand-placed tabs, in its own coordinates. */
   manual: Vec2[];
@@ -55,21 +56,25 @@ export function editTabsAt(
   objects: readonly DesignObject[],
   tolerance: number,
 ): TabEdit | null {
-  let edited: { objectId: string; centres: Vec2[] };
+  let edited: { tabs: ObjectTabs; centres: Vec2[] };
   const hit = nearestTab(point, tabs, tolerance);
   if (hit) {
     edited = {
-      objectId: hit.tabs.objectId,
+      tabs: hit.tabs,
       centres: hit.tabs.centres.filter((_, i) => i !== hit.index),
     };
   } else {
     const spot = nearestLoopPoint(point, tabs, tolerance);
     if (!spot) return null;
-    edited = { objectId: spot.tabs.objectId, centres: [...spot.tabs.centres, spot.at] };
+    edited = { tabs: spot.tabs, centres: [...spot.tabs.centres, spot.at] };
   }
 
-  const object = objects.find((o) => o.id === edited.objectId);
+  const object = objects.find((o) => o.id === edited.tabs.objectId);
   if (!object) return null;
   const toLocal = invertMatrix(toMatrix(object.transform));
-  return { objectId: object.id, manual: edited.centres.map((c) => applyMatrix(toLocal, c)) };
+  return {
+    toolpathId: edited.tabs.toolpathId,
+    objectId: object.id,
+    manual: edited.centres.map((c) => applyMatrix(toLocal, c)),
+  };
 }

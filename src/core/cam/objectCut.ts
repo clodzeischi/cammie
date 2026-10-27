@@ -1,6 +1,7 @@
 import { boundsOfPaths, type Bounds, type Path, type Vec2 } from '../geometry/path';
 import { transformPaths } from '../geometry/transform';
 import { canvasToMachine, type DesignObject, type Job, type Operation } from '../job/job';
+import { CUT_PRIORITY } from '../job/toolpaths';
 import type { MachineConfig } from '../machine/machineConfig';
 import { overridesFor, type FeedOverrides } from '../materials/feedOverrides';
 import type { Material } from '../materials/materials';
@@ -22,9 +23,6 @@ export interface CutContext {
 
 type Report = (severity: Diagnostic['severity'], message: string) => void;
 
-/** Pockets and holes first, then lines, then parts get cut free (SPEC.md §9.7). */
-const PRIORITY = { pocket: 1, inside: 2, on: 3, outside: 4 } as const;
-
 const LABEL = {
   pocket: 'Pocket',
   inside: 'Inside',
@@ -37,16 +35,16 @@ const kindOf = (op: Operation) => (op.type === 'pocket' ? 'pocket' : op.side);
 const fmt = (mm: number) => `${Math.round(mm * 100) / 100} mm`;
 
 /**
- * Validates one object's operation and plans its cut.
- * Returns null (after reporting why) when the object can't be cut.
+ * Validates one toolpath and plans its cut on `object`.
+ * Returns null (after reporting why) when it can't be cut.
  */
 export function planObjectCut(
+  toolpathId: string,
   object: DesignObject,
+  operation: Operation,
   ctx: CutContext,
   report: Report,
 ): ObjectCut | null {
-  const { operation } = object;
-  if (!operation) return null;
   const kind = kindOf(operation);
 
   const bit = findBit(operation.bitId, ctx.bits);
@@ -91,10 +89,10 @@ export function planObjectCut(
   checkDepth(operation.depth, kind, thickness, planned.tabsHold, report);
 
   return {
+    toolpathId,
     objectId: object.id,
     label: `${LABEL[kind]}: ${object.name}`,
     bit,
-    priority: PRIORITY[kind],
     depth: operation.depth,
     feeds,
     plan: planned.plan,
@@ -108,7 +106,7 @@ const SPOILBOARD_ALLOWANCE = 0.5;
 
 function checkDepth(
   depth: number,
-  kind: keyof typeof PRIORITY,
+  kind: keyof typeof CUT_PRIORITY,
   thickness: number,
   tabsHold: boolean,
   report: Report,

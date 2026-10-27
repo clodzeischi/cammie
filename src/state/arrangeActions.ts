@@ -7,6 +7,7 @@ import {
   unitKey,
   type Alignment,
 } from '../core/job/arrange';
+import { copyToolpaths } from '../core/job/toolpaths';
 import type { Vec2 } from '../core/geometry/path';
 import { selectedObjects, useJobStore } from './jobStore';
 
@@ -25,10 +26,15 @@ export const arrange = {
     state().setObjects(nudgeObjects(state().objects, ids(), d), undefined, 'nudge'),
   duplicate: () => {
     if (ids().length === 0) return;
+    const originals = state().objects.filter((o) => ids().includes(o.id));
     const copies = duplicateObjects(state().objects, ids(), () => crypto.randomUUID());
+    // duplicateObjects keeps the originals' order, so copies line up with them.
+    const copyOf = new Map(originals.map((o, i) => [o.id, copies[i]!.id]));
     state().setObjects(
       [...state().objects, ...copies],
       copies.map((c) => c.id),
+      undefined,
+      copyToolpaths(state().toolpaths, copyOf, () => crypto.randomUUID()),
     );
   },
   group: () => {

@@ -1,8 +1,9 @@
-import type { DesignObject } from '../core/job/job';
+import type { DesignObject, Toolpath } from '../core/job/job';
 
-/** What undo restores: the design and what was selected at the time. */
+/** What undo restores: the design, its cuts and what was selected at the time. */
 export interface Snapshot {
   objects: DesignObject[];
+  toolpaths: Toolpath[];
   selectedIds: string[];
 }
 

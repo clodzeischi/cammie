@@ -1,9 +1,9 @@
 import { boundsOfPaths, signedArea, type Path } from '../geometry/path';
-import type { DesignObject, ProfileOperation } from '../job/job';
+import type { ProfileOperation } from '../job/job';
 import { DEFAULT_MACHINE_CONFIG } from '../machine/machineConfig';
 import { generateJob } from './generateJob';
 import { profilePaths } from './profile';
-import { makeJob, makeObject, profileOp, square } from './testFixtures';
+import { makeJob, makeObject, profileOp, square, type TestObject } from './testFixtures';
 
 const ccw = (p: Path) => signedArea(p.points) > 0;
 const frame = [square(0, 0, 20), square(5, 5, 10)]; // 20 mm square with a 10 mm hole
@@ -55,7 +55,7 @@ describe('profilePaths', () => {
   });
 });
 
-const cutOut = (changes: Partial<ProfileOperation> = {}): DesignObject =>
+const cutOut = (changes: Partial<ProfileOperation> = {}): TestObject =>
   makeObject({
     id: 'part',
     name: 'Part',

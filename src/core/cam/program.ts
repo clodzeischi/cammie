@@ -35,10 +35,12 @@ export interface Diagnostic {
   severity: 'error' | 'warning';
   message: string;
   objectId?: string;
+  toolpathId?: string;
 }
 
-/** Tab positions for one object, in canvas coordinates, for the preview editor. */
+/** Tab positions for one toolpath's object, in canvas coordinates, for the preview editor. */
 export interface ObjectTabs {
+  toolpathId: string;
   objectId: string;
   /** Loops a tab can sit on (the finished contour). */
   loops: Path[];

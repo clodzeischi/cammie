@@ -35,12 +35,22 @@ export function generateJob(
   }
 
   const origin = anchorPoint(job.stock, job.origin);
+  const objects = new Map(job.objects.map((o) => [o.id, o]));
   const cuts: ObjectCut[] = [];
-  for (const object of job.objects) {
+  for (const toolpath of job.toolpaths) {
+    const object = objects.get(toolpath.objectId);
+    if (!object) continue;
     const report = (severity: Diagnostic['severity'], message: string) =>
-      diagnostics.push({ severity, message: `${object.name}: ${message}`, objectId: object.id });
+      diagnostics.push({
+        severity,
+        message: `${object.name}: ${message}`,
+        objectId: object.id,
+        toolpathId: toolpath.id,
+      });
     const cut = planObjectCut(
+      toolpath.id,
       object,
+      toolpath.operation,
       { job, machine, material, bits, feedOverrides, origin },
       report,
     );
@@ -52,26 +62,25 @@ export function generateJob(
   if (cuts.length === 0 && !diagnostics.some((d) => d.severity === 'error')) {
     diagnostics.push({
       severity: 'error',
-      message: 'Nothing to cut yet. Import a file and give it an operation.',
+      message: 'Nothing to cut yet. Add a shape and give it a cut.',
     });
   }
   checkMachineFits(cuts, machine, diagnostics);
-  const tabs = cuts.flatMap((cut) => (cut.tabs ? [{ objectId: cut.objectId, ...cut.tabs }] : []));
+  const tabs = cuts.flatMap((cut) =>
+    cut.tabs ? [{ toolpathId: cut.toolpathId, objectId: cut.objectId, ...cut.tabs }] : [],
+  );
   return { programs: buildPrograms(cuts, machine), diagnostics, tabs };
 }
 
 /**
- * One program per bit. Files are ordered by their earliest kind of cut (so
- * detail work comes before cutting parts free), and within a file the cuts run
- * by priority, keeping design order for ties.
+ * One program per bit, in the order the toolpath list gives: files in the order
+ * their bits first appear, cuts in list order within a file. New toolpaths are
+ * placed so this is the safe order (see insertToolpath) unless the user moves them.
  */
 function buildPrograms(cuts: ObjectCut[], machine: MachineConfig): BitProgram[] {
   const byBit = new Map<string, ObjectCut[]>();
   for (const cut of cuts) byBit.set(cut.bit.id, [...(byBit.get(cut.bit.id) ?? []), cut]);
-
-  const groups = [...byBit.values()]
-    .map((group) => [...group].sort((a, b) => a.priority - b.priority))
-    .sort((a, b) => a[0]!.priority - b[0]!.priority);
+  const groups = [...byBit.values()];
 
   return groups.map((group) => {
     let position: Vec2 = { x: 0, y: 0 };

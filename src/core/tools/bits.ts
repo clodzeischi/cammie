@@ -54,6 +54,8 @@ export const BUILT_IN_BITS: readonly Bit[] = [
 ];
 
 export const DEFAULT_VBIT_ID = 'vbit-60';
+/** The usual 1/8" two-flute end mill for cutting out, holes and pockets. */
+export const DEFAULT_FLAT_BIT_ID = 'flat-3.175';
 
 export const findBit = (id: string, bits: readonly Bit[] = BUILT_IN_BITS): Bit | undefined =>
   bits.find((bit) => bit.id === id);

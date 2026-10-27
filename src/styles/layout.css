@@ -54,72 +54,31 @@
 .app-header-actions {
   margin-left: auto;
   display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+.app-header .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* ---------- Layout ---------- */
 .app-body {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: auto 1fr 300px;
 }
 
-.toolbar {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 6px;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
+/* Easy: canvas and side panel. Pro adds the toolpath list on the left. */
+.app-body-easy {
+  grid-template-columns: 1fr 300px;
 }
 
-.tool-button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  width: 56px;
-  padding: 8px 4px;
-  font: inherit;
-  font-size: 18px;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--text);
-  cursor: pointer;
-}
-
-.tool-button:hover {
-  background: var(--surface-sunken);
-  border-color: var(--border);
-}
-
-.tool-button:disabled {
-  opacity: 0.4;
-  cursor: default;
-  background: transparent;
-  border-color: transparent;
-}
-
-.tool-label {
-  font-size: 11px;
-}
-
-.tool-icon-text {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-/* Undo/redo sit apart from the drawing tools. */
-.toolbar-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
+.app-body-pro {
+  grid-template-columns: 250px 1fr 300px;
 }
 
 .workspace {

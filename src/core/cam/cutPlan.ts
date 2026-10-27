@@ -26,11 +26,10 @@ export interface TabPreview {
 
 /** Everything needed to cut one object, before it's placed in a file. */
 export interface ObjectCut {
+  toolpathId: string;
   objectId: string;
   label: string;
   bit: Bit;
-  /** Lower runs first within a file (SPEC.md §9.7). */
-  priority: number;
   depth: number;
   feeds: Feeds;
   plan: CutPlan;

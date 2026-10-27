@@ -46,7 +46,8 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
   const selectedIds = useJobStore((s) => s.selectedIds);
   const select = useJobStore((s) => s.select);
   const setTransforms = useJobStore((s) => s.setTransforms);
-  const updateObject = useJobStore((s) => s.updateObject);
+  const toolpaths = useJobStore((s) => s.toolpaths);
+  const updateToolpath = useJobStore((s) => s.updateToolpath);
   const { view, setView, fit } = useViewport(stock, size);
   const gridSpacing = useGridStore((s) => s.spacing);
   const snapOn = useGridStore((s) => s.snap);
@@ -72,10 +73,9 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
     if (Math.hypot(pointer.x - start.x, pointer.y - start.y) > CLICK_SLOP_PX) return;
     const world = { x: (pointer.x - view.x) / view.scale, y: (pointer.y - view.y) / view.scale };
     const edit = editTabsAt(world, preview.tabs, objects, TAB_CLICK_PX / view.scale);
-    const object = edit && objects.find((o) => o.id === edit.objectId);
-    if (!edit || object?.operation?.type !== 'profile') return;
-    const op = object.operation;
-    updateObject(object.id, { operation: { ...op, tabs: { ...op.tabs, manual: edit.manual } } });
+    const op = edit && toolpaths.find((t) => t.id === edit.toolpathId)?.operation;
+    if (!edit || op?.type !== 'profile') return;
+    updateToolpath(edit.toolpathId, { ...op, tabs: { ...op.tabs, manual: edit.manual } });
   };
   const zoomCentre = (factor: number) =>
     setView(zoomAt(view, { x: size.width / 2, y: size.height / 2 }, factor));

@@ -33,26 +33,40 @@ Status: Draft v1 · 2026-10-17
 
 ## 3. Core Workflow & UI Layout
 
-Modeled on Easel: one screen, left-to-right flow.
+One screen with two modes, switched by an **Easy ↔ Pro** toggle in the header. Pro is the full
+model; Easy is the same app with limits switched on, so both share one job and one code path.
+New visitors start in Easy; the last mode is remembered (`cammie.mode.v1`, with Easy's bit).
 
 ```
+Pro
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ Cammie    [Material ▾] [Stock 200×150×6 mm] [Bit ▾]   [⚙ Machine] [Export]│
-├────┬───────────────────────────────────────────────┬─────────────────────┤
-│ ⬆  │                                               │  Selected object    │
-│ T  │          Design canvas (stock rectangle,      │  ─────────────────  │
-│ ▭  │          grid in mm, origin marker,           │  Position / size    │
-│ ◯  │          machine work-area outline)           │  Operation  [▾]     │
-│    │                                               │  Cut depth  [mm]    │
-│    │                                               │  Bit        [▾]     │
-│    │                                               │  Tabs  [on] count…  │
-│    │                                               │  Advanced ▸         │
-│    ├───────────────────────────────────────────────┤                     │
-│    │ [Design] [Toolpath preview]   warnings (2) ⚠  │                     │
-└────┴───────────────────────────────────────────────┴─────────────────────┘
+│ Cammie  [job name]                           EASY ◯━ PRO   [Export 2 files]│
+├──────────────────────────────────────────────────────────────────────────┤
+│ Shapes | Toolpaths | Setup                    (ribbon: labelled buttons)  │
+├──────────────┬────────────────────────────────────┬──────────────────────┤
+│ Toolpaths    │                                    │ Selected toolpath,   │
+│ ① End mill   │      Design canvas                 │ object, or job       │
+│   Pocket     │                                    │ settings             │
+│   Cut out    │                                    │                      │
+│ ↻ Change bit │                                    │                      │
+│ ② V-bit 60°  │  [Design] [Toolpath preview]       │ Checks               │
+│   Engrave    │                                    │                      │
+└──────────────┴────────────────────────────────────┴──────────────────────┘
 ```
 
-- **Left toolbar**: Import (one button: SVGs come in at their real size; bitmaps open the trace dialog), Text, Rectangle, Circle (stretch it into an ellipse), then Undo/Redo. (Polygon/Star optional later.)
+- **Ribbon (Pro)**: *Shapes* (Import, Text, Rectangle, Circle · Duplicate, Group, Ungroup, Delete ·
+  Undo, Redo), *Toolpaths* (Engrave, Profile outside, Profile inside, Pocket · Simulate), *Setup*
+  (Stock & material, Bits, Machine). Every button has a text label.
+- **Toolpath list (Pro)**: the whole plan in cut order. One group per bit (= one `.nc` file), with
+  a "Change bit, then re-zero Z" step between groups. Rows and whole files move up/down; rows
+  show a dot when they have a warning or error. Selecting a row opens its settings, headed by one
+  plain sentence saying what it will do.
+- **Easy**: one toolbar row (Import, Text, Rectangle, Circle, Undo, Redo); material and the job's
+  one bit sit in the header. Selecting shapes asks "How should this be cut?" with four plain
+  choices (Engrave line, Cut out, Cut hole, Clear area); choices the bit can't do stay visible,
+  disabled with the reason. Only depth (and tabs) are shown; feeds and entry come from presets.
+- **Mode rules**: Easy → Pro never changes anything. A job with more than one bit, or more than one
+  cut on a shape, opens read-only in Easy with a "Switch to Pro" button. Nothing is deleted.
 - **Canvas**: stock rectangle drawn to scale, mm grid, rulers, selectable origin marker, dashed outline of machine work area. Pan (space/middle-drag), zoom (wheel/pinch).
 - **Grid & snapping** (controls beside the zoom buttons; remembered in localStorage as `cammie.grid.v1`):
   - Grid size: 0.5, 1, 2, 5, 10 (default), 20, 25 or 50 mm. Lines run through the work origin, so snapped objects get round X/Y values. Darker major lines every round 5/10/25/50/100… mm. Lines closer than 6 px on screen are left out (only major lines when zoomed far out).
@@ -78,6 +92,7 @@ interface Job {
   origin: OriginAnchor;          // where machine X0 Y0 sits on the stock
   materialId: string;
   objects: DesignObject[];       // z-ordered
+  toolpaths: Toolpath[];         // cut order
 }
 
 type OriginAnchor =
@@ -95,15 +110,20 @@ interface DesignObject {
   paths: Path[];                 // flattened outlines in object-local mm, box starting at (0,0)
   width: number; height: number; // natural size of `paths`
   transform: { x: number; y: number; rotation: number; scaleX: number; scaleY: number };
-  operation: Operation | null;   // null = not cut (guide/reference only)
 }
+
+// One cut on one object. Objects with no toolpaths aren't cut; an object may have several.
+interface Toolpath { id: string; objectId: string; operation: Operation; }
+// Job.toolpaths: Toolpath[] — list order is cut order. Toolpaths sharing a bit form one file;
+// files run in the order their bits first appear. New toolpaths are inserted where they
+// naturally run (pockets, holes, lines, then cut-outs), so the default order is the safe one.
 
 interface Path { points: Vec2[]; closed: boolean; }
 ```
 
 - Editing shape params (text, font, corner radius…) rebuilds `paths`.
 - **Selection**: click selects; Shift-click adds/removes; ⌘/Ctrl-A selects all. Pressing on an already-selected object keeps the selection so several objects drag together; a click without dragging picks just that object. Several selected objects share one transformer (move/resize/rotate together).
-- **Groups**: ⌘/Ctrl-G groups the selection, ⇧⌘/Ctrl-G ungroups. A group is a selection unit (clicking any member selects all) and moves/aligns as one. Cut settings stay **per object**: select one object on its own (ungroup first) to change how it's cut.
+- **Groups**: ⌘/Ctrl-G groups the selection, ⇧⌘/Ctrl-G ungroups. A group is a selection unit (clicking any member selects all) and moves/aligns as one. Cuts are per object: in Easy a cut choice applies to every selected object; in Pro adding a toolpath gives each selected object its own.
 - **Arrange**: move, scale (lock aspect by default), rotate, duplicate (⌘/Ctrl-D, copies offset 5 mm, copied groups become new groups), delete, align left/centre/right/top/middle/bottom (several units align to their combined box; a single unit aligns to the stock), centre on stock, nudge with arrow keys (1 mm, Shift = 10 mm).
 - **Undo/redo**: ⌘/Ctrl-Z, ⇧⌘/Ctrl-Z or Ctrl-Y, toolbar buttons; 100 steps of the design (objects + selection; stock/origin/material are settings, not undone). A burst of edits to the same fields of one object within 1 s (typing a number or text, repeated nudges) is one step. Shortcuts are ignored while typing in a field, so fields keep their own undo.
 

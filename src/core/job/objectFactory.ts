@@ -40,6 +40,25 @@ export type CutKind = ProfileSide | 'pocket';
 
 export const cutKindOf = (op: Operation): CutKind => (op.type === 'pocket' ? 'pocket' : op.side);
 
+/** How far past the stock a "cut through" goes, to clean up the bottom edge. */
+export const THROUGH_EXTRA = 0.2;
+/** Pockets start this deep (mm), or the stock thickness if that's less. */
+export const DEFAULT_POCKET_DEPTH = 2;
+
+const round2 = (v: number) => Math.round(v * 100) / 100;
+
+/** The depth a new cut of this kind starts at: lines are shallow, cut-outs go through. */
+export function defaultDepth(kind: CutKind, thickness: number): number {
+  if (kind === 'on') return DEFAULT_ENGRAVE_DEPTH;
+  if (kind === 'pocket') return Math.min(DEFAULT_POCKET_DEPTH, thickness);
+  return round2(thickness + THROUGH_EXTRA);
+}
+
+/** A new cut of the given kind with its usual depth. */
+export function newOperation(kind: CutKind, bitId: string, thickness: number): Operation {
+  return withCutKind({ ...defaultOperation(), bitId, depth: defaultDepth(kind, thickness) }, kind);
+}
+
 /** Switches an operation's cut type, keeping bit, depth and the shared settings. */
 export function withCutKind(op: Operation, kind: CutKind): Operation {
   const { bitId, depth, direction, entry, finishing } = op;
@@ -100,6 +119,5 @@ export function createObject(input: NewObjectInput): DesignObject {
       scaleX: 1,
       scaleY: 1,
     },
-    operation: defaultOperation(),
   };
 }
