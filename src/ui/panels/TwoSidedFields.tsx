@@ -6,8 +6,8 @@ import { addRegistrationHoles } from '../../state/twoSidedActions';
 import { NumberField, SelectField } from '../common/fields';
 
 const FLIPS: ReadonlyArray<{ value: FlipAxis; label: string }> = [
-  { value: 'left-right', label: 'Left to right (turn it about the vertical line)' },
-  { value: 'top-bottom', label: 'Top to bottom (turn it about the horizontal line)' },
+  { value: 'left-right', label: 'Left to right' },
+  { value: 'top-bottom', label: 'Top to bottom' },
 ];
 
 /**
@@ -28,7 +28,13 @@ export function TwoSidedFields() {
         To cut the back of the stock, set a toolpath's side to Bottom. Cammie mirrors it so it lands
         in the right place once the stock is turned over.
       </p>
-      <SelectField label="Turn the stock over" value={flip} options={FLIPS} onChange={setFlip} />
+      <SelectField
+        label="Turn the stock over"
+        value={flip}
+        options={FLIPS}
+        hint="About the dashed line through the middle of the stock."
+        onChange={setFlip}
+      />
       <NumberField
         label="Dowel pin diameter"
         unit="mm"

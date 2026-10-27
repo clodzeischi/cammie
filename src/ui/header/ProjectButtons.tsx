@@ -40,17 +40,20 @@ export function ProjectButtons({ notice }: ProjectButtonsProps) {
   const open = async (file: File | undefined) => {
     if (inputRef.current) inputRef.current.value = '';
     if (!file || !confirmDiscard()) return;
+    setNoticeSeen(true);
     const parsed = parseProject(await file.text());
     if (!parsed.ok) {
       setToast({ kind: 'error', text: `Couldn't open “${file.name}”. ${parsed.error}` });
       return;
     }
     openProject(parsed.project);
-    setToast(null);
+    dismiss();
   };
 
   const startNew = () => {
-    if (confirmDiscard()) useJobStore.getState().clearDesign();
+    if (!confirmDiscard()) return;
+    useJobStore.getState().clearDesign();
+    dismiss();
   };
 
   useEffect(() => {
