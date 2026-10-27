@@ -42,6 +42,8 @@ describe('toolingStore', () => {
         data: [
           { id: 'x', name: 'bad', type: 'flat', diameter: -1, flutes: 2 },
           { id: 'v', name: 'V', type: 'vbit', diameter: 6, flutes: 1, angle: 90, tipDiameter: 0 },
+          { id: 'r', name: 'Ball', type: 'round', diameter: 4, flutes: 2 },
+          { id: 'u', name: 'Undercut', type: 'tslot', diameter: 4, flutes: 2 },
         ],
       }),
       [FEED_OVERRIDES_KEY]: JSON.stringify({
@@ -50,7 +52,7 @@ describe('toolingStore', () => {
       }),
     });
     const state = storeOver(kv).store.getState();
-    expect(state.customBits.map((b) => b.id)).toEqual(['v']);
+    expect(state.customBits.map((b) => b.id)).toEqual(['v', 'r']);
     expect(state.feedOverrides).toEqual({ 'mdf|flat-2': { rpm: 9000 } });
   });
 });

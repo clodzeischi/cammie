@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { defaultTabWidth } from '../../core/cam/profilePlan';
+import { canCut } from '../../core/job/bitCapabilities';
 import type { Operation } from '../../core/job/job';
 import { cutKindOf, THROUGH_EXTRA, withCutKind, type CutKind } from '../../core/job/objectFactory';
 import { findMaterial } from '../../core/materials/materials';
@@ -38,12 +39,14 @@ export function CutFields({ operation, onChange: change, onRemove }: CutFieldsPr
   const material = findMaterial(materialId);
   const set = (patch: Partial<Pick<Operation, 'bitId' | 'depth'>>) =>
     onChange({ ...operation, ...patch });
-  // V-bits only engrave on the line; switching to one resets the cut type.
+  // A bit that can't make this cut (V-bits, round-nose) switches it to engraving.
   const setBit = (bitId: string) => {
     const next = { ...operation, bitId };
-    onChange(findBit(bitId, bits)?.type === 'vbit' ? withCutKind(next, 'on') : next);
+    const nextBit = findBit(bitId, bits);
+    onChange(nextBit && !canCut(nextBit, kind) ? withCutKind(next, 'on') : next);
   };
-  const kindOptions = bit?.type === 'vbit' ? KIND_OPTIONS.slice(0, 1) : KIND_OPTIONS;
+  const kindOptions = bit ? KIND_OPTIONS.filter((o) => canCut(bit, o.value)) : KIND_OPTIONS;
+  const engraveOnly = kindOptions.length < KIND_OPTIONS.length;
   const throughDepth = round2(thickness + THROUGH_EXTRA);
   const depthValid = Number.isFinite(operation.depth) && operation.depth > 0;
 
@@ -65,7 +68,7 @@ export function CutFields({ operation, onChange: change, onRemove }: CutFieldsPr
         options={kindOptions}
         onChange={(k) => onChange(withCutKind(operation, k))}
       />
-      {bit?.type === 'vbit' && (
+      {engraveOnly && (
         <p className="field-hint">Pick an end mill to cut parts out, cut holes or clear pockets.</p>
       )}
       <NumberField
@@ -77,7 +80,7 @@ export function CutFields({ operation, onChange: change, onRemove }: CutFieldsPr
         hint={bit && depthValid ? depthHint(bit, operation.depth) : undefined}
         onChange={(depth) => set({ depth })}
       />
-      {bit?.type === 'flat' && operation.depth !== throughDepth && (
+      {bit && canCut(bit, 'outside') && operation.depth !== throughDepth && (
         <button type="button" className="link-button" onClick={() => set({ depth: throughDepth })}>
           Cut through the stock ({throughDepth} mm)
         </button>

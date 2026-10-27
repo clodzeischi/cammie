@@ -157,6 +157,13 @@ const ICONS = {
       <path d="M9 12.5h6L12 21z" />
     </>
   ),
+  roundBit: (
+    <>
+      <rect x="9" y="2.5" width="6" height="9" rx="1" />
+      <path d="M9.5 11.5h5V18a2.5 2.5 0 0 1-5 0z" {...F} />
+      <path d="M9.5 11.5h5V18a2.5 2.5 0 0 1-5 0z" />
+    </>
+  ),
   chevronUp: <path d="m6 15 6-6 6 6" />,
   chevronDown: <path d="m6 9 6 6 6-6" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,

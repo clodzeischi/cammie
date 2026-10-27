@@ -1,5 +1,6 @@
 import { boundsOfPaths, type Bounds, type Path, type Vec2 } from '../geometry/path';
 import { transformPaths } from '../geometry/transform';
+import { cantCutReason, canCut } from '../job/bitCapabilities';
 import { canvasToMachine, type DesignObject, type Job, type Operation } from '../job/job';
 import { CUT_PRIORITY } from '../job/toolpaths';
 import type { MachineConfig } from '../machine/machineConfig';
@@ -52,9 +53,7 @@ export function planObjectCut(
   if (!Number.isFinite(operation.depth) || operation.depth <= 0) {
     return fail(report, 'cut depth must be greater than 0.');
   }
-  if (bit.type === 'vbit' && kind !== 'on') {
-    return fail(report, 'V-bits only cut on the line. Pick an end mill for this cut.');
-  }
+  if (!canCut(bit, kind)) return fail(report, cantCutReason(bit));
 
   const overrides = overridesFor(ctx.feedOverrides, ctx.material.id, bit.id);
   const { feeds, clamped, invalid } = resolveFeeds(ctx.material, bit, overrides, ctx.machine);
@@ -62,7 +61,7 @@ export function planObjectCut(
     return fail(report, `${invalid.map(feedLabel).join(', ')} must be greater than 0.`);
   }
   clamped.forEach((note) => report('warning', note));
-  if (bit.type === 'flat' && feeds.depthPerPass > bit.diameter / 2) {
+  if (bit.type !== 'vbit' && feeds.depthPerPass > bit.diameter / 2) {
     report(
       'warning',
       `depth per pass is more than half the bit's diameter, which risks breaking a ${bit.diameter} mm bit.`,

@@ -1,5 +1,14 @@
 import { findMaterial, presetFeeds } from '../materials/materials';
-import { findBit, grooveWidth, vbitMaxDepth, type FlatBit, type VBit } from '../tools/bits';
+import {
+  findBit,
+  fullWidthDepth,
+  grooveWidth,
+  vbitMaxDepth,
+  type FlatBit,
+  type RoundBit,
+  type VBit,
+} from '../tools/bits';
+import { cantCutReason, canCut } from './bitCapabilities';
 import { anchorPoint, canvasToMachine, machineToCanvas } from './job';
 
 const stock = { width: 200, height: 100, thickness: 6 };
@@ -34,6 +43,26 @@ describe('bits', () => {
   it('caps groove width at the bit diameter', () => {
     expect(grooveWidth(v60, 100)).toBe(3.175);
     expect(vbitMaxDepth(v60)).toBeCloseTo((3.175 - 0.2) / 2 / Math.tan(Math.PI / 6));
+  });
+
+  it('computes a round-nose groove from the ball, reaching full width at the radius', () => {
+    const ball = findBit('round-3.175') as RoundBit;
+    const r = 3.175 / 2;
+    // A chord of the ball's circle, 0.5 mm below the surface
+    expect(grooveWidth(ball, 0.5)).toBeCloseTo(2 * Math.sqrt(r * r - (r - 0.5) ** 2));
+    expect(grooveWidth(ball, r)).toBeCloseTo(3.175);
+    expect(grooveWidth(ball, 5)).toBe(3.175);
+    expect(fullWidthDepth(ball)).toBeCloseTo(r);
+  });
+
+  it('only lets end mills cut walls and floors', () => {
+    const flat = findBit('flat-3.175')!;
+    const ball = findBit('round-2')!;
+    expect(canCut(flat, 'pocket')).toBe(true);
+    expect(canCut(ball, 'on')).toBe(true);
+    expect(canCut(ball, 'pocket')).toBe(false);
+    expect(canCut(v60, 'outside')).toBe(false);
+    expect(cantCutReason(ball)).toMatch(/Round-nose bits only cut on the line/);
   });
 });
 

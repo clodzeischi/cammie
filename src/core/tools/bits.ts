@@ -20,7 +20,12 @@ export interface VBit extends BitBase {
   tipDiameter: number;
 }
 
-export type Bit = FlatBit | VBit;
+/** A round-nose ("core box") bit: the end is a half-sphere of the bit's diameter. */
+export interface RoundBit extends BitBase {
+  type: 'round';
+}
+
+export type Bit = FlatBit | VBit | RoundBit;
 
 const vbit = (angle: number, tip: number): VBit => ({
   id: `vbit-${angle}`,
@@ -40,6 +45,14 @@ const flat = (diameter: number, flutes = 2): FlatBit => ({
   flutes,
 });
 
+const round = (diameter: number): RoundBit => ({
+  id: `round-${diameter}`,
+  name: `Round-nose ${diameter} mm`,
+  type: 'round',
+  diameter,
+  flutes: 2,
+});
+
 /** Typical 3018 bits, all on a 1/8" (3.175 mm) shank. */
 export const BUILT_IN_BITS: readonly Bit[] = [
   vbit(20, 0.1),
@@ -51,6 +64,8 @@ export const BUILT_IN_BITS: readonly Bit[] = [
   flat(2),
   flat(3.175),
   flat(3.175, 1),
+  round(2),
+  round(3.175),
 ];
 
 export const DEFAULT_VBIT_ID = 'vbit-60';
@@ -65,11 +80,32 @@ export function vbitMaxDepth(bit: VBit): number {
   return (bit.diameter - bit.tipDiameter) / 2 / Math.tan((bit.angle * Math.PI) / 360);
 }
 
+/**
+ * Depth past which a groove stops getting wider: the top of a V-bit's cone or
+ * of a round-nose bit's ball. Flat bits cut full width straight away.
+ */
+export function fullWidthDepth(bit: Bit): number {
+  if (bit.type === 'vbit') return vbitMaxDepth(bit);
+  return bit.type === 'round' ? bit.diameter / 2 : 0;
+}
+
 /** Width of the groove at the material surface when cutting `depth` mm deep. */
 export function grooveWidth(bit: Bit, depth: number): number {
+  const d = Math.max(depth, 0);
   if (bit.type === 'flat') return bit.diameter;
+  if (bit.type === 'round') {
+    const r = bit.diameter / 2;
+    return d >= r ? bit.diameter : 2 * Math.sqrt(d * (2 * r - d));
+  }
   const halfAngle = (bit.angle * Math.PI) / 360;
-  return Math.min(bit.diameter, bit.tipDiameter + 2 * Math.max(depth, 0) * Math.tan(halfAngle));
+  return Math.min(bit.diameter, bit.tipDiameter + 2 * d * Math.tan(halfAngle));
+}
+
+/** One line about the bit's shape, e.g. "60° V · tip 0.2 mm" or "Ø 3.175 mm · 2-flute". */
+export function bitDetail(bit: Bit): string {
+  if (bit.type === 'vbit') return `${bit.angle}° V · tip ${bit.tipDiameter} mm · Ø ${bit.diameter} mm`;
+  if (bit.type === 'round') return `Ø ${bit.diameter} mm round nose · ${bit.flutes}-flute`;
+  return `Ø ${bit.diameter} mm · ${bit.flutes}-flute`;
 }
 
 /** Short filesystem-friendly label, e.g. "vbit-60" or "flat-3.175". */

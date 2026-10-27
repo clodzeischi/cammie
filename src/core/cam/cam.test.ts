@@ -173,6 +173,23 @@ describe('generateJob', () => {
       'Logo: goes past the edge of the stock.',
     ]);
   });
+
+  it('engraves with a round-nose bit but refuses walls and floors', () => {
+    const job = makeJob([
+      makeObject({ id: 'a', operation: profileOp({ bitId: 'round-3.175', depth: 1 }) }),
+      makeObject({ id: 'b', operation: profileOp({ bitId: 'round-3.175', side: 'outside' }) }),
+    ]);
+    const { programs, diagnostics } = generateJob(job, DEFAULT_MACHINE_CONFIG);
+    expect(programs.map((p) => p.bit.id)).toEqual(['round-3.175']);
+    expect(programs[0]!.sections).toHaveLength(1);
+    expect(diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        toolpathId: 'tp-b',
+        message: 'Logo: Round-nose bits only cut on the line. Pick an end mill for this cut.',
+      }),
+    );
+  });
 });
 
 describe('estimateProgram', () => {

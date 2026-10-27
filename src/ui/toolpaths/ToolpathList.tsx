@@ -1,17 +1,13 @@
 import type { Diagnostic } from '../../core/cam/program';
 import { cutKindOf } from '../../core/job/objectFactory';
 import { moveGroup, moveToolpath, toolpathGroups } from '../../core/job/toolpaths';
-import { findBit, type Bit } from '../../core/tools/bits';
+import { bitDetail, findBit } from '../../core/tools/bits';
 import { useJobStore } from '../../state/jobStore';
 import { useGeneratedJob } from '../../state/useGeneratedJob';
 import { useToolingStore } from '../../state/toolingStore';
+import { bitIcon } from '../bitIcons';
 import { CUT_KINDS } from '../cutKinds';
 import { Icon } from '../icons/Icon';
-
-const bitDetail = (bit: Bit) =>
-  bit.type === 'vbit'
-    ? `${bit.angle}° · tip ${bit.tipDiameter} mm`
-    : `Ø ${bit.diameter} mm · ${bit.flutes}-flute`;
 
 /** The worst problem reported for each toolpath, for the dot on its row. */
 function severities(diagnostics: readonly Diagnostic[]) {
@@ -74,7 +70,7 @@ export function ToolpathList() {
                   <span className="file-number" aria-label={`File ${gi + 1}`}>
                     {gi + 1}
                   </span>
-                  <Icon name={bit?.type === 'vbit' ? 'vBit' : 'flatBit'} size={18} />
+                  <Icon name={bitIcon(bit)} size={18} />
                   <span className="toolpath-group-name">
                     <b>{bit?.name ?? 'Missing bit'}</b>
                     {bit && <small>{bitDetail(bit)}</small>}

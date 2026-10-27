@@ -22,7 +22,7 @@ Status: Draft v1 · 2026-10-17
 | Project save/load, cloud storage, accounts | Only `.nc` export. Machine settings + custom bits persist locally. |
 | DXF import | SVG and PNG only. |
 | Laser support (M4, raster engraving) | Spindle-only machine. |
-| 3D relief / heightmap carving, ball-nose bits | 2D / 2.5D only. |
+| 3D relief / heightmap carving, undercut bits (T-slot, dovetail) | 2D / 2.5D only. Round-nose bits engrave grooves (§7). |
 | Mobile phone layout | Phones get a blocking message (see §11). Tablets are supported. |
 | Inch units | mm everywhere, output is always `G21`. |
 | 3D carve simulation | Planned for a later phase (§14), not v1. |
@@ -179,19 +179,25 @@ interface Path { points: Vec2[]; closed: boolean; }
 ```ts
 type Bit =
   | { id; name; type: 'flat';  diameter: number; flutes: number; fluteLength?: number }
-  | { id; name; type: 'vbit';  angle: number; tipDiameter: number; diameter: number; flutes: number };
+  | { id; name; type: 'vbit';  angle: number; tipDiameter: number; diameter: number; flutes: number }
+  | { id; name; type: 'round'; diameter: number; flutes: number };   // round nose / ball end
 ```
 - **Built-in library** (read-only, typical 3018 bits, 1/8" shank):
   - Flat: 1.0, 1.5, 2.0, 3.175 mm (2-flute); 3.175 mm 1-flute (plastics).
   - V-bit: 20°, 30°, 60°, 90° (tip 0.1–0.2 mm, Ø 3.175 mm).
+  - Round-nose: 2, 3.175 mm (2-flute).
+- **Round-nose bits** (no undercut bits): the end is a half-sphere of the bit's diameter, so a groove `d` deep is `2·√(d·(2r − d))` wide at the surface, reaching the full diameter at `d = r`. The depth hint shows this width like a V-bit's. Feeds scale like a flat bit of the same diameter.
 - **Custom bits**: add/edit/delete, stored in `localStorage`. Exportable/importable as JSON (nice-to-have).
 
 ### 7.2 Which bit can do what
-| Operation | Flat end mill | V-bit |
-|---|---|---|
-| Profile (on/inside/outside) | ✅ | ✅ (on-line only — engraving lines) |
-| Pocket | ✅ | ❌ |
-| V-carve | ❌ | ✅ |
+One table in `core/job/bitCapabilities.ts` drives CAM validation and which choices the UI offers (a cut the bit can't make stays visible, disabled with the reason).
+
+| Operation | Flat end mill | V-bit | Round-nose |
+|---|---|---|---|
+| Profile on the line (engrave) | ✅ | ✅ | ✅ (rounded groove) |
+| Profile inside/outside | ✅ | ❌ | ❌ |
+| Pocket | ✅ | ❌ | ❌ |
+| V-carve | ❌ | ✅ | ❌ |
 
 ---
 

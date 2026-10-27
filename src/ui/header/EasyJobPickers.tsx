@@ -3,6 +3,7 @@ import { setEasyBit } from '../../state/cutActions';
 import { useJobStore } from '../../state/jobStore';
 import { easyBitId, useModeStore } from '../../state/modeStore';
 import { useToolingStore } from '../../state/toolingStore';
+import { bitIcon } from '../bitIcons';
 import { Icon } from '../icons/Icon';
 
 /** Easy: the job's material and its one bit, right in the header. */
@@ -28,10 +29,7 @@ export function EasyJobPickers() {
         </select>
       </label>
       <label className="picker" title="The bit for every cut in this job">
-        <Icon
-          name={bits.find((b) => b.id === bitId)?.type === 'flat' ? 'flatBit' : 'vBit'}
-          size={16}
-        />
+        <Icon name={bitIcon(bits.find((b) => b.id === bitId))} size={16} />
         <span className="visually-hidden">Bit</span>
         <select value={bitId} onChange={(e) => setEasyBit(e.target.value)}>
           {bits.map((b) => (

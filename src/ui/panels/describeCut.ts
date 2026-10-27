@@ -1,5 +1,5 @@
 import type { Operation } from '../../core/job/job';
-import { grooveWidth, vbitMaxDepth, type Bit } from '../../core/tools/bits';
+import { fullWidthDepth, grooveWidth, type Bit } from '../../core/tools/bits';
 
 export const round2 = (v: number) => Math.round(v * 100) / 100;
 
@@ -8,9 +8,10 @@ const mm = (v: number) => `${round2(v)} mm`;
 /** The note under a depth field: how wide the cut is at the surface. */
 export function depthHint(bit: Bit, depth: number): string {
   if (bit.type === 'flat') return `Cut width: ${bit.diameter} mm`;
-  const maxDepth = vbitMaxDepth(bit);
+  const maxDepth = fullWidthDepth(bit);
+  const part = bit.type === 'vbit' ? 'cone' : 'rounded tip';
   return depth > maxDepth
-    ? `Deeper than the cone (${round2(maxDepth)} mm): the line stops getting wider.`
+    ? `Deeper than the ${part} (${round2(maxDepth)} mm): the line stops getting wider.`
     : `Line width at the surface: ${round2(grooveWidth(bit, depth))} mm`;
 }
 
@@ -30,13 +31,10 @@ export function describeCut(
     return `Clears everything inside “${name}” down to ${depth}, leaving any islands standing, with the ${bitName}.`;
   }
   if (op.side === 'on') {
-    const width = bit
-      ? bit.type === 'vbit'
-        ? grooveWidth(bit, Math.min(op.depth, vbitMaxDepth(bit)))
-        : bit.diameter
-      : null;
+    const width = bit ? grooveWidth(bit, op.depth) : null;
+    const rounded = bit?.type === 'round' ? ' round-bottomed' : '';
     return `Follows the lines of “${name}” with the ${bitName}, ${depth} deep${
-      width ? `, leaving a ${mm(width)} wide line` : ''
+      width ? `, leaving a ${mm(width)} wide${rounded} line` : ''
     }.`;
   }
   const through = op.depth >= thickness;
