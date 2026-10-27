@@ -66,12 +66,9 @@ export const grblPost: PostProcessor = {
         `Stock: ${width}x${height}x${thickness}mm | Origin: ${ctx.originLabel}, Z0 = top of material`,
       ),
     );
-    if (ctx.fileCount > 1) {
-      out.line(
-        comment(
-          `File ${ctx.fileIndex} of ${ctx.fileCount}: change the bit and re-zero Z before running`,
-        ),
-      );
+    if (ctx.fileCount > 1 || ctx.setupNote) {
+      const note = ctx.setupNote ?? 'change the bit and re-zero Z before running';
+      out.line(comment(`File ${ctx.fileIndex} of ${ctx.fileCount}: ${note}`));
     }
     out.line(comment(`Estimated time: ${formatDuration(ctx.estimatedSeconds)}`));
     out.line(comment('Start with the bit at X0 Y0, touching the top of the material'));

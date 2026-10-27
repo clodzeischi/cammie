@@ -294,6 +294,26 @@
   color: var(--text);
 }
 
+/* Turning the stock over is the big step in a two-sided job, so it stands out. */
+.toolpath-step-flip {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.toolpath-face {
+  margin: 12px 4px 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.toolpath-groups > li:first-child .toolpath-face {
+  margin-top: 4px;
+}
+
 .toolpath-group-head {
   display: flex;
   align-items: center;

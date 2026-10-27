@@ -180,6 +180,14 @@ const ICONS = {
       <path d="M9.5 11.5h5V18a2.5 2.5 0 0 1-5 0z" />
     </>
   ),
+  flip: (
+    <>
+      <path d="M12 3v18" strokeDasharray="2 2.2" />
+      <path d="M9 6 4 18h5z" {...F} />
+      <path d="M9 6 4 18h5z" />
+      <path d="m15 6 5 12h-5z" />
+    </>
+  ),
   chevronUp: <path d="m6 15 6-6 6 6" />,
   chevronDown: <path d="m6 9 6 6 6-6" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,

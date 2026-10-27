@@ -111,7 +111,8 @@ export const chamferDepth = (bit: VBit, width: number): number => width / tanHal
 
 /** One line about the bit's shape, e.g. "60° V · tip 0.2 mm" or "Ø 3.175 mm · 2-flute". */
 export function bitDetail(bit: Bit): string {
-  if (bit.type === 'vbit') return `${bit.angle}° V · tip ${bit.tipDiameter} mm · Ø ${bit.diameter} mm`;
+  if (bit.type === 'vbit')
+    return `${bit.angle}° V · tip ${bit.tipDiameter} mm · Ø ${bit.diameter} mm`;
   if (bit.type === 'round') return `Ø ${bit.diameter} mm round nose · ${bit.flutes}-flute`;
   return `Ø ${bit.diameter} mm · ${bit.flutes}-flute`;
 }

@@ -46,6 +46,7 @@ export function makeJob(objects: TestObject[] = [makeObject()]): Job {
     stock: { width: 100, height: 50, thickness: 6 },
     origin: 'bottom-left',
     materialId: 'plywood',
+    flip: 'left-right',
     objects: objects.map((o) => {
       const object: DesignObject & { operation?: unknown } = { ...o };
       delete object.operation;

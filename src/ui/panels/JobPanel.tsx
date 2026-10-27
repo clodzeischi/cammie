@@ -1,7 +1,9 @@
 import { MATERIALS } from '../../core/materials/materials';
 import { useJobStore } from '../../state/jobStore';
+import { useModeStore } from '../../state/modeStore';
 import { NumberField, SelectField } from '../common/fields';
 import { OriginPicker } from './OriginPicker';
+import { TwoSidedFields } from './TwoSidedFields';
 
 const MATERIAL_OPTIONS = MATERIALS.map((m) => ({ value: m.id, label: m.name }));
 
@@ -13,6 +15,7 @@ export function JobPanel() {
   const setStock = useJobStore((s) => s.setStock);
   const setOrigin = useJobStore((s) => s.setOrigin);
   const setMaterial = useJobStore((s) => s.setMaterial);
+  const pro = useModeStore((s) => s.mode === 'pro');
 
   // Ignore half-typed values; the field shows what's typed until it's valid.
   const positive = (apply: (v: number) => void) => (v: number) => {
@@ -52,6 +55,7 @@ export function JobPanel() {
         />
       </fieldset>
       <OriginPicker value={origin} onChange={setOrigin} />
+      {pro && <TwoSidedFields />}
       <p className="muted small">Select an object on the canvas to set how it's cut.</p>
     </section>
   );

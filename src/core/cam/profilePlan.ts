@@ -1,11 +1,7 @@
 import type { Path, Vec2 } from '../geometry/path';
 import { applyMatrix, toMatrix } from '../geometry/transform';
-import {
-  canvasToMachine,
-  machineToCanvas,
-  type DesignObject,
-  type ProfileOperation,
-} from '../job/job';
+import type { CutFrame } from '../job/faces';
+import type { DesignObject, ProfileOperation } from '../job/job';
 import type { Feeds } from '../materials/materials';
 import type { Bit } from '../tools/bits';
 import type { PlanResult } from './cutPlan';
@@ -26,7 +22,7 @@ export interface ProfilePlanInput {
   /** Source paths in machine coordinates. */
   paths: Path[];
   thickness: number;
-  origin: Vec2;
+  frame: CutFrame;
 }
 
 /** Default tab length along the path: room for a 4 mm tab plus the bit on each side. */
@@ -80,7 +76,7 @@ export function planProfile(input: ProfilePlanInput, report: Report): PlanResult
     });
   }
 
-  const toCanvas = (p: Vec2) => machineToCanvas(p, input.origin);
+  const { toCanvas } = input.frame;
   return {
     plan: { kind: 'loops', groups },
     allPaths: [...rough.paths, ...(finishing ? final.paths : [])],
@@ -101,7 +97,7 @@ function planTabs(
   allowance: number,
   report: Report,
 ): TabPlan | null {
-  const { operation, bit, thickness, object, origin } = input;
+  const { operation, bit, thickness, object, frame } = input;
   const settings = operation.tabs;
   if (!settings.enabled) return null;
   const tabZ = -(thickness - settings.height);
@@ -115,7 +111,7 @@ function planTabs(
   let points: Vec2[];
   if (settings.manual) {
     const m = toMatrix(object.transform);
-    points = settings.manual.map((p) => canvasToMachine(applyMatrix(m, p), origin));
+    points = settings.manual.map((p) => frame.toMachine(applyMatrix(m, p)));
   } else {
     points = finalLoops.flatMap((path) => {
       const loop = new Loop(path);

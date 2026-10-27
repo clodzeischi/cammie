@@ -130,6 +130,8 @@ export type ShapeParams = TextShape | RectShape | EllipseShape;
 export interface DesignObject {
   id: string;
   name: string;
+  /** Registration holes are checked against the flip line (SPEC.md §9.10). */
+  role?: 'registration';
   kind: 'traced-image' | 'svg' | ShapeParams['type'];
   /** Present for text and shapes (SPEC.md §6). */
   shape?: ShapeParams;
@@ -153,7 +155,19 @@ export interface Toolpath {
   id: string;
   objectId: string;
   operation: Operation;
+  /** Which side of the stock it's cut from; absent = the top. */
+  face?: Face;
 }
+
+/** The side of the stock facing up while cutting. Bottom cuts happen after flipping it over. */
+export type Face = 'top' | 'bottom';
+
+/**
+ * How the stock is turned over for bottom cuts: `left-right` swaps the left
+ * and right edges (turning about the vertical centre line), `top-bottom` swaps
+ * the top and bottom edges.
+ */
+export type FlipAxis = 'left-right' | 'top-bottom';
 
 export interface Job {
   stock: Stock;
@@ -161,6 +175,7 @@ export interface Job {
   materialId: string;
   objects: DesignObject[];
   toolpaths: Toolpath[];
+  flip: FlipAxis;
 }
 
 /**

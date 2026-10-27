@@ -32,14 +32,15 @@ export function PreviewBar(props: PreviewBarProps) {
         <div className="segmented" role="tablist" aria-label="File">
           {programs.map((program, i) => (
             <button
-              key={program.bit.id}
+              key={`${program.face}|${program.bit.id}`}
               type="button"
               role="tab"
               aria-selected={i === activeIndex}
               className={i === activeIndex ? 'segment segment-active' : 'segment'}
               onClick={() => props.onActiveChange(i)}
             >
-              {i + 1}. {program.bit.name}
+              {i + 1}. {program.face === 'bottom' ? 'Bottom: ' : ''}
+              {program.bit.name}
             </button>
           ))}
         </div>

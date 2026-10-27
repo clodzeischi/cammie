@@ -8,7 +8,8 @@ const mm = (v: number) => `${round2(v)} mm`;
 
 /** The note under a depth field: how wide the cut is at the surface (or, drilling, the hole). */
 export function depthHint(bit: Bit, depth: number, kind: CutKind = 'on'): string {
-  if (kind === 'drill') return `Drills a ${bit.diameter} mm hole, pecking down by the depth per pass.`;
+  if (kind === 'drill')
+    return `Drills a ${bit.diameter} mm hole, pecking down by the depth per pass.`;
   if (bit.type === 'flat') return `Cut width: ${bit.diameter} mm`;
   const maxDepth = fullWidthDepth(bit);
   const part = bit.type === 'vbit' ? 'cone' : 'rounded tip';

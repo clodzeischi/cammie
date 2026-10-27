@@ -1,6 +1,15 @@
 import { create } from 'zustand';
 import { withGroupMates } from '../core/job/arrange';
-import type { DesignObject, Job, Operation, OriginAnchor, Stock, Toolpath } from '../core/job/job';
+import type {
+  DesignObject,
+  Face,
+  FlipAxis,
+  Job,
+  Operation,
+  OriginAnchor,
+  Stock,
+  Toolpath,
+} from '../core/job/job';
 import { cutKindOf, defaultOperation } from '../core/job/objectFactory';
 import { insertToolpath, repositionToolpath, toolpathsOf } from '../core/job/toolpaths';
 import type { ObjectTransform } from '../core/geometry/transform';
@@ -38,6 +47,8 @@ export interface JobState extends Job {
   setStock: (patch: Partial<Stock>) => void;
   setOrigin: (origin: OriginAnchor) => void;
   setMaterial: (materialId: string) => void;
+  /** How the stock is turned over for bottom cuts. */
+  setFlip: (flip: FlipAxis) => void;
   setJobName: (name: string) => void;
   /** Adds an object with its first cut; pass null to add it uncut. */
   addObject: (object: DesignObject, operation?: Operation | null) => void;
@@ -60,6 +71,8 @@ export interface JobState extends Job {
   addToolpaths: (objectIds: string[], operation: (objectId: string) => Operation) => void;
   /** Settings edits; `reposition` moves it to its natural place (its cut type changed). */
   updateToolpath: (id: string, operation: Operation, reposition?: boolean) => void;
+  /** Moves a toolpath to the top or bottom of the stock (and to its natural place there). */
+  setToolpathFace: (id: string, face: Face) => void;
   /** Reorders or rewrites the whole list (moving files, changing every bit). */
   setToolpaths: (toolpaths: Toolpath[]) => void;
   removeToolpaths: (ids: string[]) => void;
@@ -88,8 +101,8 @@ function nextSelection(state: JobState, id: string | null, mode: SelectMode): st
 }
 
 /**
- * The design being worked on. Only stock, origin and material are remembered
- * between visits; the design itself is deliberately not saved (SPEC.md §2).
+ * The design being worked on. Stock, origin and material are remembered as
+ * preferences between visits; the design itself is saved as a project file.
  * Changes to the design or its toolpaths go through `change`, which records undo history.
  */
 export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = Date.now) {
@@ -126,6 +139,7 @@ export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = 
       ...prefs.load(),
       objects: [],
       toolpaths: [],
+      flip: 'left-right',
       jobName: '',
       jobNameFrom: null,
       selectedIds: [],
@@ -136,6 +150,7 @@ export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = 
       setStock: (patch) => set((s) => ({ stock: { ...s.stock, ...patch } })),
       setOrigin: (origin) => set({ origin }),
       setMaterial: (materialId) => set({ materialId }),
+      setFlip: (flip) => set({ flip }),
       setJobName: (jobName) => set({ jobName, jobNameFrom: null }),
       addObject: (object, operation = defaultOperation()) =>
         change({
@@ -201,6 +216,16 @@ export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = 
           { toolpaths: reposition ? repositionToolpath(updated, id) : updated },
           reposition ? null : `toolpath:${id}`,
         );
+      },
+      setToolpathFace: (id, face) => {
+        const updated = get().toolpaths.map((t) => {
+          if (t.id !== id) return t;
+          // The top is the default, so it's stored as no face at all.
+          const moved: Toolpath = { ...t, face };
+          if (face === 'top') delete moved.face;
+          return moved;
+        });
+        change({ toolpaths: repositionToolpath(updated, id) });
       },
       setToolpaths: (toolpaths) => change({ toolpaths }),
       removeToolpaths: (ids) =>

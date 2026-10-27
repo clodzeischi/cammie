@@ -1,7 +1,8 @@
-import { boundsOfPaths, type Bounds, type Path, type Vec2 } from '../geometry/path';
+import { boundsOfPaths, boundsOfPoints, type Bounds, type Path } from '../geometry/path';
 import { transformPaths } from '../geometry/transform';
 import { cantCutReason, canCut } from '../job/bitCapabilities';
-import { canvasToMachine, type DesignObject, type Job, type Operation } from '../job/job';
+import type { CutFrame } from '../job/faces';
+import type { DesignObject, Job, Operation } from '../job/job';
 import { cutKindOf, type CutKind } from '../job/objectFactory';
 import type { MachineConfig } from '../machine/machineConfig';
 import { overridesFor, type FeedOverrides } from '../materials/feedOverrides';
@@ -21,7 +22,8 @@ export interface CutContext {
   material: Material;
   bits: readonly Bit[];
   feedOverrides: FeedOverrides;
-  origin: Vec2;
+  /** Canvas ↔ machine for the face this toolpath is cut from. */
+  frame: CutFrame;
 }
 
 type Report = (severity: Diagnostic['severity'], message: string) => void;
@@ -72,29 +74,33 @@ export function planObjectCut(
 
   const machinePaths = transformPaths(object.paths, object.transform).map((path) => ({
     closed: path.closed,
-    points: path.points.map((p) => canvasToMachine(p, ctx.origin)),
+    points: path.points.map(ctx.frame.toMachine),
   }));
   const paths = selectPaths(machinePaths, kind === 'on', report);
   if (!paths) return null;
 
   const { thickness } = ctx.job.stock;
   const planned = planFor(
-    { object, operation, bit, feeds, paths, thickness, origin: ctx.origin },
+    { object, operation, bit, feeds, paths, thickness, frame: ctx.frame },
     report,
   );
   if (!planned) return null;
 
-  checkDepth(operation.depth, kind, thickness, planned.tabsHold, report);
+  // Registration holes go into the spoilboard on purpose, so the pins have something to sit in.
+  if (object.role !== 'registration') {
+    checkDepth(operation.depth, kind, thickness, planned.tabsHold, report);
+  }
 
   return {
     toolpathId,
     objectId: object.id,
+    face: ctx.frame.face,
     label: `${LABEL[kind]}: ${object.name}`,
     bit,
     depth: operation.depth,
     feeds,
     plan: planned.plan,
-    cutBounds: canvasCutBounds(planned.allPaths, grooveWidth(bit, operation.depth) / 2, ctx.origin),
+    cutBounds: canvasCutBounds(planned.allPaths, grooveWidth(bit, operation.depth) / 2, ctx.frame),
     tabs: planned.tabs,
   };
 }
@@ -167,13 +173,18 @@ function selectPaths(paths: Path[], allowOpen: boolean, report: Report): Path[] 
   return closed;
 }
 
-/** Tool-path bounds grown by the cut's half-width, converted back to canvas space. */
-function canvasCutBounds(paths: Path[], halfWidth: number, origin: Vec2): Bounds {
+/** Tool-path bounds converted back to canvas space, grown by the cut's half-width. */
+function canvasCutBounds(paths: Path[], halfWidth: number, frame: CutFrame): Bounds {
   const b = boundsOfPaths(paths);
+  const corners = [
+    { x: b.minX, y: b.minY },
+    { x: b.maxX, y: b.maxY },
+  ].map(frame.toCanvas);
+  const c = boundsOfPoints(corners);
   return {
-    minX: b.minX - halfWidth + origin.x,
-    maxX: b.maxX + halfWidth + origin.x,
-    minY: origin.y - b.maxY - halfWidth,
-    maxY: origin.y - b.minY + halfWidth,
+    minX: c.minX - halfWidth,
+    maxX: c.maxX + halfWidth,
+    minY: c.minY - halfWidth,
+    maxY: c.maxY + halfWidth,
   };
 }

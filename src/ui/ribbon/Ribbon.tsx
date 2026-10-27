@@ -3,6 +3,7 @@ import { addCutToSelection } from '../../state/cutActions';
 import { arrange, canGroup, canUngroup } from '../../state/arrangeActions';
 import { useJobStore } from '../../state/jobStore';
 import { useModeStore } from '../../state/modeStore';
+import { addRegistrationHoles } from '../../state/twoSidedActions';
 import { MOD_KEY } from '../common/platform';
 import { CUT_KIND_ORDER, CUT_KINDS } from '../cutKinds';
 import { DrawTools } from '../toolbar/DrawTools';
@@ -147,6 +148,14 @@ function ToolpathsTab() {
             onClick={() => addCutToSelection(k)}
           />
         ))}
+      </RibbonGroup>
+      <RibbonGroup label="Two-sided">
+        <RibbonButton
+          icon="flip"
+          label="Registration holes"
+          title="Dowel-pin holes on the flip line, so the stock goes back in place after turning it over"
+          onClick={() => addRegistrationHoles()}
+        />
       </RibbonGroup>
       <RibbonGroup label="Check">
         <RibbonButton

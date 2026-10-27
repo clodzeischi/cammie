@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { estimateProgram } from '../core/cam/estimate';
-import { anchorPoint } from '../core/job/job';
+import { cutFrame } from '../core/job/faces';
 import { useJobStore } from '../state/jobStore';
 import { useMachineStore } from '../state/machineStore';
 import { useGeneratedJob } from '../state/useGeneratedJob';
@@ -14,6 +14,7 @@ export function Workspace() {
   const setView = useJobStore((s) => s.setView);
   const stock = useJobStore((s) => s.stock);
   const origin = useJobStore((s) => s.origin);
+  const flip = useJobStore((s) => s.flip);
   const machine = useMachineStore((s) => s.config);
   const { programs, tabs } = useGeneratedJob();
 
@@ -21,10 +22,10 @@ export function Workspace() {
   const [progress, setProgress] = useState(1);
   const [showCutWidth, setShowCutWidth] = useState(true);
 
-  const previews = useMemo(() => {
-    const o = anchorPoint(stock, origin);
-    return programs.map((p) => buildPreview(p, o));
-  }, [programs, stock, origin]);
+  const previews = useMemo(
+    () => programs.map((p) => buildPreview(p, cutFrame({ stock, origin, flip }, p.face))),
+    [programs, stock, origin, flip],
+  );
   const stats = useMemo(
     () => programs.map((p) => estimateProgram(p, machine)),
     [programs, machine],

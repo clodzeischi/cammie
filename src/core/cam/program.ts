@@ -1,4 +1,5 @@
 import type { Path, Vec2 } from '../geometry/path';
+import type { Face } from '../job/job';
 import type { Bit } from '../tools/bits';
 
 /**
@@ -25,9 +26,10 @@ export interface ProgramSection {
   moves: Move[];
 }
 
-/** Everything cut with one bit, i.e. one `.nc` file. */
+/** Everything cut with one bit from one face of the stock, i.e. one `.nc` file. */
 export interface BitProgram {
   bit: Bit;
+  face: Face;
   sections: ProgramSection[];
 }
 

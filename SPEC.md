@@ -94,6 +94,7 @@ interface Job {
   materialId: string;
   objects: DesignObject[];       // z-ordered
   toolpaths: Toolpath[];         // cut order
+  flip: 'left-right' | 'top-bottom';  // how the stock turns over for bottom cuts (§9.10)
 }
 
 type OriginAnchor =
@@ -108,15 +109,16 @@ interface DesignObject {
   kind: 'svg' | 'traced-image' | 'text' | 'rect' | 'ellipse';
   shape?: TextShape | RectShape | EllipseShape;  // params of text/shapes drawn in the app
   groupId?: string;              // objects sharing one are selected/arranged together
+  role?: 'registration';         // dowel-pin holes, checked against the flip line (§9.10)
   paths: Path[];                 // flattened outlines in object-local mm, box starting at (0,0)
   width: number; height: number; // natural size of `paths`
   transform: { x: number; y: number; rotation: number; scaleX: number; scaleY: number };
 }
 
 // One cut on one object. Objects with no toolpaths aren't cut; an object may have several.
-interface Toolpath { id: string; objectId: string; operation: Operation; }
-// Job.toolpaths: Toolpath[] — list order is cut order. Toolpaths sharing a bit form one file;
-// files run in the order their bits first appear. New toolpaths are inserted where they
+interface Toolpath { id: string; objectId: string; operation: Operation; face?: 'top' | 'bottom'; }
+// Job.toolpaths: Toolpath[] — list order is cut order. Toolpaths sharing a face and bit form one
+// file; every top file runs before any bottom file, otherwise in the order their bits first appear. New toolpaths are inserted where they
 // naturally run (pockets, holes, lines, then cut-outs), so the default order is the safe one.
 
 interface Path { points: Vec2[]; closed: boolean; }
@@ -325,6 +327,13 @@ Within a bit's file:
 ### 9.9 Drill (Pro)
 - End mills and round-nose bits; closed paths only. One hole the size of the bit at the centre of each closed path's bounding box (duplicates within 0.01 mm merge, so a ring is one hole). A shape more than 0.5 mm wider than the bit gets a note to use Profile inside instead.
 - **Peck drilling**: feed down by depth/pass at plunge feed, pull up to +0.5 mm after every peck but the last to clear chips, feed back down (never a rapid below Z0, §12.3). Holes run nearest-neighbour.
+
+### 9.10 Two-sided jobs (Pro)
+- Each toolpath has a **side**: Top (default) or Bottom. Objects are always drawn as seen from the top; a bottom toolpath is the same outline cut from the back.
+- **Flip** (job setting): *left to right* turns the stock about its vertical centre line, *top to bottom* about its horizontal one. Bottom cuts are mirrored across that line before CAM runs (so climb/conventional, tabs and offsets stay correct), and mirrored back for the preview, so the preview and tab editing always show the design as seen from the top. The origin stays at the same corner of the machine bed, which the flipped stock covers exactly.
+- **Files**: one per side and bit; all top files first. Bottom files are named `<job>_<NN>_bottom_<bit>.nc`; the first one's header says to turn the stock over onto the pins (and change the bit if it changed) and re-zero Z. The Pro toolpath list shows *Top side* / *Bottom side* headings and a highlighted "Turn the stock over" step; files only move within their side.
+- **Registration holes** (Toolpaths → Registration holes, or the job panel with a pin diameter, default 6 mm): two circles on the flip line, 5 mm + a radius in from the ends, each with a Profile inside cut through the stock and 3 mm into the spoilboard (no tabs, no spoilboard warning). Each lands on itself when the stock turns over, so dowel pins put it back in place. Adding them again replaces the old ones.
+- Checks: bottom cuts with no registration holes cut from the top → warning; a registration hole moved off the flip line (> 0.05 mm) → warning. A dashed accent line marks the flip line on the canvas in two-sided jobs. Two-sided jobs are Pro only.
 
 ---
 

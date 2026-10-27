@@ -1,5 +1,6 @@
 import type { Diagnostic } from '../../core/cam/program';
 import { cutKindOf } from '../../core/job/objectFactory';
+import { FLIP_LABEL } from '../../core/job/faces';
 import { moveGroup, moveToolpath, toolpathGroups } from '../../core/job/toolpaths';
 import { bitDetail, findBit } from '../../core/tools/bits';
 import { useJobStore } from '../../state/jobStore';
@@ -30,10 +31,12 @@ export function ToolpathList() {
   const selectToolpath = useJobStore((s) => s.selectToolpath);
   const setToolpaths = useJobStore((s) => s.setToolpaths);
   const removeToolpaths = useJobStore((s) => s.removeToolpaths);
+  const flip = useJobStore((s) => s.flip);
   const bits = useToolingStore((s) => s.bits);
   const { diagnostics } = useGeneratedJob();
   const problems = severities(diagnostics);
   const groups = toolpathGroups(toolpaths);
+  const twoSided = groups.some((g) => g.face === 'bottom');
   const nameOf = (id: string) => objects.find((o) => o.id === id)?.name ?? 'Missing object';
 
   return (
@@ -56,9 +59,29 @@ export function ToolpathList() {
         <ol className="toolpath-groups">
           {groups.map((group, gi) => {
             const bit = findBit(group.bitId, bits);
+            const previous = groups[gi - 1];
+            const flipsHere = previous !== undefined && previous.face !== group.face;
+            const sameFace = (other: (typeof groups)[number] | undefined) =>
+              other !== undefined && other.face === group.face;
             return (
-              <li key={group.bitId} className="toolpath-group">
-                {gi > 0 && (
+              <li key={`${group.face}|${group.bitId}`} className="toolpath-group">
+                {twoSided && (gi === 0 || flipsHere) && (
+                  <h3 className="toolpath-face">
+                    {group.face === 'top' ? 'Top side' : 'Bottom side'}
+                  </h3>
+                )}
+                {flipsHere && (
+                  <div className="toolpath-step toolpath-step-flip">
+                    <Icon name="flip" size={16} />
+                    <span>
+                      <b>Turn the stock over</b> {FLIP_LABEL[flip]} onto the registration pins
+                      {previous.bitId === group.bitId
+                        ? ', then re-zero Z'
+                        : `, change bit to ${bit?.name ?? 'the next bit'}, then re-zero Z`}
+                    </span>
+                  </div>
+                )}
+                {gi > 0 && !flipsHere && (
                   <div className="toolpath-step">
                     <Icon name="bitChange" size={16} />
                     <span>
@@ -82,8 +105,10 @@ export function ToolpathList() {
                         className="mini-button"
                         aria-label={`Run ${bit?.name ?? 'this bit'} earlier`}
                         title="Run this file earlier"
-                        disabled={gi === 0}
-                        onClick={() => setToolpaths(moveGroup(toolpaths, group.bitId, -1))}
+                        disabled={!sameFace(previous)}
+                        onClick={() =>
+                          setToolpaths(moveGroup(toolpaths, group.face, group.bitId, -1))
+                        }
                       >
                         <Icon name="chevronUp" size={14} />
                       </button>
@@ -92,8 +117,10 @@ export function ToolpathList() {
                         className="mini-button"
                         aria-label={`Run ${bit?.name ?? 'this bit'} later`}
                         title="Run this file later"
-                        disabled={gi === groups.length - 1}
-                        onClick={() => setToolpaths(moveGroup(toolpaths, group.bitId, 1))}
+                        disabled={!sameFace(groups[gi + 1])}
+                        onClick={() =>
+                          setToolpaths(moveGroup(toolpaths, group.face, group.bitId, 1))
+                        }
                       >
                         <Icon name="chevronDown" size={14} />
                       </button>
