@@ -19,7 +19,7 @@ Status: Draft v1 · 2026-10-17
 | Out of scope | Why / alternative |
 |---|---|
 | Machine control / streaming (WebSerial) | gSender does this. |
-| Project save/load, cloud storage, accounts | Only `.nc` export. Machine settings + custom bits persist locally. |
+| Cloud storage, accounts, sync | Projects are local `.cammie` files plus a browser backup (§13.4). No backend, and Cammie stays free. |
 | DXF import | SVG and PNG only. |
 | Laser support (M4, raster engraving) | Spindle-only machine. |
 | 3D relief / heightmap carving, undercut bits (T-slot, dovetail) | 2D / 2.5D only. Round-nose bits engrave grooves (§7). |
@@ -40,7 +40,7 @@ New visitors start in Easy; the last mode is remembered (`cammie.mode.v1`, with 
 ```
 Pro
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ Cammie  [job name]                           EASY ◯━ PRO   [Export 2 files]│
+│ Cammie [job name]        [New][Open][Save]  EASY ◯━ PRO   [Export 2 files]│
 ├──────────────────────────────────────────────────────────────────────────┤
 │ Shapes | Toolpaths | Setup                    (ribbon: labelled buttons)  │
 ├──────────────┬────────────────────────────────────┬──────────────────────┤
@@ -68,6 +68,7 @@ Pro
   Chamfers and drilling are Pro only.
 - **Mode rules**: Easy → Pro never changes anything. A job with more than one bit, or more than one
   cut on a shape, opens read-only in Easy with a "Switch to Pro" button. Nothing is deleted.
+- **Project** (header, both modes): *New* (asks first if there's a design), *Open…* (⌘/Ctrl-O) and *Save* (⌘/Ctrl-S, downloads `<job>.cammie`). See §13.4.
 - **Canvas**: stock rectangle drawn to scale, mm grid, rulers, selectable origin marker, dashed outline of machine work area. Pan (space/middle-drag), zoom (wheel/pinch).
 - **Grid & snapping** (controls beside the zoom buttons; remembered in localStorage as `cammie.grid.v1`):
   - Grid size: 0.5, 1, 2, 5, 10 (default), 20, 25 or 50 mm. Lines run through the work origin, so snapped objects get round X/Y values. Darker major lines every round 5/10/25/50/100… mm. Lines closer than 6 px on screen are left out (only major lines when zoomed far out).
@@ -498,7 +499,12 @@ interface Operation<S extends OperationSettings = OperationSettings> {
 | `cammie.feedOverrides.v1` | Per material+bit feed overrides |
 | `cammie.prefs.v1` | Last material, stock size, origin, UI prefs |
 
-All reads wrapped in try/catch with fallback to defaults (private mode / blocked storage must not break the app). The design itself is **not** persisted — a reload starts fresh (a "you have unsaved work" `beforeunload` prompt when objects exist).
+All reads wrapped in try/catch with fallback to defaults (private mode / blocked storage must not break the app).
+
+**Projects** (`src/persistence/projectFile.ts`):
+- A `.cammie` file is JSON: `{ format: 'cammie-project', version: 1, jobName, job, bits }`, where `job` is the whole §4 `Job` (stock, origin, material, objects, toolpaths, flip) and `bits` the custom bits its toolpaths use, so it opens on another computer. Opening adds those bits to the library unless one with the same id exists (the user's own wins).
+- Opening validates everything: not JSON / wrong format → "isn't a Cammie project file"; a newer `version` → "saved by a newer version"; malformed geometry or cuts → "damaged (… couldn't be read)", and nothing is loaded. Settings missing from older files get today's defaults; cuts whose object is missing are dropped. Opening clears undo history.
+- **Automatic backup**: the design is saved to IndexedDB (database `cammie`, store `backup`, one entry) 0.8 s after each change. IndexedDB rather than localStorage because traced designs can pass localStorage's ~5 MB. On start-up the backup is restored (if it has objects) with the note "Your design from last time is back. Use New to start over." The `beforeunload` prompt only appears when the latest backup failed (private mode, blocked storage).
 
 ### 13.5 Hosting
 - `firebase.json`: public `dist`, SPA rewrite to `/index.html`, `Cache-Control: immutable` for `/assets/**`, short cache for `index.html`.
@@ -519,6 +525,7 @@ Each phase ends in something deployable and usable.
 | **3 — Real-world cutting** | Pocket (with islands), tabs (auto + click-edit), ramp/helix entry, finishing pass, climb/conventional, cut ordering, custom bits, feed overrides memory. | Cut-out parts with pockets come out clean and stay held by tabs. |
 | **4 — Text & shapes** | Bundled fonts, text tool, rect/ellipse, group/align, undo/redo polish. | Make a name sign without leaving the app. |
 | **5 — V-carve** | Medial-axis V-carve, multi-pass step-down, depth warnings, preview widths. | Crisp V-carved lettering in hardwood. |
+| **5b — Pro & projects** | Easy/Pro modes, ribbon, toolpath list; round-nose bits; chamfer and drill; two-sided jobs with registration holes; `.cammie` Save/Open + browser backup. | A two-sided box lid with chamfered edges comes out lined up, and the project reopens the next day. |
 | **6 — Later** | Spoilboard surfacing job, 3D carve simulation (heightmap stock + Three.js), arc fitting (G2/G3), trapezoidal tab ramps, flat-bottom V-carve with clearing bit, level-first ordering, raster pocket strategy, bit library import/export. | — |
 
 ---

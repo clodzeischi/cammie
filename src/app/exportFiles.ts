@@ -61,7 +61,7 @@ export function buildExportFiles(
   });
 }
 
-function downloadBlob(name: string, blob: Blob): void {
+export function downloadBlob(name: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

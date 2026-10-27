@@ -188,6 +188,26 @@ const ICONS = {
       <path d="m15 6 5 12h-5z" />
     </>
   ),
+  newFile: (
+    <>
+      <path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z" />
+      <path d="M14 3.5v4h4" />
+      <path d="M12 11v6M9 14h6" />
+    </>
+  ),
+  open: (
+    <>
+      <path d="M3.5 6.5v11A1.5 1.5 0 0 0 5 19h13.5l2-8H7.5l-2 8" />
+      <path d="M3.5 6.5A1.5 1.5 0 0 1 5 5h4l2 2h6a1.5 1.5 0 0 1 1.5 1.5V11" />
+    </>
+  ),
+  save: (
+    <>
+      <path d="M5 4h11.5L20 7.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
+      <path d="M8 4v5h7V4" />
+      <rect x="7.5" y="13" width="9" height="7" rx="0.5" {...F} />
+    </>
+  ),
   chevronUp: <path d="m6 15 6-6 6 6" />,
   chevronDown: <path d="m6 9 6 6 6-6" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,

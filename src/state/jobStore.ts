@@ -84,6 +84,10 @@ export interface JobState extends Job {
   undo: () => void;
   redo: () => void;
   setView: (view: View) => void;
+  /** Replaces everything with an opened project; it starts with no undo history. */
+  loadProject: (project: { jobName: string; job: Job }) => void;
+  /** Starts an empty design, keeping the stock, origin and material. */
+  clearDesign: () => void;
 }
 
 /** Stretched rectangles and ellipses store their real size (see withBakedScale). */
@@ -267,6 +271,27 @@ export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = 
         set((s) => ({ selectedIds: s.objects.map((o) => o.id), selectedToolpathId: null })),
       undo: () => restore(undo(get().history, snapshot())),
       redo: () => restore(redo(get().history, snapshot())),
+      loadProject: ({ jobName, job }) =>
+        set({
+          ...job,
+          jobName,
+          jobNameFrom: null,
+          selectedIds: [],
+          selectedToolpathId: null,
+          view: 'design',
+          history: EMPTY_HISTORY,
+        }),
+      clearDesign: () =>
+        set({
+          objects: [],
+          toolpaths: [],
+          jobName: '',
+          jobNameFrom: null,
+          selectedIds: [],
+          selectedToolpathId: null,
+          view: 'design',
+          history: EMPTY_HISTORY,
+        }),
       setView: (view) =>
         set((s) => ({
           view,

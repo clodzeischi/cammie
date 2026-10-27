@@ -58,6 +58,13 @@
   gap: 8px;
 }
 
+.project-buttons {
+  display: flex;
+  gap: 4px;
+  padding-right: 8px;
+  border-right: 1px solid var(--border);
+}
+
 .app-header .button {
   display: inline-flex;
   align-items: center;

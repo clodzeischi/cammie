@@ -143,3 +143,29 @@ describe('jobStore', () => {
     expect(stretched!.transform.scaleX).toBe(1);
   });
 });
+
+describe('projects', () => {
+  it('opens a project without undo history, and New keeps the stock', () => {
+    const store = newStore();
+    store.getState().addObject(makeObject({ id: 'old' }));
+    store.getState().loadProject({
+      jobName: 'Lid',
+      job: {
+        stock: { width: 80, height: 40, thickness: 4 },
+        origin: 'center',
+        materialId: 'mdf',
+        objects: [makeObject({ id: 'new' })],
+        toolpaths: [],
+        flip: 'top-bottom',
+      },
+    });
+    const opened = store.getState();
+    expect(opened.objects.map((o) => o.id)).toEqual(['new']);
+    expect(opened).toMatchObject({ jobName: 'Lid', flip: 'top-bottom', materialId: 'mdf' });
+    expect(opened.history.past).toEqual([]);
+
+    store.getState().clearDesign();
+    expect(store.getState()).toMatchObject({ objects: [], toolpaths: [], jobName: '' });
+    expect(store.getState().stock.width).toBe(80);
+  });
+});

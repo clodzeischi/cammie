@@ -9,6 +9,7 @@ import { useGeneratedJob, useJob } from '../state/useGeneratedJob';
 import { EasyGate } from '../ui/header/EasyGate';
 import { EasyJobPickers } from '../ui/header/EasyJobPickers';
 import { ModeSwitch } from '../ui/header/ModeSwitch';
+import { ProjectButtons } from '../ui/header/ProjectButtons';
 import { Icon } from '../ui/icons/Icon';
 import { BitLibraryDialog } from '../ui/panels/BitLibraryDialog';
 import { MachineSettingsDialog } from '../ui/panels/MachineSettingsDialog';
@@ -18,6 +19,7 @@ import { ToolpathList } from '../ui/toolpaths/ToolpathList';
 import { Workspace } from '../ui/Workspace';
 import { buildExportFiles, downloadFiles } from './exportFiles';
 import { useAppShortcuts } from './useAppShortcuts';
+import { useProjectBackup } from './useProjectBackup';
 
 export function AppShell() {
   const [machineOpen, setMachineOpen] = useState(false);
@@ -29,6 +31,7 @@ export function AppShell() {
   const job = useJob();
   const generated = useGeneratedJob();
   useAppShortcuts();
+  const restored = useProjectBackup();
 
   const easy = mode === 'easy';
   const gated = easy && !fitsEasyMode(job);
@@ -53,6 +56,7 @@ export function AppShell() {
         />
         {easy && !gated && <EasyJobPickers />}
         <div className="app-header-actions">
+          <ProjectButtons notice={restored} />
           <ModeSwitch />
           {easy && (
             <button type="button" className="button" onClick={() => setMachineOpen(true)}>

@@ -55,11 +55,9 @@ function handleShortcut(event: KeyboardEvent): boolean {
 /**
  * Editing shortcuts (undo/redo, select all, duplicate, group, delete, nudge).
  * Ignored while typing in a field, so the field's own undo and arrows work.
- * Also warns before leaving the page with a design open, since nothing is saved.
+ * Save and Open (⌘S, ⌘O) live with their buttons in ProjectButtons.
  */
 export function useAppShortcuts() {
-  const hasObjects = useJobStore((s) => s.objects.length > 0);
-
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (isTyping(event.target)) return;
@@ -68,11 +66,4 @@ export function useAppShortcuts() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-
-  useEffect(() => {
-    if (!hasObjects) return;
-    const onBeforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, [hasObjects]);
 }
