@@ -333,8 +333,8 @@ export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = 
       setView: (view) =>
         set((s) => ({
           view,
-          selectedIds: view === 'preview' ? [] : s.selectedIds,
-          selectedToolpathId: view === 'preview' ? null : s.selectedToolpathId,
+          selectedIds: view === 'design' ? s.selectedIds : [],
+          selectedToolpathId: view === 'design' ? s.selectedToolpathId : null,
         })),
     };
   });

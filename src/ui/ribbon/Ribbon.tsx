@@ -4,6 +4,7 @@ import { arrange, canGroup, canUngroup } from '../../state/arrangeActions';
 import { useJobStore } from '../../state/jobStore';
 import { useModeStore } from '../../state/modeStore';
 import { addRegistrationHoles } from '../../state/twoSidedActions';
+import { useView3DStore } from '../../state/view3dStore';
 import { MOD_KEY } from '../common/platform';
 import { CUT_KIND_ORDER, CUT_KINDS } from '../cutKinds';
 import { DrawTools } from '../toolbar/DrawTools';
@@ -132,6 +133,8 @@ function ToolpathsTab() {
   const hasSelection = useJobStore((s) => s.selectedIds.length > 0);
   const view = useJobStore((s) => s.view);
   const setView = useJobStore((s) => s.setView);
+  const pane3dOpen = useView3DStore((s) => s.open);
+  const togglePane3d = useView3DStore((s) => s.toggle);
   return (
     <>
       <RibbonGroup label="Cut">
@@ -165,6 +168,13 @@ function ToolpathsTab() {
           title="Show the toolpaths and play them back"
           active={view === 'preview'}
           onClick={() => setView(view === 'preview' ? 'design' : 'preview')}
+        />
+        <RibbonButton
+          icon="cube"
+          label="3D"
+          title="Show or hide the finished piece in 3D, beside the design"
+          active={pane3dOpen}
+          onClick={togglePane3d}
         />
       </RibbonGroup>
     </>
