@@ -20,10 +20,26 @@ export function useJob(): Job {
   );
 }
 
+type Inputs = Parameters<typeof generateJob>;
+
+/** The last result, shared by every component that asks for the same inputs. */
+let last: { keys: unknown[]; result: GeneratedJob } | null = null;
+
+function generateShared(...inputs: Inputs): GeneratedJob {
+  // Each component builds its own job object, so compare what it's made of.
+  const [job, ...rest] = inputs;
+  const keys = [...Object.values(job), ...rest];
+  if (!last || keys.length !== last.keys.length || keys.some((k, i) => k !== last!.keys[i])) {
+    last = { keys, result: generateJob(...inputs) };
+  }
+  return last.result;
+}
+
 /**
  * Toolpaths and diagnostics for the current design, recomputed when the design
- * machine, bits or remembered feeds change. Even busy pockets take well under
- * 100 ms, so this runs on the main thread; V-carve may need a worker.
+ * machine, bits or remembered feeds change, once for all the panels that show
+ * them. Even busy pockets and V-carves take well under 100 ms, so this runs on
+ * the main thread.
  */
 export function useGeneratedJob(): GeneratedJob {
   const job = useJob();
@@ -31,7 +47,7 @@ export function useGeneratedJob(): GeneratedJob {
   const bits = useToolingStore((s) => s.bits);
   const feedOverrides = useToolingStore((s) => s.feedOverrides);
   return useMemo(
-    () => generateJob(job, machine, bits, feedOverrides),
+    () => generateShared(job, machine, bits, feedOverrides),
     [job, machine, bits, feedOverrides],
   );
 }

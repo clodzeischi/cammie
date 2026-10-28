@@ -1,5 +1,5 @@
 import { defaultTabWidth } from '../../core/cam/profilePlan';
-import { canCut } from '../../core/job/bitCapabilities';
+import { canCut, preferredBitType } from '../../core/job/bitCapabilities';
 import type { Operation } from '../../core/job/job';
 import { cutKindOf, THROUGH_EXTRA, type CutKind } from '../../core/job/objectFactory';
 import { EASY_CUT_KINDS } from '../../core/job/toolpaths';
@@ -13,13 +13,14 @@ import { CUT_KINDS } from '../cutKinds';
 import { Icon } from '../icons/Icon';
 import { depthHint, round2 } from './describeCut';
 import { TabFields } from './TabFields';
+import { VCarveFields } from './VCarveFields';
 
 interface EasyCutFieldsProps {
   objectIds: string[];
 }
 
 /**
- * Easy: "How should this be cut?" as four plain choices, then just the depth
+ * Easy: "How should this be cut?" as a few plain choices, then just the depth
  * (and tabs for cut-outs). Feeds and entry come from the material presets.
  */
 export function EasyCutFields({ objectIds }: EasyCutFieldsProps) {
@@ -52,6 +53,7 @@ export function EasyCutFields({ objectIds }: EasyCutFieldsProps) {
         {EASY_CUT_KINDS.map((k: CutKind) => {
           const info = CUT_KINDS[k];
           const disabled = bit ? !canCut(bit, k) : false;
+          const needs = preferredBitType(k) === 'vbit' ? 'Needs a V-bit' : 'Needs a flat end mill';
           return (
             <button
               key={k}
@@ -59,14 +61,14 @@ export function EasyCutFields({ objectIds }: EasyCutFieldsProps) {
               className="cut-choice"
               aria-pressed={kind === k}
               aria-disabled={disabled}
-              title={disabled ? 'Needs a flat end mill. Change the bit at the top.' : info.hint}
+              title={disabled ? `${needs}. Change the bit at the top.` : info.hint}
               onClick={() => !disabled && setEasyCut(objectIds, k)}
             >
               <span style={{ color: disabled ? undefined : info.color }}>
                 <Icon name={info.icon} size={22} />
               </span>
               <b>{info.easy}</b>
-              <small>{disabled ? 'Needs a flat end mill' : info.hint}</small>
+              <small>{disabled ? needs : info.hint}</small>
             </button>
           );
         })}
@@ -76,12 +78,23 @@ export function EasyCutFields({ objectIds }: EasyCutFieldsProps) {
       )}
       {engraveOnly && (
         <p className="field-hint">
-          This bit only engraves lines. To cut shapes out, pick an end mill in the Bit menu at the
-          top.
+          This bit engraves lines and carves letters. To cut shapes out, pick an end mill in the
+          Bit menu at the top.
         </p>
       )}
 
-      {first && kind && (
+      {first?.type === 'vcarve' && kind === 'vcarve' && (
+        <VCarveFields
+          toolpathIds={toolpaths.filter((t) => objectIds.includes(t.objectId)).map((t) => t.id)}
+          operation={first}
+          bit={bit}
+          thickness={thickness}
+          onChange={(next) =>
+            update((op) => (op.type === 'vcarve' ? { ...op, warnDepth: next.warnDepth } : op))
+          }
+        />
+      )}
+      {first && kind && kind !== 'vcarve' && (
         <>
           <NumberField
             label="Depth"

@@ -7,6 +7,7 @@ import type {
   Operation,
   PocketOperation,
   ProfileOperation,
+  VCarveOperation,
 } from '../job/job';
 import { defaultOperation } from '../job/objectFactory';
 import { insertToolpath } from '../job/toolpaths';
@@ -91,4 +92,19 @@ export const chamferOp = (changes: Partial<ChamferOperation> = {}): ChamferOpera
 export const drillOp = (changes: Partial<DrillOperation> = {}): DrillOperation => {
   const { direction, entry, finishing } = defaultOperation();
   return { type: 'drill', bitId: 'flat-3.175', depth: 2, direction, entry, finishing, ...changes };
+};
+
+/** A V-carve with the 90° V-bit, warning at half the stock unless told otherwise. */
+export const vcarveOp = (changes: Partial<VCarveOperation> = {}): VCarveOperation => {
+  const { direction, entry, finishing } = defaultOperation();
+  return {
+    type: 'vcarve',
+    bitId: 'vbit-90',
+    depth: 1,
+    direction,
+    entry,
+    finishing,
+    warnDepth: null,
+    ...changes,
+  };
 };

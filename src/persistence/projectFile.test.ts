@@ -1,4 +1,4 @@
-import { chamferOp, makeJob, makeObject, pocketOp } from '../core/cam/testFixtures';
+import { chamferOp, makeJob, makeObject, pocketOp, vcarveOp } from '../core/cam/testFixtures';
 import { createShapeObject, DEFAULT_RECT } from '../core/shapes/shapeObjects';
 import type { Bit } from '../core/tools/bits';
 import { parseProject, serializeProject, type Project } from './projectFile';
@@ -11,6 +11,8 @@ function sampleProject(): Project {
   const job = makeJob([
     makeObject({ id: 'a', groupId: 'g', operation: pocketOp({ bitId: 'custom-1' }) }),
     makeObject({ id: 'b', role: 'registration', operation: chamferOp({ side: 'inside' }) }),
+    makeObject({ id: 'c', operation: vcarveOp({ warnDepth: 2.5 }) }),
+    makeObject({ id: 'd', operation: vcarveOp() }),
     { ...rect, operation: null },
   ]);
   return {

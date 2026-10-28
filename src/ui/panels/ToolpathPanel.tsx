@@ -65,6 +65,7 @@ export function ToolpathPanel({ toolpath }: ToolpathPanelProps) {
         onChange={(face) => setToolpathFace(toolpath.id, face)}
       />
       <CutFields
+        toolpathId={toolpath.id}
         operation={operation}
         onChange={(next, kindChanged) => updateToolpath(toolpath.id, next, kindChanged)}
         onRemove={() => removeToolpaths([toolpath.id])}

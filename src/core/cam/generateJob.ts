@@ -34,6 +34,7 @@ export function generateJob(
       programs: [],
       diagnostics: [{ severity: 'error', message: 'Pick a material.' }],
       tabs: [],
+      carveDepths: {},
     };
   }
 
@@ -73,7 +74,10 @@ export function generateJob(
   const tabs = cuts.flatMap((cut) =>
     cut.tabs ? [{ toolpathId: cut.toolpathId, objectId: cut.objectId, ...cut.tabs }] : [],
   );
-  return { programs: buildPrograms(cuts, machine), diagnostics, tabs };
+  const carveDepths = Object.fromEntries(
+    cuts.filter((cut) => cut.plan.kind === 'carve').map((cut) => [cut.toolpathId, cut.depth]),
+  );
+  return { programs: buildPrograms(cuts, machine), diagnostics, tabs, carveDepths };
 }
 
 /**

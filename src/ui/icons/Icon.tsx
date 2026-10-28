@@ -88,6 +88,12 @@ const ICONS = {
       <path d="M7.5 7.5h9v3h-9v3h9v3h-9" />
     </>
   ),
+  vcarve: (
+    <>
+      <path d="M3 8h6l3 8 3-8h6v12H3z" {...F} />
+      <path d="M3 8h6l3 8 3-8h6" />
+    </>
+  ),
   chamfer: (
     <>
       <path d="M4 20V9l5-5h11v16z" {...F} />

@@ -53,6 +53,8 @@ export interface GeneratedJob {
   programs: BitProgram[];
   diagnostics: Diagnostic[];
   tabs: ObjectTabs[];
+  /** How deep each V-carve toolpath goes at its widest point (mm), by toolpath id. */
+  carveDepths: Record<string, number>;
 }
 
 export const hasErrors = (diagnostics: readonly Diagnostic[]): boolean =>

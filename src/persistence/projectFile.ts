@@ -136,6 +136,10 @@ function reviveOperation(op: unknown): Operation {
         : base.finishing,
   };
   if (o.type === 'pocket' || o.type === 'drill') return { ...shared, type: o.type };
+  if (o.type === 'vcarve') {
+    const warnDepth = finite(o.warnDepth) && o.warnDepth > 0 ? o.warnDepth : null;
+    return { ...shared, type: 'vcarve', warnDepth };
+  }
   if (o.type === 'chamfer' && oneOf(o.side, ['outside', 'inside'] as const)) {
     return { ...shared, type: 'chamfer', side: o.side };
   }
