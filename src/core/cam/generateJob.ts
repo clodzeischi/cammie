@@ -95,7 +95,12 @@ function buildPrograms(cuts: ObjectCut[], machine: MachineConfig): BitProgram[] 
       const writer = new MoveWriter(machine.safeZ, cut.feeds, position);
       executePlan(writer, cut.plan);
       position = writer.position;
-      return { label: cut.label, rpm: cut.feeds.rpm, moves: writer.moves };
+      return {
+        label: cut.label,
+        rpm: cut.feeds.rpm,
+        moves: writer.moves,
+        ...(cut.plan.kind === 'carve' && { variableWidth: true }),
+      };
     });
     return { bit: group[0]!.bit, face, sections };
   });

@@ -24,6 +24,8 @@ export interface ProgramSection {
   label: string;
   rpm: number;
   moves: Move[];
+  /** The groove's width changes along the cut (V-carve), so previews draw each move at its own depth. */
+  variableWidth?: boolean;
 }
 
 /** Everything cut with one bit from one face of the stock, i.e. one `.nc` file. */

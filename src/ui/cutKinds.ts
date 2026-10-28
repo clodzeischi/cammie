@@ -24,7 +24,7 @@ export const CUT_KINDS: Record<CutKind, CutKindInfo> = {
   vcarve: {
     pro: 'V-carve',
     easy: 'Carve letters',
-    hint: 'Carves inside the shape with a V-bit, crisp corners',
+    hint: 'Carves inside the shape, deeper where it is wider',
     icon: 'vcarve',
     color: 'var(--cut-vcarve)',
   },

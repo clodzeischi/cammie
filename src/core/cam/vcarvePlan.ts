@@ -11,6 +11,9 @@ type Report = (severity: Diagnostic['severity'], message: string) => void;
 
 const fmt = (mm: number) => `${Math.round(mm * 100) / 100} mm`;
 
+/** A shape may be this much wider than the bit (mm) before the uncarved middle is worth a warning. */
+const WIDE_SLACK = 0.3;
+
 /** The warning depth when the cut doesn't set one: half the stock. */
 export const defaultWarnDepth = (thickness: number) => thickness / 2;
 
@@ -48,7 +51,8 @@ export function planVCarve(
     return null;
   }
 
-  if (depthAt(widest) > coneDepth + 1e-9) {
+  // Where strokes meet they're often a hair wider than the bit; that leaves nothing to see.
+  if (2 * widest > bit.diameter + WIDE_SLACK) {
     report(
       'warning',
       `is up to ${fmt(2 * widest)} wide, more than the ${bit.name} can carve (${fmt(bit.diameter)}). The middle of the wide parts is left uncarved; pocket them, or pick a bigger bit.`,

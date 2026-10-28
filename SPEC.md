@@ -62,9 +62,10 @@ Pro
   show a dot when they have a warning or error. Selecting a row opens its settings, headed by one
   plain sentence saying what it will do.
 - **Easy**: the same ribbon buttons as Pro (icon over label, group labels), without tabs: Import, Text, Rectangle, Circle · Undo, Redo. Material and the job's
-  one bit sit in the header. Selecting shapes asks "How should this be cut?" with four plain
-  choices (Engrave line, Cut out, Cut hole, Clear area); choices the bit can't do stay visible,
-  disabled with the reason. Only depth (and tabs) are shown; feeds and entry come from presets.
+  one bit sit in the header. Selecting shapes asks "How should this be cut?" with plain
+  choices (Engrave line, Carve letters, Cut out, Cut hole, Clear area); choices the bit can't do stay visible,
+  disabled with the reason. Only depth (and tabs) are shown, or for Carve letters the carve's depth and
+  when to warn; feeds and entry come from presets.
   Chamfers and drilling are Pro only.
 - **Mode rules**: Easy → Pro never changes anything. Pro → Easy is blocked while the job uses Pro
   features (more than one bit, more than one cut on a shape, chamfers or drilling, bottom cuts):
@@ -251,6 +252,7 @@ interface OperationSettings {
   // op-specific:
   profileSide?: 'outside' | 'inside' | 'on';   // chamfer: 'outside' | 'inside'
   tabs?: TabSettings;
+  warnDepth?: number | null;      // vcarve: warn deeper than this (mm); null = half the stock
 }
 ```
 
@@ -298,11 +300,14 @@ interface TabSettings { enabled: boolean; count: number; width: number; height: 
 - Material left behind in corners narrower than the bit → warning highlighting the area (compare pocket region vs union of swept tool area).
 
 ### 9.5 V-carve
-- V-bits only, closed paths only.
-- Algorithm: **medial-axis carving**. Sample boundaries densely (~0.05 mm), compute Voronoi (d3-delaunay), keep edges inside the shape → medial axis. Depth at each point = `distance_to_boundary / tan(angle / 2)`. Prune tiny branches (noise from sampling). Emit as 3D polylines (X/Y/Z varying).
-- If total depth at any point > depthPerPass, the carve is done in multiple step-down passes, each clamped at `max(-passDepth, -z)`.
-- **No flat-bottom / clearing tool in v1.** If the max computed depth exceeds the stock thickness, or a user-set "max depth warn" (default 50% of thickness), show a warning with the actual depth. Thin strokes at a given bit size are fine; very wide areas will be deep.
-- Preview: render with line width representing cut width at the surface.
+- V-bits only, closed paths only (open lines get "use On the line"). Offered in Easy as **Carve letters**.
+- Algorithm: **medial-axis carving**. Outlines are sampled every 0.05 mm (spacing grows above 200k samples), the Voronoi diagram comes from `d3-delaunay`'s Delaunay triangulation (circumcentres), and only edges with both ends inside the shape (even-odd, so holes in letters stay uncarved) are kept. Noise is dropped: edges between samples ≤ 2 apart on the same outline, edges whose two nearest outline points are less than 30° apart as seen from the edge (keeps branches into corners up to 150°), and dead-end twigs shorter than 3 samples.
+- Depth at each point = `max(0, r − tip/2) / tan(angle / 2)`, where r is the distance to the outline, capped at the cone's depth; strokes narrower than the tip aren't carved.
+- Chains that touch form a piece (roughly a letter); each piece is joined into as few continuous lines as possible (starting at dead ends) and carved completely before the next, nearest first. Lines are simplified in 3D to 0.01 mm.
+- Step-down: pass floors from `passDepths(deepest, depthPerPass)`. The first pass follows every line flattened at its floor; later passes only the stretches below the previous floor. Lines are split exactly where they cross each floor, so slopes stay true.
+- **No flat-bottom / clearing tool yet** (phase 6). Warnings: deeper than the cut's "Warn deeper than" (default half the stock thickness, settable per cut); deeper than the stock; wider than the bit by more than 0.3 mm (the middle is left uncarved); strokes narrower than the tip.
+- The cut panel shows the deepest point and its width at the surface instead of a depth field.
+- Preview: each move drawn as wide as the groove at its deeper end (in 0.05 mm steps).
 
 ### 9.6 Validation & warnings
 Blocking (Export disabled):
