@@ -121,8 +121,18 @@ export interface DesignObject {
   width: number;
   height: number;
   transform: ObjectTransform;
-  /** null = shown but not cut. */
-  operation: Operation | null;
+}
+
+/**
+ * One cut on one object. Objects without toolpaths are shown but not cut, and
+ * an object can have several (e.g. a pocket and then a cut-out). Toolpaths
+ * using the same bit share a file; files run in the order their bits first
+ * appear in the list, and toolpaths run in list order within a file.
+ */
+export interface Toolpath {
+  id: string;
+  objectId: string;
+  operation: Operation;
 }
 
 export interface Job {
@@ -130,6 +140,7 @@ export interface Job {
   origin: OriginAnchor;
   materialId: string;
   objects: DesignObject[];
+  toolpaths: Toolpath[];
 }
 
 /**

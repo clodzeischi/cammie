@@ -2,12 +2,17 @@ import { useCallback, useState } from 'react';
 import { createShapeObject, DEFAULT_ELLIPSE, DEFAULT_RECT } from '../../core/shapes/shapeObjects';
 import { useJobStore } from '../../state/jobStore';
 import { Toast, type ToastMessage } from '../common/Toast';
+import { newObjectOperation } from '../../state/modeStore';
+import { RibbonButton } from '../ribbon/RibbonButton';
 import { newTextObject, requestTextFocus } from '../text/textEditing';
 
 /** Text, rectangle and circle: each lands in the middle of the stock, selected. */
 export function DrawTools() {
   const stock = useJobStore((s) => s.stock);
   const addObject = useJobStore((s) => s.addObject);
+  const toolpaths = useJobStore((s) => s.toolpaths);
+  const add = (object: Parameters<typeof addObject>[0]) =>
+    addObject(object, newObjectOperation(toolpaths));
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const dismissToast = useCallback(() => setToast(null), []);
@@ -17,7 +22,7 @@ export function DrawTools() {
     try {
       const object = await newTextObject(stock);
       requestTextFocus(object.id);
-      addObject(object);
+      add(object);
     } catch {
       setToast({
         kind: 'error',
@@ -30,36 +35,25 @@ export function DrawTools() {
 
   return (
     <>
-      <button
-        type="button"
-        className="tool-button"
+      <RibbonButton
+        icon="text"
+        label="Text"
         title="Add text"
         disabled={loading}
         onClick={addText}
-      >
-        <span aria-hidden="true" className="tool-icon-text">
-          T
-        </span>
-        <span className="tool-label">Text</span>
-      </button>
-      <button
-        type="button"
-        className="tool-button"
+      />
+      <RibbonButton
+        icon="rect"
+        label="Rectangle"
         title="Add a rectangle"
-        onClick={() => addObject(createShapeObject(crypto.randomUUID(), DEFAULT_RECT, stock))}
-      >
-        <span aria-hidden="true">▭</span>
-        <span className="tool-label">Rectangle</span>
-      </button>
-      <button
-        type="button"
-        className="tool-button"
+        onClick={() => add(createShapeObject(crypto.randomUUID(), DEFAULT_RECT, stock))}
+      />
+      <RibbonButton
+        icon="ellipse"
+        label="Circle"
         title="Add a circle (stretch it into an ellipse)"
-        onClick={() => addObject(createShapeObject(crypto.randomUUID(), DEFAULT_ELLIPSE, stock))}
-      >
-        <span aria-hidden="true">◯</span>
-        <span className="tool-label">Circle</span>
-      </button>
+        onClick={() => add(createShapeObject(crypto.randomUUID(), DEFAULT_ELLIPSE, stock))}
+      />
       {toast && <Toast message={toast} onDismiss={dismissToast} />}
     </>
   );

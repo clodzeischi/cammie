@@ -1,13 +1,16 @@
 import type { Diagnostic } from '../../core/cam/program';
 import { useJobStore } from '../../state/jobStore';
+import { useModeStore } from '../../state/modeStore';
 
 interface DiagnosticsListProps {
   diagnostics: Diagnostic[];
 }
 
-/** Errors (block export) first, then warnings. Clicking one selects its object. */
+/** Errors (block export) first, then warnings. Clicking one selects its toolpath (Pro) or object. */
 export function DiagnosticsList({ diagnostics }: DiagnosticsListProps) {
   const select = useJobStore((s) => s.select);
+  const selectToolpath = useJobStore((s) => s.selectToolpath);
+  const mode = useModeStore((s) => s.mode);
   const setView = useJobStore((s) => s.setView);
   const objects = useJobStore((s) => s.objects);
   if (diagnostics.length === 0) {
@@ -32,7 +35,8 @@ export function DiagnosticsList({ diagnostics }: DiagnosticsListProps) {
                 className="link-button"
                 onClick={() => {
                   setView('design');
-                  select(d.objectId!);
+                  if (mode === 'pro' && d.toolpathId) selectToolpath(d.toolpathId);
+                  else select(d.objectId!);
                 }}
               >
                 {d.message}

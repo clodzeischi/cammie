@@ -5,6 +5,8 @@ import { useJobStore } from '../../state/jobStore';
 import { Toast, type ToastMessage } from '../common/Toast';
 import { ACCEPTED_IMAGE_TYPES, loadImage, type LoadedImage } from '../import/loadImage';
 import { TraceDialog } from '../import/TraceDialog';
+import { newObjectOperation } from '../../state/modeStore';
+import { RibbonButton } from '../ribbon/RibbonButton';
 
 const ACCEPTED = `${ACCEPTED_IMAGE_TYPES},image/svg+xml,.svg`;
 
@@ -21,6 +23,9 @@ export function ImportButton() {
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const stock = useJobStore((s) => s.stock);
   const addObject = useJobStore((s) => s.addObject);
+  const toolpaths = useJobStore((s) => s.toolpaths);
+  const add = (object: Parameters<typeof addObject>[0]) =>
+    addObject(object, newObjectOperation(toolpaths));
   const dismissToast = useCallback(() => setToast(null), []);
 
   const importSvg = async (file: File) => {
@@ -32,9 +37,7 @@ export function ImportButton() {
       });
       return;
     }
-    addObject(
-      createObject({ id: crypto.randomUUID(), name: baseName(file), kind: 'svg', paths, stock }),
-    );
+    add(createObject({ id: crypto.randomUUID(), name: baseName(file), kind: 'svg', paths, stock }));
     if (warnings.length > 0) setToast({ kind: 'info', text: warnings.join(' ') });
   };
 
@@ -66,15 +69,12 @@ export function ImportButton() {
 
   return (
     <>
-      <button
-        type="button"
-        className="tool-button"
+      <RibbonButton
+        icon="import"
+        label="Import"
         title="Import an SVG or an image (PNG, JPG)"
         onClick={() => inputRef.current?.click()}
-      >
-        <span aria-hidden="true">⬆</span>
-        <span className="tool-label">Import</span>
-      </button>
+      />
       <input
         ref={inputRef}
         type="file"
@@ -90,7 +90,7 @@ export function ImportButton() {
           stock={stock}
           onClose={closeTrace}
           onAdd={(object) => {
-            addObject(object);
+            add(object);
             closeTrace();
           }}
         />

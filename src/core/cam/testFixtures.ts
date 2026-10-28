@@ -1,6 +1,7 @@
 import type { Path } from '../geometry/path';
-import type { DesignObject, Job, PocketOperation, ProfileOperation } from '../job/job';
+import type { DesignObject, Job, Operation, PocketOperation, ProfileOperation } from '../job/job';
 import { defaultOperation } from '../job/objectFactory';
+import { insertToolpath } from '../job/toolpaths';
 
 /** Shared test data for CAM and post-processor tests. */
 
@@ -14,7 +15,10 @@ export const square = (x: number, y: number, size = 10): Path => ({
   ],
 });
 
-export function makeObject(overrides: Partial<DesignObject> = {}): DesignObject {
+/** An object plus the one cut makeJob gives it (null = not cut). */
+export type TestObject = DesignObject & { operation: Operation | null };
+
+export function makeObject(overrides: Partial<TestObject> = {}): TestObject {
   return {
     id: 'obj-1',
     name: 'Logo',
@@ -28,12 +32,22 @@ export function makeObject(overrides: Partial<DesignObject> = {}): DesignObject 
   };
 }
 
-export function makeJob(objects: DesignObject[] = [makeObject()]): Job {
+/** A job with one toolpath (id `tp-<object id>`) per object that has an operation. */
+export function makeJob(objects: TestObject[] = [makeObject()]): Job {
   return {
     stock: { width: 100, height: 50, thickness: 6 },
     origin: 'bottom-left',
     materialId: 'plywood',
-    objects,
+    objects: objects.map((o) => {
+      const object: DesignObject & { operation?: unknown } = { ...o };
+      delete object.operation;
+      return object;
+    }),
+    toolpaths: objects.reduce<Job['toolpaths']>(
+      (list, { id, operation }) =>
+        operation ? insertToolpath(list, { id: `tp-${id}`, objectId: id, operation }) : list,
+      [],
+    ),
   };
 }
 

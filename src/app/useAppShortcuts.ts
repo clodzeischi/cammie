@@ -35,6 +35,9 @@ function handleShortcut(event: KeyboardEvent): boolean {
   } else if (mod && key === 'g') {
     if (event.shiftKey) arrange.ungroup();
     else arrange.group();
+  } else if ((key === 'delete' || key === 'backspace') && state.selectedToolpathId) {
+    // A toolpath picked in the Pro list: delete the cut, not the shape.
+    state.removeToolpaths([state.selectedToolpathId]);
   } else if ((key === 'delete' || key === 'backspace') && hasSelection) {
     arrange.remove();
   } else if (key === 'escape' && hasSelection) {

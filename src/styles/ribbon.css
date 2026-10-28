@@ -1,0 +1,639 @@
+/* ---------- Icons ---------- */
+.icon {
+  flex: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- Ribbon ---------- */
+.ribbon {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.ribbon-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 12px;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border);
+}
+
+.ribbon-tab {
+  margin-bottom: -1px;
+  padding: 7px 16px 6px;
+  font: inherit;
+  font-size: 13px;
+  border: 1px solid transparent;
+  border-bottom: 2px solid transparent;
+  border-radius: 6px 6px 0 0;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.ribbon-tab:hover {
+  color: var(--text);
+}
+
+.ribbon-tab[aria-selected='true'] {
+  border-color: var(--border);
+  border-bottom: 2px solid var(--accent);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.ribbon-body {
+  display: flex;
+  align-items: stretch;
+  padding: 6px 8px 0;
+  overflow-x: auto;
+}
+
+.ribbon-group {
+  display: flex;
+  flex-direction: column;
+  padding: 0 6px;
+  border-right: 1px solid var(--border);
+}
+
+.ribbon-group:last-child {
+  border-right: none;
+}
+
+.ribbon-buttons {
+  flex: 1;
+  display: flex;
+  gap: 2px;
+}
+
+.ribbon-group-label {
+  padding: 2px 0 5px;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.ribbon-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 60px;
+  padding: 6px 6px 4px;
+  font: inherit;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.ribbon-button:hover:not(:disabled) {
+  background: var(--surface-sunken);
+  border-color: var(--border);
+}
+
+.ribbon-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ribbon-button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.ribbon-label {
+  font-size: 11.5px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* Easy: one compact row, icon beside the label. */
+.ribbon-easy .ribbon-body {
+  padding: 4px 8px;
+}
+
+.ribbon-easy .ribbon-group-label {
+  display: none;
+}
+
+.ribbon-easy .ribbon-button {
+  flex-direction: row;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 10px;
+}
+
+.ribbon-easy .ribbon-label {
+  font-size: 13px;
+}
+
+/* ---------- Header: mode switch and Easy pickers ---------- */
+.mode-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 8px;
+}
+
+.mode-label {
+  padding: 2px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.mode-label-on {
+  color: var(--text);
+}
+
+.switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface-sunken);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition:
+    transform 0.15s,
+    background 0.15s;
+}
+
+.switch[aria-checked='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.switch[aria-checked='true']::after {
+  transform: translateX(18px);
+  background: var(--accent);
+}
+
+.header-pickers {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 4px 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.picker select {
+  min-width: 0;
+  max-width: 180px;
+  padding: 4px 2px;
+  font: inherit;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* ---------- Pro toolpath list ---------- */
+.toolpath-pane {
+  overflow-y: auto;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+.pane-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.pane-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.pane-hint {
+  margin: 10px;
+  padding: 10px;
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.toolpath-groups,
+.toolpath-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.toolpath-groups {
+  padding: 6px 8px 0;
+}
+
+.toolpath-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 2px;
+  padding: 7px 9px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
+.toolpath-step b {
+  color: var(--text);
+}
+
+.toolpath-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px 4px;
+}
+
+.file-number {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--text);
+  color: var(--surface);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.toolpath-group-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.toolpath-group-name b {
+  font-size: 13px;
+}
+
+.toolpath-group-name small {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.toolpath-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+}
+
+.toolpath-row:hover {
+  background: var(--surface-sunken);
+}
+
+.toolpath-row[aria-current='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.toolpath-select {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  font: inherit;
+  text-align: left;
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.toolpath-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.toolpath-name b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.toolpath-name small {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.toolpath-depth {
+  font: 11px var(--mono);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.problem-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.problem-error {
+  background: var(--danger);
+}
+
+.problem-warning {
+  background: var(--warning);
+}
+
+/* Reorder and delete appear on hover, focus or selection to keep rows calm. */
+.row-actions {
+  display: flex;
+  gap: 1px;
+  padding-right: 4px;
+  opacity: 0;
+}
+
+.toolpath-row:hover .row-actions,
+.toolpath-row:focus-within .row-actions,
+.toolpath-row[aria-current='true'] .row-actions,
+.toolpath-group-head:hover .row-actions,
+.toolpath-group-head:focus-within .row-actions {
+  opacity: 1;
+}
+
+.mini-button {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.mini-button:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.mini-button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+@media (hover: none) {
+  .row-actions {
+    opacity: 1;
+  }
+}
+
+/* ---------- Toolpath panel ---------- */
+.panel-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.panel-title-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cut-badge {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--surface-sunken);
+}
+
+.cut-says {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.applies-to {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.chip {
+  padding: 2px 9px;
+  font: inherit;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+}
+
+/* ---------- Easy cut choices ---------- */
+.cut-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.cut-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px;
+  font: inherit;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.cut-choice:hover:not([aria-disabled='true']) {
+  border-color: var(--accent);
+}
+
+.cut-choice b {
+  font-size: 13px;
+}
+
+.cut-choice small {
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
+.cut-choice[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.cut-choice[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  color: var(--text-muted);
+}
+
+.cut-choice[aria-disabled='true'] small {
+  color: var(--warning);
+}
+
+/* ---------- Pro: an object's toolpaths ---------- */
+.object-toolpaths {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.toolpath-chip {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  font: inherit;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.toolpath-chip > :first-child {
+  grid-row: span 2;
+}
+
+.toolpath-chip:hover {
+  border-color: var(--accent);
+}
+
+.add-cut-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ---------- Easy gate ---------- */
+.easy-gate {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.25);
+}
+
+.easy-gate-card {
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 22px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.25);
+}
+
+.easy-gate-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+
+.easy-gate-card p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch,
+  .switch::after {
+    transition: none;
+  }
+}

@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { withGroupMates } from '../core/job/arrange';
-import type { DesignObject, Job, OriginAnchor, Stock } from '../core/job/job';
+import type { DesignObject, Job, Operation, OriginAnchor, Stock, Toolpath } from '../core/job/job';
+import { cutKindOf, defaultOperation } from '../core/job/objectFactory';
+import { insertToolpath, repositionToolpath, toolpathsOf } from '../core/job/toolpaths';
 import type { ObjectTransform } from '../core/geometry/transform';
 import { withBakedScale } from '../core/shapes/shapeObjects';
 import { createBrowserStore } from '../persistence/keyValueStore';
@@ -28,6 +30,8 @@ export interface JobState extends Job {
    */
   jobNameFrom: string | null;
   selectedIds: string[];
+  /** The toolpath shown in the side panel (Pro mode); its object is selected too. */
+  selectedToolpathId: string | null;
   view: View;
   history: History;
 
@@ -35,7 +39,8 @@ export interface JobState extends Job {
   setOrigin: (origin: OriginAnchor) => void;
   setMaterial: (materialId: string) => void;
   setJobName: (name: string) => void;
-  addObject: (object: DesignObject) => void;
+  /** Adds an object with its first cut; pass null to add it uncut. */
+  addObject: (object: DesignObject, operation?: Operation | null) => void;
   /** Edits from the side panel; quick repeats on the same fields are one undo step. */
   updateObject: (id: string, patch: Partial<DesignObject>) => void;
   /** Moves/resizes from the canvas, possibly several objects at once. */
@@ -44,8 +49,23 @@ export interface JobState extends Job {
    * Replaces the design, e.g. after aligning or duplicating; optionally selects.
    * Changes with the same `key` in quick succession are one undo step.
    */
-  setObjects: (objects: DesignObject[], selectedIds?: string[], key?: string) => void;
+  setObjects: (
+    objects: DesignObject[],
+    selectedIds?: string[],
+    key?: string,
+    toolpaths?: Toolpath[],
+  ) => void;
   removeObjects: (ids: string[]) => void;
+  /** Gives each object a new toolpath where it naturally runs, and selects the first. */
+  addToolpaths: (objectIds: string[], operation: (objectId: string) => Operation) => void;
+  /** Settings edits; `reposition` moves it to its natural place (its cut type changed). */
+  updateToolpath: (id: string, operation: Operation, reposition?: boolean) => void;
+  /** Reorders or rewrites the whole list (moving files, changing every bit). */
+  setToolpaths: (toolpaths: Toolpath[]) => void;
+  removeToolpaths: (ids: string[]) => void;
+  /** Easy mode: each object's one cut (null = none), as one undo step. */
+  setObjectCuts: (cuts: Record<string, Operation | null>) => void;
+  selectToolpath: (id: string | null) => void;
   select: (id: string | null, mode?: SelectMode) => void;
   selectAll: () => void;
   undo: () => void;
@@ -70,22 +90,33 @@ function nextSelection(state: JobState, id: string | null, mode: SelectMode): st
 /**
  * The design being worked on. Only stock, origin and material are remembered
  * between visits; the design itself is deliberately not saved (SPEC.md §2).
- * Changes to the design go through `change`, which records undo history.
+ * Changes to the design or its toolpaths go through `change`, which records undo history.
  */
 export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = Date.now) {
   const store = create<JobState>()((set, get) => {
     const snapshot = (): Snapshot => ({
       objects: get().objects,
+      toolpaths: get().toolpaths,
       selectedIds: get().selectedIds,
+    });
+    const newToolpath = (objectId: string, operation: Operation): Toolpath => ({
+      id: crypto.randomUUID(),
+      objectId,
+      operation,
     });
     const change = (next: Partial<JobState>, key: string | null = null) =>
       set((s) => ({ ...next, history: record(s.history, snapshot(), key, now()) }));
     const restore = (step: { snapshot: Snapshot; history: History } | null) => {
       if (!step) return;
       const ids = new Set(step.snapshot.objects.map((o) => o.id));
+      const selectedToolpathId = get().selectedToolpathId;
       set({
         objects: step.snapshot.objects,
+        toolpaths: step.snapshot.toolpaths,
         selectedIds: step.snapshot.selectedIds.filter((id) => ids.has(id)),
+        selectedToolpathId: step.snapshot.toolpaths.some((t) => t.id === selectedToolpathId)
+          ? selectedToolpathId
+          : null,
         history: step.history,
         view: 'design',
       });
@@ -94,9 +125,11 @@ export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = 
     return {
       ...prefs.load(),
       objects: [],
+      toolpaths: [],
       jobName: '',
       jobNameFrom: null,
       selectedIds: [],
+      selectedToolpathId: null,
       view: 'design',
       history: EMPTY_HISTORY,
 
@@ -104,10 +137,14 @@ export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = 
       setOrigin: (origin) => set({ origin }),
       setMaterial: (materialId) => set({ materialId }),
       setJobName: (jobName) => set({ jobName, jobNameFrom: null }),
-      addObject: (object) =>
+      addObject: (object, operation = defaultOperation()) =>
         change({
           objects: [...get().objects, object],
+          toolpaths: operation
+            ? insertToolpath(get().toolpaths, newToolpath(object.id, operation))
+            : get().toolpaths,
           selectedIds: [object.id],
+          selectedToolpathId: null,
           ...(!get().jobName && { jobName: object.name, jobNameFrom: object.id }),
           view: 'design',
         }),
@@ -129,19 +166,88 @@ export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = 
             ),
           ),
         }),
-      setObjects: (objects, selectedIds, key) =>
-        change({ objects: normalise(objects), ...(selectedIds && { selectedIds }) }, key),
-      removeObjects: (ids) =>
+      setObjects: (objects, selectedIds, key, toolpaths) =>
+        change(
+          {
+            objects: normalise(objects),
+            ...(selectedIds && { selectedIds, selectedToolpathId: null }),
+            ...(toolpaths && { toolpaths }),
+          },
+          key,
+        ),
+      removeObjects: (ids) => {
+        const toolpaths = get().toolpaths.filter((t) => !ids.includes(t.objectId));
         change({
           objects: get().objects.filter((o) => !ids.includes(o.id)),
+          toolpaths,
           selectedIds: get().selectedIds.filter((s) => !ids.includes(s)),
+          selectedToolpathId: toolpaths.some((t) => t.id === get().selectedToolpathId)
+            ? get().selectedToolpathId
+            : null,
+        });
+      },
+      addToolpaths: (objectIds, operation) => {
+        const added = objectIds.map((id) => newToolpath(id, operation(id)));
+        if (added.length === 0) return;
+        change({
+          toolpaths: added.reduce(insertToolpath, get().toolpaths),
+          selectedToolpathId: added[0]!.id,
+          selectedIds: [added[0]!.objectId],
+        });
+      },
+      updateToolpath: (id, operation, reposition = false) => {
+        const updated = get().toolpaths.map((t) => (t.id === id ? { ...t, operation } : t));
+        change(
+          { toolpaths: reposition ? repositionToolpath(updated, id) : updated },
+          reposition ? null : `toolpath:${id}`,
+        );
+      },
+      setToolpaths: (toolpaths) => change({ toolpaths }),
+      removeToolpaths: (ids) =>
+        change({
+          toolpaths: get().toolpaths.filter((t) => !ids.includes(t.id)),
+          selectedToolpathId: ids.includes(get().selectedToolpathId ?? '')
+            ? null
+            : get().selectedToolpathId,
         }),
-      select: (id, mode = 'replace') => set((s) => ({ selectedIds: nextSelection(s, id, mode) })),
-      selectAll: () => set((s) => ({ selectedIds: s.objects.map((o) => o.id) })),
+      setObjectCuts: (cuts) => {
+        let toolpaths = get().toolpaths;
+        let kindChanged = false;
+        for (const [objectId, operation] of Object.entries(cuts)) {
+          const [current] = toolpathsOf(toolpaths, objectId);
+          const others = toolpaths.filter((t) => t.objectId !== objectId);
+          if (!operation) {
+            kindChanged ||= Boolean(current);
+            toolpaths = others;
+          } else if (current && cutKindOf(current.operation) === cutKindOf(operation)) {
+            toolpaths = toolpaths.map((t) => (t.id === current.id ? { ...t, operation } : t));
+          } else {
+            kindChanged = true;
+            const toolpath = current ? { ...current, operation } : newToolpath(objectId, operation);
+            toolpaths = insertToolpath(others, toolpath);
+          }
+        }
+        change({ toolpaths }, kindChanged ? null : `cuts:${Object.keys(cuts).join(',')}`);
+      },
+      selectToolpath: (id) => {
+        const toolpath = get().toolpaths.find((t) => t.id === id);
+        set({
+          selectedToolpathId: toolpath ? toolpath.id : null,
+          selectedIds: toolpath ? [toolpath.objectId] : get().selectedIds,
+        });
+      },
+      select: (id, mode = 'replace') =>
+        set((s) => ({ selectedIds: nextSelection(s, id, mode), selectedToolpathId: null })),
+      selectAll: () =>
+        set((s) => ({ selectedIds: s.objects.map((o) => o.id), selectedToolpathId: null })),
       undo: () => restore(undo(get().history, snapshot())),
       redo: () => restore(redo(get().history, snapshot())),
       setView: (view) =>
-        set((s) => ({ view, selectedIds: view === 'preview' ? [] : s.selectedIds })),
+        set((s) => ({
+          view,
+          selectedIds: view === 'preview' ? [] : s.selectedIds,
+          selectedToolpathId: view === 'preview' ? null : s.selectedToolpathId,
+        })),
     };
   });
 

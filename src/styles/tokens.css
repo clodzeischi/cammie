@@ -25,6 +25,12 @@
   --canvas-toolpath-1: #1f6fd1;
   --canvas-toolpath-2: #b0388f;
   --canvas-toolpath-3: #1a8a6a;
+  /* One colour per kind of cut, for icons in the toolpath list and choice cards. */
+  --cut-on: #7a4fb8;
+  --cut-outside: #b5562b;
+  --cut-inside: #17806f;
+  --cut-pocket: #a86d00;
+  --accent-soft: rgb(181 86 43 / 0.12);
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   color-scheme: light;
@@ -55,6 +61,11 @@
     --canvas-toolpath-1: #6aa8ff;
     --canvas-toolpath-2: #f07acb;
     --canvas-toolpath-3: #4fd1a8;
+    --cut-on: #b896ef;
+    --cut-outside: #e07a48;
+    --cut-inside: #4cc7b2;
+    --cut-pocket: #f0b44c;
+    --accent-soft: rgb(224 122 72 / 0.16);
     color-scheme: dark;
   }
 }

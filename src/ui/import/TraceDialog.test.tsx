@@ -48,7 +48,6 @@ describe('TraceDialog', () => {
     expect(object.height).toBeCloseTo(24, 0);
     expect(object.transform.x).toBe(80);
     expect(object.transform.y).toBeCloseTo((100 - object.height) / 2);
-    expect(object.operation?.bitId).toBe('vbit-60');
   });
 
   it('blocks adding with an invalid width', async () => {
