@@ -1,17 +1,15 @@
 import type { Diagnostic } from '../../core/cam/program';
 import { cutKindOf } from '../../core/job/objectFactory';
+import { FLIP_LABEL } from '../../core/job/faces';
 import { moveGroup, moveToolpath, toolpathGroups } from '../../core/job/toolpaths';
-import { findBit, type Bit } from '../../core/tools/bits';
+import { bitDetail, findBit } from '../../core/tools/bits';
 import { useJobStore } from '../../state/jobStore';
 import { useGeneratedJob } from '../../state/useGeneratedJob';
 import { useToolingStore } from '../../state/toolingStore';
+import { useActiveSide } from '../../state/useActiveSide';
+import { bitIcon } from '../bitIcons';
 import { CUT_KINDS } from '../cutKinds';
 import { Icon } from '../icons/Icon';
-
-const bitDetail = (bit: Bit) =>
-  bit.type === 'vbit'
-    ? `${bit.angle}° · tip ${bit.tipDiameter} mm`
-    : `Ø ${bit.diameter} mm · ${bit.flutes}-flute`;
 
 /** The worst problem reported for each toolpath, for the dot on its row. */
 function severities(diagnostics: readonly Diagnostic[]) {
@@ -34,10 +32,15 @@ export function ToolpathList() {
   const selectToolpath = useJobStore((s) => s.selectToolpath);
   const setToolpaths = useJobStore((s) => s.setToolpaths);
   const removeToolpaths = useJobStore((s) => s.removeToolpaths);
+  const flip = useJobStore((s) => s.flip);
+  const setSideView = useJobStore((s) => s.setSideView);
+  const side = useActiveSide();
   const bits = useToolingStore((s) => s.bits);
   const { diagnostics } = useGeneratedJob();
   const problems = severities(diagnostics);
   const groups = toolpathGroups(toolpaths);
+  const twoSided = groups.some((g) => g.face === 'bottom');
+  const hiddenFiles = groups.filter((g) => side !== 'both' && g.face !== side).length;
   const nameOf = (id: string) => objects.find((o) => o.id === id)?.name ?? 'Missing object';
 
   return (
@@ -59,10 +62,32 @@ export function ToolpathList() {
       ) : (
         <ol className="toolpath-groups">
           {groups.map((group, gi) => {
+            // Hidden while working on the other side; numbering still counts it.
+            if (side !== 'both' && group.face !== side) return null;
             const bit = findBit(group.bitId, bits);
+            const previous = groups[gi - 1];
+            const flipsHere = previous !== undefined && previous.face !== group.face;
+            const sameFace = (other: (typeof groups)[number] | undefined) =>
+              other !== undefined && other.face === group.face;
             return (
-              <li key={group.bitId} className="toolpath-group">
-                {gi > 0 && (
+              <li key={`${group.face}|${group.bitId}`} className="toolpath-group">
+                {twoSided && (gi === 0 || flipsHere) && (
+                  <h3 className="toolpath-face">
+                    {group.face === 'top' ? 'Top side' : 'Bottom side'}
+                  </h3>
+                )}
+                {flipsHere && (
+                  <div className="toolpath-step toolpath-step-flip">
+                    <Icon name="flip" size={16} />
+                    <span>
+                      <b>Turn the stock over</b> {FLIP_LABEL[flip]} onto the registration pins
+                      {previous.bitId === group.bitId
+                        ? ', then re-zero Z'
+                        : `, change bit to ${bit?.name ?? 'the next bit'}, then re-zero Z`}
+                    </span>
+                  </div>
+                )}
+                {gi > 0 && !flipsHere && (
                   <div className="toolpath-step">
                     <Icon name="bitChange" size={16} />
                     <span>
@@ -74,7 +99,7 @@ export function ToolpathList() {
                   <span className="file-number" aria-label={`File ${gi + 1}`}>
                     {gi + 1}
                   </span>
-                  <Icon name={bit?.type === 'vbit' ? 'vBit' : 'flatBit'} size={18} />
+                  <Icon name={bitIcon(bit)} size={18} />
                   <span className="toolpath-group-name">
                     <b>{bit?.name ?? 'Missing bit'}</b>
                     {bit && <small>{bitDetail(bit)}</small>}
@@ -86,8 +111,10 @@ export function ToolpathList() {
                         className="mini-button"
                         aria-label={`Run ${bit?.name ?? 'this bit'} earlier`}
                         title="Run this file earlier"
-                        disabled={gi === 0}
-                        onClick={() => setToolpaths(moveGroup(toolpaths, group.bitId, -1))}
+                        disabled={!sameFace(previous)}
+                        onClick={() =>
+                          setToolpaths(moveGroup(toolpaths, group.face, group.bitId, -1))
+                        }
                       >
                         <Icon name="chevronUp" size={14} />
                       </button>
@@ -96,8 +123,10 @@ export function ToolpathList() {
                         className="mini-button"
                         aria-label={`Run ${bit?.name ?? 'this bit'} later`}
                         title="Run this file later"
-                        disabled={gi === groups.length - 1}
-                        onClick={() => setToolpaths(moveGroup(toolpaths, group.bitId, 1))}
+                        disabled={!sameFace(groups[gi + 1])}
+                        onClick={() =>
+                          setToolpaths(moveGroup(toolpaths, group.face, group.bitId, 1))
+                        }
                       >
                         <Icon name="chevronDown" size={14} />
                       </button>
@@ -171,6 +200,15 @@ export function ToolpathList() {
             );
           })}
         </ol>
+      )}
+      {hiddenFiles > 0 && (
+        <p className="pane-hint">
+          {side === 'top' ? 'Bottom' : 'Top'} side hidden ({hiddenFiles}{' '}
+          {hiddenFiles === 1 ? 'file' : 'files'}).{' '}
+          <button type="button" className="link-button" onClick={() => setSideView('both')}>
+            Show both sides
+          </button>
+        </p>
       )}
       {groups.length > 0 && (
         <p className="pane-hint">

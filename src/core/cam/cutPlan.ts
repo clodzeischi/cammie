@@ -1,8 +1,10 @@
 import type { Bounds, Path, Vec2 } from '../geometry/path';
+import type { Face } from '../job/job';
 import type { Feeds } from '../materials/materials';
 import type { Bit } from '../tools/bits';
 import { cutPocket, type PocketRings } from './pocket';
 import { cutLoops, type CutLoopsParams } from './toolpath/cutLoops';
+import { cutDrill, type DrillParams } from './toolpath/drill';
 import type { MoveWriter } from './toolpath/moveWriter';
 
 /** How to cut one object, ready to turn into moves. Coordinates are machine space. */
@@ -14,7 +16,8 @@ export type CutPlan =
       depths: number[];
       entry: CutLoopsParams['entry'];
       finish: CutLoopsParams | null;
-    };
+    }
+  | ({ kind: 'drill' } & DrillParams);
 
 /** Where tabs are and where they could go, in canvas space, for the preview editor. */
 export interface TabPreview {
@@ -28,6 +31,7 @@ export interface TabPreview {
 export interface ObjectCut {
   toolpathId: string;
   objectId: string;
+  face: Face;
   label: string;
   bit: Bit;
   depth: number;
@@ -51,6 +55,10 @@ export interface PlanResult {
 export function executePlan(writer: MoveWriter, plan: CutPlan): void {
   if (plan.kind === 'loops') {
     plan.groups.forEach((group) => cutLoops(writer, group));
+    return;
+  }
+  if (plan.kind === 'drill') {
+    cutDrill(writer, plan);
     return;
   }
   cutPocket(writer, { rings: plan.rings, depths: plan.depths, entry: plan.entry });

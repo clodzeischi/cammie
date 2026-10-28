@@ -1,16 +1,20 @@
 import type { Operation } from '../../core/job/job';
-import { grooveWidth, vbitMaxDepth, type Bit } from '../../core/tools/bits';
+import type { CutKind } from '../../core/job/objectFactory';
+import { chamferWidth, fullWidthDepth, grooveWidth, type Bit } from '../../core/tools/bits';
 
 export const round2 = (v: number) => Math.round(v * 100) / 100;
 
 const mm = (v: number) => `${round2(v)} mm`;
 
-/** The note under a depth field: how wide the cut is at the surface. */
-export function depthHint(bit: Bit, depth: number): string {
+/** The note under a depth field: how wide the cut is at the surface (or, drilling, the hole). */
+export function depthHint(bit: Bit, depth: number, kind: CutKind = 'on'): string {
+  if (kind === 'drill')
+    return `Drills a ${bit.diameter} mm hole, pecking down by the depth per pass.`;
   if (bit.type === 'flat') return `Cut width: ${bit.diameter} mm`;
-  const maxDepth = vbitMaxDepth(bit);
+  const maxDepth = fullWidthDepth(bit);
+  const part = bit.type === 'vbit' ? 'cone' : 'rounded tip';
   return depth > maxDepth
-    ? `Deeper than the cone (${round2(maxDepth)} mm): the line stops getting wider.`
+    ? `Deeper than the ${part} (${round2(maxDepth)} mm): the line stops getting wider.`
     : `Line width at the surface: ${round2(grooveWidth(bit, depth))} mm`;
 }
 
@@ -29,14 +33,20 @@ export function describeCut(
   if (op.type === 'pocket') {
     return `Clears everything inside “${name}” down to ${depth}, leaving any islands standing, with the ${bitName}.`;
   }
+  if (op.type === 'drill') {
+    const size = bit ? `${mm(bit.diameter)} ` : '';
+    return `Drills a ${size}hole ${op.depth >= thickness ? 'right through the stock' : `${depth} deep`} at the centre of each shape in “${name}”.`;
+  }
+  if (op.type === 'chamfer') {
+    const width = bit?.type === 'vbit' ? `${mm(chamferWidth(bit, op.depth))} ` : '';
+    const edge = op.side === 'outside' ? `the edges of “${name}”` : `the rim of the “${name}” hole`;
+    return `Bevels ${edge} ${width}wide with the ${bitName}.`;
+  }
   if (op.side === 'on') {
-    const width = bit
-      ? bit.type === 'vbit'
-        ? grooveWidth(bit, Math.min(op.depth, vbitMaxDepth(bit)))
-        : bit.diameter
-      : null;
+    const width = bit ? grooveWidth(bit, op.depth) : null;
+    const rounded = bit?.type === 'round' ? ' round-bottomed' : '';
     return `Follows the lines of “${name}” with the ${bitName}, ${depth} deep${
-      width ? `, leaving a ${mm(width)} wide line` : ''
+      width ? `, leaving a ${mm(width)} wide${rounded} line` : ''
     }.`;
   }
   const through = op.depth >= thickness;

@@ -42,7 +42,28 @@ export const CUT_KINDS: Record<CutKind, CutKindInfo> = {
     icon: 'pocket',
     color: 'var(--cut-pocket)',
   },
+  chamfer: {
+    pro: 'Chamfer',
+    easy: 'Bevel edges',
+    hint: 'Bevels the edges with a V-bit',
+    icon: 'chamfer',
+    color: 'var(--cut-chamfer)',
+  },
+  drill: {
+    pro: 'Drill',
+    easy: 'Drill holes',
+    hint: 'Drills a hole at the centre of each shape',
+    icon: 'drill',
+    color: 'var(--cut-drill)',
+  },
 };
 
-/** Menu and button order: lines, then cut-outs, holes and pockets. */
-export const CUT_KIND_ORDER: readonly CutKind[] = ['on', 'outside', 'inside', 'pocket'];
+/** Pro menu and button order: lines, then cut-outs, holes, pockets, chamfers and drilling. */
+export const CUT_KIND_ORDER: readonly CutKind[] = [
+  'on',
+  'outside',
+  'inside',
+  'pocket',
+  'chamfer',
+  'drill',
+];

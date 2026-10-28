@@ -34,11 +34,16 @@ export function validateMachineConfig(config: MachineConfig): FieldError[] {
     ...positive('workArea.z', config.workArea.z, 'Work area Z'),
     ...positive('maxFeedXY', config.maxFeedXY, 'Max XY feed'),
     ...positive('maxFeedZ', config.maxFeedZ, 'Max Z feed'),
-    ...positive('maxSpindleRpm', config.maxSpindleRpm, 'Max spindle RPM'),
-    ...positive('maxSValue', config.maxSValue, 'Max S value'),
     ...positive('safeZ', config.safeZ, 'Safe Z'),
-    ...nonNegative('spindleDwell', config.spindleDwell, 'Spindle dwell'),
   ];
+  // With a hand-switched spindle these are hidden and never used.
+  if (!config.manualSpindle) {
+    errors.push(
+      ...positive('maxSpindleRpm', config.maxSpindleRpm, 'Max spindle RPM'),
+      ...positive('maxSValue', config.maxSValue, 'Max S value'),
+      ...nonNegative('spindleDwell', config.spindleDwell, 'Spindle dwell'),
+    );
+  }
 
   if (Number.isFinite(config.safeZ) && config.safeZ > config.workArea.z) {
     errors.push({ field: 'safeZ', message: 'Safe Z must fit within the Z travel.' });

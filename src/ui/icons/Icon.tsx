@@ -88,6 +88,22 @@ const ICONS = {
       <path d="M7.5 7.5h9v3h-9v3h9v3h-9" />
     </>
   ),
+  chamfer: (
+    <>
+      <path d="M4 20V9l5-5h11v16z" {...F} />
+      <path d="M4 20V9l5-5h11" />
+      <path d="M4 9h5V4" strokeDasharray="2 2" />
+    </>
+  ),
+  drill: (
+    <>
+      <circle cx="7.5" cy="16.5" r="2.5" {...F} />
+      <circle cx="7.5" cy="16.5" r="2.5" />
+      <circle cx="16.5" cy="7.5" r="2.5" {...F} />
+      <circle cx="16.5" cy="7.5" r="2.5" />
+      <path d="M7.5 3v5M5 5.5h5M16.5 16v5M14 18.5h5" />
+    </>
+  ),
   preview: (
     <>
       <circle cx="12" cy="12" r="8.5" />
@@ -155,6 +171,41 @@ const ICONS = {
       <rect x="9" y="2.5" width="6" height="10" rx="1" />
       <path d="M9 12.5h6L12 21z" {...F} />
       <path d="M9 12.5h6L12 21z" />
+    </>
+  ),
+  roundBit: (
+    <>
+      <rect x="9" y="2.5" width="6" height="9" rx="1" />
+      <path d="M9.5 11.5h5V18a2.5 2.5 0 0 1-5 0z" {...F} />
+      <path d="M9.5 11.5h5V18a2.5 2.5 0 0 1-5 0z" />
+    </>
+  ),
+  flip: (
+    <>
+      <path d="M12 3v18" strokeDasharray="2 2.2" />
+      <path d="M9 6 4 18h5z" {...F} />
+      <path d="M9 6 4 18h5z" />
+      <path d="m15 6 5 12h-5z" />
+    </>
+  ),
+  newFile: (
+    <>
+      <path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 6 20z" />
+      <path d="M14 3.5v4h4" />
+      <path d="M12 11v6M9 14h6" />
+    </>
+  ),
+  open: (
+    <>
+      <path d="M3.5 6.5v11A1.5 1.5 0 0 0 5 19h13.5l2-8H7.5l-2 8" />
+      <path d="M3.5 6.5A1.5 1.5 0 0 1 5 5h4l2 2h6a1.5 1.5 0 0 1 1.5 1.5V11" />
+    </>
+  ),
+  save: (
+    <>
+      <path d="M5 4h11.5L20 7.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
+      <path d="M8 4v5h7V4" />
+      <rect x="7.5" y="13" width="9" height="7" rx="0.5" {...F} />
     </>
   ),
   chevronUp: <path d="m6 15 6-6 6 6" />,

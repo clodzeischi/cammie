@@ -65,6 +65,14 @@ describe('grblPost', () => {
     expect(lintGcode(render(), DEFAULT_MACHINE_CONFIG)).toEqual([]);
   });
 
+  it('leaves the spindle alone when it is switched by hand', () => {
+    const machine: MachineConfig = { ...DEFAULT_MACHINE_CONFIG, manualSpindle: true };
+    const text = render(machine);
+    expect(text).not.toMatch(/^(M3|M5|S\d|G4)/m);
+    expect(text).toContain('(Spindle: switch it on by hand before running, and off when done)');
+    expect(lintGcode(text, machine)).toEqual([]);
+  });
+
   it('includes custom header/footer and honours the end position', () => {
     const machine: MachineConfig = {
       ...DEFAULT_MACHINE_CONFIG,

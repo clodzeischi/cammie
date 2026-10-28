@@ -1,6 +1,16 @@
 import { create } from 'zustand';
 import { withGroupMates } from '../core/job/arrange';
-import type { DesignObject, Job, Operation, OriginAnchor, Stock, Toolpath } from '../core/job/job';
+import { faceOf, isTwoSided, shownOnSide, type SideView } from '../core/job/faces';
+import type {
+  DesignObject,
+  Face,
+  FlipAxis,
+  Job,
+  Operation,
+  OriginAnchor,
+  Stock,
+  Toolpath,
+} from '../core/job/job';
 import { cutKindOf, defaultOperation } from '../core/job/objectFactory';
 import { insertToolpath, repositionToolpath, toolpathsOf } from '../core/job/toolpaths';
 import type { ObjectTransform } from '../core/geometry/transform';
@@ -33,11 +43,15 @@ export interface JobState extends Job {
   /** The toolpath shown in the side panel (Pro mode); its object is selected too. */
   selectedToolpathId: string | null;
   view: View;
+  /** Two-sided jobs: show both sides, or hide the shapes and files of the other one. */
+  sideView: SideView;
   history: History;
 
   setStock: (patch: Partial<Stock>) => void;
   setOrigin: (origin: OriginAnchor) => void;
   setMaterial: (materialId: string) => void;
+  /** How the stock is turned over for bottom cuts. */
+  setFlip: (flip: FlipAxis) => void;
   setJobName: (name: string) => void;
   /** Adds an object with its first cut; pass null to add it uncut. */
   addObject: (object: DesignObject, operation?: Operation | null) => void;
@@ -56,10 +70,15 @@ export interface JobState extends Job {
     toolpaths?: Toolpath[],
   ) => void;
   removeObjects: (ids: string[]) => void;
-  /** Gives each object a new toolpath where it naturally runs, and selects the first. */
+  /**
+   * Gives each object a new toolpath where it naturally runs, and selects the
+   * first. It's cut from the side being worked on (the top when showing both).
+   */
   addToolpaths: (objectIds: string[], operation: (objectId: string) => Operation) => void;
   /** Settings edits; `reposition` moves it to its natural place (its cut type changed). */
   updateToolpath: (id: string, operation: Operation, reposition?: boolean) => void;
+  /** Moves a toolpath to the top or bottom of the stock (and to its natural place there). */
+  setToolpathFace: (id: string, face: Face) => void;
   /** Reorders or rewrites the whole list (moving files, changing every bit). */
   setToolpaths: (toolpaths: Toolpath[]) => void;
   removeToolpaths: (ids: string[]) => void;
@@ -71,14 +90,31 @@ export interface JobState extends Job {
   undo: () => void;
   redo: () => void;
   setView: (view: View) => void;
+  setSideView: (side: SideView) => void;
+  /** Replaces everything with an opened project; it starts with no undo history. */
+  loadProject: (project: { jobName: string; job: Job }) => void;
+  /** Starts an empty design, keeping the stock, origin and material. */
+  clearDesign: () => void;
 }
+
+/** The side actually shown: a job that isn't two-sided always shows everything. */
+export const activeSide = (s: Pick<JobState, 'objects' | 'toolpaths' | 'sideView'>): SideView =>
+  isTwoSided(s) ? s.sideView : 'both';
+
+/** Ids of the shapes shown for the side being worked on. */
+const shownIds = (s: JobState): Set<string> => {
+  const side = activeSide(s);
+  return new Set(s.objects.filter((o) => shownOnSide(o, s.toolpaths, side)).map((o) => o.id));
+};
 
 /** Stretched rectangles and ellipses store their real size (see withBakedScale). */
 const normalise = (objects: DesignObject[]) => objects.map(withBakedScale);
 
 function nextSelection(state: JobState, id: string | null, mode: SelectMode): string[] {
   if (id === null) return [];
-  const unit = withGroupMates(state.objects, [id]);
+  // Group mates on the hidden side stay unselected, so they can't be dragged unseen.
+  const shown = shownIds(state);
+  const unit = withGroupMates(state.objects, [id]).filter((u) => shown.has(u));
   const selected = state.selectedIds.includes(id);
   if (mode === 'keep' && selected) return state.selectedIds;
   if (mode !== 'toggle') return unit;
@@ -88,8 +124,8 @@ function nextSelection(state: JobState, id: string | null, mode: SelectMode): st
 }
 
 /**
- * The design being worked on. Only stock, origin and material are remembered
- * between visits; the design itself is deliberately not saved (SPEC.md §2).
+ * The design being worked on. Stock, origin and material are remembered as
+ * preferences between visits; the design itself is saved as a project file.
  * Changes to the design or its toolpaths go through `change`, which records undo history.
  */
 export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = Date.now) {
@@ -126,16 +162,19 @@ export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = 
       ...prefs.load(),
       objects: [],
       toolpaths: [],
+      flip: 'left-right',
       jobName: '',
       jobNameFrom: null,
       selectedIds: [],
       selectedToolpathId: null,
       view: 'design',
+      sideView: 'both',
       history: EMPTY_HISTORY,
 
       setStock: (patch) => set((s) => ({ stock: { ...s.stock, ...patch } })),
       setOrigin: (origin) => set({ origin }),
       setMaterial: (materialId) => set({ materialId }),
+      setFlip: (flip) => set({ flip }),
       setJobName: (jobName) => set({ jobName, jobNameFrom: null }),
       addObject: (object, operation = defaultOperation()) =>
         change({
@@ -187,7 +226,11 @@ export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = 
         });
       },
       addToolpaths: (objectIds, operation) => {
-        const added = objectIds.map((id) => newToolpath(id, operation(id)));
+        const bottom = activeSide(get()) === 'bottom';
+        const added = objectIds.map((id) => ({
+          ...newToolpath(id, operation(id)),
+          ...(bottom && { face: 'bottom' as const }),
+        }));
         if (added.length === 0) return;
         change({
           toolpaths: added.reduce(insertToolpath, get().toolpaths),
@@ -201,6 +244,16 @@ export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = 
           { toolpaths: reposition ? repositionToolpath(updated, id) : updated },
           reposition ? null : `toolpath:${id}`,
         );
+      },
+      setToolpathFace: (id, face) => {
+        const updated = get().toolpaths.map((t) => {
+          if (t.id !== id) return t;
+          // The top is the default, so it's stored as no face at all.
+          const moved: Toolpath = { ...t, face };
+          if (face === 'top') delete moved.face;
+          return moved;
+        });
+        change({ toolpaths: repositionToolpath(updated, id) });
       },
       setToolpaths: (toolpaths) => change({ toolpaths }),
       removeToolpaths: (ids) =>
@@ -238,10 +291,45 @@ export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = 
       },
       select: (id, mode = 'replace') =>
         set((s) => ({ selectedIds: nextSelection(s, id, mode), selectedToolpathId: null })),
-      selectAll: () =>
-        set((s) => ({ selectedIds: s.objects.map((o) => o.id), selectedToolpathId: null })),
+      selectAll: () => set((s) => ({ selectedIds: [...shownIds(s)], selectedToolpathId: null })),
       undo: () => restore(undo(get().history, snapshot())),
       redo: () => restore(redo(get().history, snapshot())),
+      loadProject: ({ jobName, job }) =>
+        set({
+          ...job,
+          sideView: 'both',
+          jobName,
+          jobNameFrom: null,
+          selectedIds: [],
+          selectedToolpathId: null,
+          view: 'design',
+          history: EMPTY_HISTORY,
+        }),
+      clearDesign: () =>
+        set({
+          objects: [],
+          toolpaths: [],
+          jobName: '',
+          jobNameFrom: null,
+          selectedIds: [],
+          selectedToolpathId: null,
+          view: 'design',
+          history: EMPTY_HISTORY,
+        }),
+      setSideView: (sideView) =>
+        set((s) => {
+          const next = { ...s, sideView };
+          const shown = shownIds(next);
+          const toolpath = s.toolpaths.find((t) => t.id === s.selectedToolpathId);
+          return {
+            sideView,
+            selectedIds: s.selectedIds.filter((id) => shown.has(id)),
+            selectedToolpathId:
+              toolpath && (activeSide(next) === 'both' || faceOf(toolpath) === activeSide(next))
+                ? toolpath.id
+                : null,
+          };
+        }),
       setView: (view) =>
         set((s) => ({
           view,

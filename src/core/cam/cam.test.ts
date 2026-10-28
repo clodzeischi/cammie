@@ -173,6 +173,24 @@ describe('generateJob', () => {
       'Logo: goes past the edge of the stock.',
     ]);
   });
+
+  it('engraves with a round-nose bit but refuses walls and floors', () => {
+    const job = makeJob([
+      makeObject({ id: 'a', operation: profileOp({ bitId: 'round-3.175', depth: 1 }) }),
+      makeObject({ id: 'b', operation: profileOp({ bitId: 'round-3.175', side: 'outside' }) }),
+    ]);
+    const { programs, diagnostics } = generateJob(job, DEFAULT_MACHINE_CONFIG);
+    expect(programs.map((p) => p.bit.id)).toEqual(['round-3.175']);
+    expect(programs[0]!.sections).toHaveLength(1);
+    expect(diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        toolpathId: 'tp-b',
+        message:
+          'Logo: Round-nose bits only cut on the line and drill. Pick an end mill for this cut.',
+      }),
+    );
+  });
 });
 
 describe('estimateProgram', () => {
@@ -184,5 +202,20 @@ describe('estimateProgram', () => {
     expect(stats.cutLength).toBeCloseTo(81.5);
     expect(stats.maxDepth).toBe(1);
     expect(stats.seconds).toBeGreaterThan(0);
+  });
+});
+
+describe('manual spindle', () => {
+  it('skips RPM checks and spin-up time when the spindle is switched by hand', () => {
+    const machine = { ...DEFAULT_MACHINE_CONFIG, manualSpindle: true };
+    const job = makeJob([makeObject({ operation: profileOp({ depth: 1, entry: 'plunge' }) })]);
+    // An RPM override past the machine's max would normally be lowered with a note.
+    const overrides = { 'plywood|vbit-60': { rpm: 50000 } };
+    const { programs, diagnostics } = generateJob(job, machine, undefined, overrides);
+    expect(diagnostics).toEqual([]);
+    const withDwell = estimateProgram(programs[0]!, { ...machine, manualSpindle: false });
+    expect(estimateProgram(programs[0]!, machine).seconds).toBeCloseTo(
+      withDwell.seconds - machine.spindleDwell,
+    );
   });
 });

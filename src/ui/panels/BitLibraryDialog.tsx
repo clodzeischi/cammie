@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BUILT_IN_BITS, type Bit } from '../../core/tools/bits';
+import { bitDetail, BUILT_IN_BITS, type Bit } from '../../core/tools/bits';
 import { useToolingStore } from '../../state/toolingStore';
 import { Modal } from '../common/Modal';
 import { BitForm } from './BitForm';
@@ -16,11 +16,6 @@ const newBitDraft = (): Bit => ({
   diameter: 3.175,
   flutes: 2,
 });
-
-const describe = (bit: Bit) =>
-  bit.type === 'vbit'
-    ? `${bit.angle}° V, tip ${bit.tipDiameter} mm, Ø ${bit.diameter} mm`
-    : `Ø ${bit.diameter} mm, ${bit.flutes}-flute`;
 
 /** Built-in bits (read-only) and the user's own, which are saved in the browser. */
 export function BitLibraryDialog({ onClose }: BitLibraryDialogProps) {
@@ -69,7 +64,7 @@ export function BitLibraryDialog({ onClose }: BitLibraryDialogProps) {
                 <li key={bit.id}>
                   <span>
                     <strong>{bit.name}</strong>
-                    <span className="muted small"> {describe(bit)}</span>
+                    <span className="muted small"> {bitDetail(bit)}</span>
                   </span>
                   <span className="bit-actions">
                     <button type="button" className="link-button" onClick={() => setEditing(bit)}>
@@ -89,7 +84,7 @@ export function BitLibraryDialog({ onClose }: BitLibraryDialogProps) {
               <li key={bit.id}>
                 <span>
                   {bit.name}
-                  <span className="muted small"> {describe(bit)}</span>
+                  <span className="muted small"> {bitDetail(bit)}</span>
                 </span>
               </li>
             ))}

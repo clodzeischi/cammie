@@ -124,6 +124,7 @@ interface SelectFieldProps<T extends string> {
   value: T;
   options: ReadonlyArray<SelectOption<T>>;
   onChange: (value: T) => void;
+  hint?: ReactNode;
 }
 
 export function SelectField<T extends string>({
@@ -131,6 +132,7 @@ export function SelectField<T extends string>({
   value,
   options,
   onChange,
+  hint,
 }: SelectFieldProps<T>) {
   const renderOption = (option: SelectOption<T>) => (
     <option key={option.value} value={option.value}>
@@ -139,7 +141,7 @@ export function SelectField<T extends string>({
   );
   const groups = [...new Set(options.map((o) => o.group))];
   return (
-    <FieldShell label={label}>
+    <FieldShell label={label} hint={hint}>
       {(id) => (
         <select id={id} value={value} onChange={(e) => onChange(e.target.value as T)}>
           {groups.map((group) =>

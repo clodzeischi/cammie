@@ -47,6 +47,7 @@ export function reviveMachineConfig(stored: unknown): MachineConfig {
     },
     maxFeedXY: num(stored.maxFeedXY, d.maxFeedXY),
     maxFeedZ: num(stored.maxFeedZ, d.maxFeedZ),
+    manualSpindle: stored.manualSpindle === true,
     maxSpindleRpm: num(stored.maxSpindleRpm, d.maxSpindleRpm),
     maxSValue: num(stored.maxSValue, d.maxSValue),
     safeZ: num(stored.safeZ, d.safeZ),

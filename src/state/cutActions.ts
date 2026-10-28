@@ -1,3 +1,4 @@
+import { canCut, preferredBitType } from '../core/job/bitCapabilities';
 import type { Operation, Toolpath } from '../core/job/job';
 import { cutKindOf, newOperation, withCutKind, type CutKind } from '../core/job/objectFactory';
 import { DEFAULT_FLAT_BIT_ID, DEFAULT_VBIT_ID, findBit, type Bit } from '../core/tools/bits';
@@ -8,15 +9,16 @@ import { useToolingStore } from './toolingStore';
 /**
  * The bit a new cut of this kind should use: the one the job already uses for
  * that kind of work, so adding a cut doesn't add a bit change. Lines prefer
- * V-bits; everything else needs an end mill.
+ * engraving bits (V-bit or round-nose); everything else needs an end mill.
  */
 export function bitForNewCut(kind: CutKind, toolpaths: readonly Toolpath[], bits: readonly Bit[]) {
-  const wanted = kind === 'on' ? 'vbit' : 'flat';
+  const suits = (b: Bit) =>
+    canCut(b, kind) && (preferredBitType(kind) === 'flat') === (b.type === 'flat');
   const used = [...toolpaths]
     .reverse()
     .map((t) => findBit(t.operation.bitId, bits))
-    .find((b) => b?.type === wanted);
-  return used?.id ?? (kind === 'on' ? DEFAULT_VBIT_ID : DEFAULT_FLAT_BIT_ID);
+    .find((b) => b && suits(b));
+  return used?.id ?? (preferredBitType(kind) === 'vbit' ? DEFAULT_VBIT_ID : DEFAULT_FLAT_BIT_ID);
 }
 
 /** Pro: adds a cut of this kind to every selected object. */
@@ -27,15 +29,15 @@ export function addCutToSelection(kind: CutKind) {
 }
 
 /**
- * Easy: switches the whole job to another bit. V-bits can only engrave, so
- * any other cut becomes an engraved line at the usual depth.
+ * Easy: switches the whole job to another bit. Cuts the new bit can't make
+ * (V-bits and round-nose bits only engrave) become engraved lines at the usual depth.
  */
 export function setEasyBit(bitId: string) {
   const { toolpaths, setToolpaths, stock } = useJobStore.getState();
   useModeStore.getState().setEasyBit(bitId);
-  const vbit = findBit(bitId, useToolingStore.getState().bits)?.type === 'vbit';
+  const bit = findBit(bitId, useToolingStore.getState().bits);
   const rebit = (op: Operation): Operation =>
-    vbit && !(op.type === 'profile' && op.side === 'on')
+    bit && !canCut(bit, cutKindOf(op))
       ? newOperation('on', bitId, stock.thickness)
       : { ...op, bitId };
   if (toolpaths.length === 0) return;

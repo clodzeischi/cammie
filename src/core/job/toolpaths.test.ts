@@ -65,8 +65,8 @@ describe('moving toolpaths', () => {
   });
 
   it('moves a whole file earlier or later', () => {
-    expect(ids(moveGroup(list, 'vbit-60', -1))).toEqual(['b', 'a', 'c']);
-    expect(ids(moveGroup(list, 'vbit-60', 1))).toEqual(['a', 'c', 'b']);
+    expect(ids(moveGroup(list, 'top', 'vbit-60', -1))).toEqual(['b', 'a', 'c']);
+    expect(ids(moveGroup(list, 'top', 'vbit-60', 1))).toEqual(['a', 'c', 'b']);
   });
 });
 

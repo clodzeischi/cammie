@@ -13,9 +13,10 @@ export function useJob(): Job {
   const materialId = useJobStore((s) => s.materialId);
   const objects = useJobStore((s) => s.objects);
   const toolpaths = useJobStore((s) => s.toolpaths);
+  const flip = useJobStore((s) => s.flip);
   return useMemo(
-    () => ({ stock, origin, materialId, objects, toolpaths }),
-    [stock, origin, materialId, objects, toolpaths],
+    () => ({ stock, origin, materialId, objects, toolpaths, flip }),
+    [stock, origin, materialId, objects, toolpaths, flip],
   );
 }
 

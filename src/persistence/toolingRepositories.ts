@@ -34,7 +34,7 @@ export function reviveCustomBits(stored: unknown): Bit[] {
     if (!isObject(b) || typeof b.id !== 'string' || typeof b.name !== 'string') return [];
     if (!positive(b.diameter) || !positive(b.flutes)) return [];
     const base = { id: b.id, name: b.name, diameter: b.diameter, flutes: Math.round(b.flutes) };
-    if (b.type === 'flat') return [{ ...base, type: 'flat' }];
+    if (b.type === 'flat' || b.type === 'round') return [{ ...base, type: b.type }];
     if (
       b.type === 'vbit' &&
       positive(b.angle) &&

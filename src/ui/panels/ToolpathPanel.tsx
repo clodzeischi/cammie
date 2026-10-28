@@ -1,12 +1,19 @@
-import type { Toolpath } from '../../core/job/job';
+import { faceOf } from '../../core/job/faces';
+import type { Face, Toolpath } from '../../core/job/job';
 import { cutKindOf } from '../../core/job/objectFactory';
 import { findBit } from '../../core/tools/bits';
 import { useJobStore } from '../../state/jobStore';
 import { useToolingStore } from '../../state/toolingStore';
+import { SelectField } from '../common/fields';
 import { CUT_KINDS } from '../cutKinds';
 import { Icon } from '../icons/Icon';
 import { CutFields } from './CutFields';
 import { describeCut } from './describeCut';
+
+const FACES: ReadonlyArray<{ value: Face; label: string }> = [
+  { value: 'top', label: 'Top' },
+  { value: 'bottom', label: 'Bottom (after turning the stock over)' },
+];
 
 interface ToolpathPanelProps {
   toolpath: Toolpath;
@@ -18,6 +25,7 @@ export function ToolpathPanel({ toolpath }: ToolpathPanelProps) {
   const thickness = useJobStore((s) => s.stock.thickness);
   const updateToolpath = useJobStore((s) => s.updateToolpath);
   const removeToolpaths = useJobStore((s) => s.removeToolpaths);
+  const setToolpathFace = useJobStore((s) => s.setToolpathFace);
   const select = useJobStore((s) => s.select);
   const selectToolpath = useJobStore((s) => s.selectToolpath);
   const bits = useToolingStore((s) => s.bits);
@@ -50,6 +58,12 @@ export function ToolpathPanel({ toolpath }: ToolpathPanelProps) {
           {name}
         </button>
       </div>
+      <SelectField
+        label="Side of the stock"
+        value={faceOf(toolpath)}
+        options={FACES}
+        onChange={(face) => setToolpathFace(toolpath.id, face)}
+      />
       <CutFields
         operation={operation}
         onChange={(next, kindChanged) => updateToolpath(toolpath.id, next, kindChanged)}

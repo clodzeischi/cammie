@@ -26,8 +26,11 @@ export function resolveFeeds(
   machine: MachineConfig,
 ): ResolvedFeeds {
   const wanted: Feeds = { ...presetFeeds(material, bit), ...overrides };
+  // A hand-switched spindle runs at whatever its knob says; the RPM isn't used.
   const invalid = (Object.keys(wanted) as Array<keyof Feeds>).filter(
-    (key) => !Number.isFinite(wanted[key]) || wanted[key] <= 0,
+    (key) =>
+      !(key === 'rpm' && machine.manualSpindle) &&
+      (!Number.isFinite(wanted[key]) || wanted[key] <= 0),
   );
 
   const clamped: string[] = [];
@@ -48,7 +51,7 @@ export function resolveFeeds(
       feed: limit('feed', machine.maxFeedXY, 'mm/min'),
       plunge: limit('plunge', machine.maxFeedZ, 'mm/min'),
       depthPerPass: wanted.depthPerPass,
-      rpm: limit('rpm', machine.maxSpindleRpm, 'RPM'),
+      rpm: machine.manualSpindle ? wanted.rpm : limit('rpm', machine.maxSpindleRpm, 'RPM'),
       stepover: limit('stepover', 100, '%'),
     },
     clamped,

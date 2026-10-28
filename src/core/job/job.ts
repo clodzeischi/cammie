@@ -72,8 +72,28 @@ export interface PocketOperation extends CutBase {
   type: 'pocket';
 }
 
+/**
+ * Bevels the edges of a closed shape with a V-bit (SPEC.md §9.8). `outside`
+ * bevels the shape's own edges (a part); `inside` bevels the rim of a hole of
+ * this shape. `depth` sets the width: width = depth × tan(half the bit's angle).
+ * The finishing pass doesn't apply.
+ */
+export interface ChamferOperation extends CutBase {
+  type: 'chamfer';
+  side: 'outside' | 'inside';
+}
+
+/**
+ * Drills one hole the size of the bit at the centre of each closed shape,
+ * pecking down by the depth per pass (SPEC.md §9.9). Direction, entry and the
+ * finishing pass don't apply; they're kept so switching cut types loses nothing.
+ */
+export interface DrillOperation extends CutBase {
+  type: 'drill';
+}
+
 /** Later phases add V-carve. */
-export type Operation = ProfileOperation | PocketOperation;
+export type Operation = ProfileOperation | PocketOperation | ChamferOperation | DrillOperation;
 
 export type TextAlign = 'left' | 'center' | 'right';
 
@@ -110,6 +130,8 @@ export type ShapeParams = TextShape | RectShape | EllipseShape;
 export interface DesignObject {
   id: string;
   name: string;
+  /** Registration holes are checked against the flip line (SPEC.md §9.10). */
+  role?: 'registration';
   kind: 'traced-image' | 'svg' | ShapeParams['type'];
   /** Present for text and shapes (SPEC.md §6). */
   shape?: ShapeParams;
@@ -133,7 +155,19 @@ export interface Toolpath {
   id: string;
   objectId: string;
   operation: Operation;
+  /** Which side of the stock it's cut from; absent = the top. */
+  face?: Face;
 }
+
+/** The side of the stock facing up while cutting. Bottom cuts happen after flipping it over. */
+export type Face = 'top' | 'bottom';
+
+/**
+ * How the stock is turned over for bottom cuts: `left-right` swaps the left
+ * and right edges (turning about the vertical centre line), `top-bottom` swaps
+ * the top and bottom edges.
+ */
+export type FlipAxis = 'left-right' | 'top-bottom';
 
 export interface Job {
   stock: Stock;
@@ -141,6 +175,7 @@ export interface Job {
   materialId: string;
   objects: DesignObject[];
   toolpaths: Toolpath[];
+  flip: FlipAxis;
 }
 
 /**

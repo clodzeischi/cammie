@@ -3,6 +3,7 @@ import { addCutToSelection } from '../../state/cutActions';
 import { arrange, canGroup, canUngroup } from '../../state/arrangeActions';
 import { useJobStore } from '../../state/jobStore';
 import { useModeStore } from '../../state/modeStore';
+import { addRegistrationHoles } from '../../state/twoSidedActions';
 import { MOD_KEY } from '../common/platform';
 import { CUT_KIND_ORDER, CUT_KINDS } from '../cutKinds';
 import { DrawTools } from '../toolbar/DrawTools';
@@ -24,8 +25,9 @@ interface RibbonProps {
 }
 
 /**
- * Commands along the top. Pro groups them into Design, Toolpaths and Setup
- * tabs; Easy shows one row of drawing tools, with material and bit in the header.
+ * Commands along the top, in the same button style in both modes. Pro groups
+ * them into Shapes, Toolpaths and Setup tabs; Easy shows just the drawing
+ * tools, with material and bit in the header.
  */
 export function Ribbon({ onOpenBits, onOpenMachine }: RibbonProps) {
   const mode = useModeStore((s) => s.mode);
@@ -33,7 +35,7 @@ export function Ribbon({ onOpenBits, onOpenMachine }: RibbonProps) {
 
   if (mode === 'easy') {
     return (
-      <nav className="ribbon ribbon-easy" aria-label="Tools">
+      <nav className="ribbon" aria-label="Tools">
         <div className="ribbon-body">
           <RibbonGroup label="Add">
             <ImportButton />
@@ -147,6 +149,14 @@ function ToolpathsTab() {
             onClick={() => addCutToSelection(k)}
           />
         ))}
+      </RibbonGroup>
+      <RibbonGroup label="Two-sided">
+        <RibbonButton
+          icon="flip"
+          label="Registration holes"
+          title="Dowel-pin holes on the flip line, so the stock goes back in place after turning it over"
+          onClick={() => addRegistrationHoles()}
+        />
       </RibbonGroup>
       <RibbonGroup label="Check">
         <RibbonButton

@@ -1,13 +1,15 @@
 import { defaultTabWidth } from '../../core/cam/profilePlan';
+import { canCut } from '../../core/job/bitCapabilities';
 import type { Operation } from '../../core/job/job';
 import { cutKindOf, THROUGH_EXTRA, type CutKind } from '../../core/job/objectFactory';
+import { EASY_CUT_KINDS } from '../../core/job/toolpaths';
 import { findBit } from '../../core/tools/bits';
 import { setEasyCut } from '../../state/cutActions';
 import { useJobStore } from '../../state/jobStore';
 import { easyBitId, useModeStore } from '../../state/modeStore';
 import { useToolingStore } from '../../state/toolingStore';
 import { NumberField } from '../common/fields';
-import { CUT_KIND_ORDER, CUT_KINDS } from '../cutKinds';
+import { CUT_KINDS } from '../cutKinds';
 import { Icon } from '../icons/Icon';
 import { depthHint, round2 } from './describeCut';
 import { TabFields } from './TabFields';
@@ -32,7 +34,7 @@ export function EasyCutFields({ objectIds }: EasyCutFieldsProps) {
   const kinds = new Set(ops.map((op) => (op ? cutKindOf(op) : null)));
   const kind = kinds.size === 1 ? [...kinds][0]! : undefined;
   const first = ops.find((op): op is Operation => op !== null);
-  const vbit = bit?.type === 'vbit';
+  const engraveOnly = bit ? !canCut(bit, 'outside') : false;
   const count = objectIds.length;
 
   /** Applies a settings change to every selected object's cut. */
@@ -47,9 +49,9 @@ export function EasyCutFields({ objectIds }: EasyCutFieldsProps) {
     <fieldset>
       <legend>{count > 1 ? `How should these ${count} be cut?` : 'How should this be cut?'}</legend>
       <div className="cut-choices">
-        {CUT_KIND_ORDER.map((k: CutKind) => {
+        {EASY_CUT_KINDS.map((k: CutKind) => {
           const info = CUT_KINDS[k];
-          const disabled = vbit && k !== 'on';
+          const disabled = bit ? !canCut(bit, k) : false;
           return (
             <button
               key={k}
@@ -72,9 +74,10 @@ export function EasyCutFields({ objectIds }: EasyCutFieldsProps) {
       {kinds.size > 1 && (
         <p className="field-hint">These are cut in different ways. Pick one to make them match.</p>
       )}
-      {vbit && (
+      {engraveOnly && (
         <p className="field-hint">
-          V-bits only engrave lines. To cut shapes out, pick an end mill in the Bit menu at the top.
+          This bit only engraves lines. To cut shapes out, pick an end mill in the Bit menu at the
+          top.
         </p>
       )}
 
@@ -89,7 +92,7 @@ export function EasyCutFields({ objectIds }: EasyCutFieldsProps) {
             hint={bit && depthValid ? depthHint(bit, first.depth) : undefined}
             onChange={(depth) => update((op) => ({ ...op, depth }))}
           />
-          {!vbit && kind !== 'on' && first.depth !== throughDepth && (
+          {!engraveOnly && kind !== 'on' && first.depth !== throughDepth && (
             <button
               type="button"
               className="link-button"

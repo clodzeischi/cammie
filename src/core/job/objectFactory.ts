@@ -1,7 +1,9 @@
 import { boundsOfPaths, isEmptyBounds, type Path } from '../geometry/path';
 import { DEFAULT_VBIT_ID } from '../tools/bits';
 import type {
+  ChamferOperation,
   DesignObject,
+  DrillOperation,
   Operation,
   PocketOperation,
   ProfileOperation,
@@ -36,20 +38,23 @@ export const defaultOperation = (): ProfileOperation => ({
 });
 
 /** The choices in the "Cut type" menu. */
-export type CutKind = ProfileSide | 'pocket';
+export type CutKind = ProfileSide | 'pocket' | 'chamfer' | 'drill';
 
-export const cutKindOf = (op: Operation): CutKind => (op.type === 'pocket' ? 'pocket' : op.side);
+export const cutKindOf = (op: Operation): CutKind => (op.type === 'profile' ? op.side : op.type);
 
 /** How far past the stock a "cut through" goes, to clean up the bottom edge. */
 export const THROUGH_EXTRA = 0.2;
 /** Pockets start this deep (mm), or the stock thickness if that's less. */
 export const DEFAULT_POCKET_DEPTH = 2;
+/** Chamfers start this deep: a 1 mm bevel with a 90° bit. */
+export const DEFAULT_CHAMFER_DEPTH = 1;
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
 /** The depth a new cut of this kind starts at: lines are shallow, cut-outs go through. */
 export function defaultDepth(kind: CutKind, thickness: number): number {
   if (kind === 'on') return DEFAULT_ENGRAVE_DEPTH;
+  if (kind === 'chamfer') return DEFAULT_CHAMFER_DEPTH;
   if (kind === 'pocket') return Math.min(DEFAULT_POCKET_DEPTH, thickness);
   return round2(thickness + THROUGH_EXTRA);
 }
@@ -64,6 +69,12 @@ export function withCutKind(op: Operation, kind: CutKind): Operation {
   const { bitId, depth, direction, entry, finishing } = op;
   const base = { bitId, depth, direction, entry, finishing };
   if (kind === 'pocket') return { ...base, type: 'pocket' } satisfies PocketOperation;
+  if (kind === 'drill') return { ...base, type: 'drill' } satisfies DrillOperation;
+  if (kind === 'chamfer') {
+    // A hole's rim when it was cut as a hole; otherwise the shape's own edge.
+    const side = op.type === 'profile' && op.side === 'inside' ? 'inside' : 'outside';
+    return { ...base, type: 'chamfer', side } satisfies ChamferOperation;
+  }
   const tabs = op.type === 'profile' ? op.tabs : defaultTabs();
   return { ...base, type: 'profile', side: kind, tabs } satisfies ProfileOperation;
 }

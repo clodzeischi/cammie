@@ -11,6 +11,7 @@ interface BitFormProps {
 const TYPE_OPTIONS = [
   { value: 'flat', label: 'End mill (flat)' },
   { value: 'vbit', label: 'V-bit' },
+  { value: 'round', label: 'Round-nose (ball end)' },
 ] as const;
 
 function problems(bit: Bit): string[] {
@@ -31,20 +32,10 @@ export function BitForm({ initial, onSave, onCancel }: BitFormProps) {
   const [bit, setBit] = useState<Bit>(initial);
   const errors = problems(bit);
 
-  const setType = (type: Bit['type']) =>
-    setBit(
-      type === 'vbit'
-        ? {
-            id: bit.id,
-            name: bit.name,
-            diameter: bit.diameter,
-            flutes: bit.flutes,
-            type,
-            angle: 60,
-            tipDiameter: 0.2,
-          }
-        : { id: bit.id, name: bit.name, diameter: bit.diameter, flutes: bit.flutes, type },
-    );
+  const setType = (type: Bit['type']) => {
+    const base = { id: bit.id, name: bit.name, diameter: bit.diameter, flutes: bit.flutes };
+    setBit(type === 'vbit' ? { ...base, type, angle: 60, tipDiameter: 0.2 } : { ...base, type });
+  };
 
   return (
     <div className="settings-form">

@@ -22,7 +22,7 @@ export function estimateProgram(program: BitProgram, machine: MachineConfig): Pr
 
   for (const section of program.sections) {
     if (section.rpm !== rpm) {
-      seconds += machine.spindleDwell; // spin-up (or speed change) dwell
+      if (!machine.manualSpindle) seconds += machine.spindleDwell; // spin-up (or speed change) dwell
       rpm = section.rpm;
     }
     for (const move of section.moves) {

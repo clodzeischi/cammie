@@ -19,10 +19,10 @@ Status: Draft v1 · 2026-10-17
 | Out of scope | Why / alternative |
 |---|---|
 | Machine control / streaming (WebSerial) | gSender does this. |
-| Project save/load, cloud storage, accounts | Only `.nc` export. Machine settings + custom bits persist locally. |
+| Cloud storage, accounts, sync | Projects are local `.cammie` files plus a browser backup (§13.4). No backend, and Cammie stays free. |
 | DXF import | SVG and PNG only. |
 | Laser support (M4, raster engraving) | Spindle-only machine. |
-| 3D relief / heightmap carving, ball-nose bits | 2D / 2.5D only. |
+| 3D relief / heightmap carving, undercut bits (T-slot, dovetail) | 2D / 2.5D only. Round-nose bits engrave grooves (§7). |
 | Mobile phone layout | Phones get a blocking message (see §11). Tablets are supported. |
 | Inch units | mm everywhere, output is always `G21`. |
 | 3D carve simulation | Planned for a later phase (§14), not v1. |
@@ -40,7 +40,7 @@ New visitors start in Easy; the last mode is remembered (`cammie.mode.v1`, with 
 ```
 Pro
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ Cammie  [job name]                           EASY ◯━ PRO   [Export 2 files]│
+│ Cammie [job name]        [New][Open][Save]  EASY ◯━ PRO   [Export 2 files]│
 ├──────────────────────────────────────────────────────────────────────────┤
 │ Shapes | Toolpaths | Setup                    (ribbon: labelled buttons)  │
 ├──────────────┬────────────────────────────────────┬──────────────────────┤
@@ -55,18 +55,23 @@ Pro
 ```
 
 - **Ribbon (Pro)**: *Shapes* (Import, Text, Rectangle, Circle · Duplicate, Group, Ungroup, Delete ·
-  Undo, Redo), *Toolpaths* (Engrave, Profile outside, Profile inside, Pocket · Simulate), *Setup*
+  Undo, Redo), *Toolpaths* (Engrave, Profile outside, Profile inside, Pocket, Chamfer, Drill · Simulate), *Setup*
   (Stock & material, Bits, Machine). Every button has a text label.
 - **Toolpath list (Pro)**: the whole plan in cut order. One group per bit (= one `.nc` file), with
   a "Change bit, then re-zero Z" step between groups. Rows and whole files move up/down; rows
   show a dot when they have a warning or error. Selecting a row opens its settings, headed by one
   plain sentence saying what it will do.
-- **Easy**: one toolbar row (Import, Text, Rectangle, Circle, Undo, Redo); material and the job's
+- **Easy**: the same ribbon buttons as Pro (icon over label, group labels), without tabs: Import, Text, Rectangle, Circle · Undo, Redo. Material and the job's
   one bit sit in the header. Selecting shapes asks "How should this be cut?" with four plain
   choices (Engrave line, Cut out, Cut hole, Clear area); choices the bit can't do stay visible,
   disabled with the reason. Only depth (and tabs) are shown; feeds and entry come from presets.
-- **Mode rules**: Easy → Pro never changes anything. A job with more than one bit, or more than one
-  cut on a shape, opens read-only in Easy with a "Switch to Pro" button. Nothing is deleted.
+  Chamfers and drilling are Pro only.
+- **Mode rules**: Easy → Pro never changes anything. Pro → Easy is blocked while the job uses Pro
+  features (more than one bit, more than one cut on a shape, chamfers or drilling, bottom cuts):
+  the toggle and the "Easy" label are disabled, and hovering says "Cannot switch, Pro features in
+  use". A Pro job opened or restored while in Easy shows read-only with a "Switch to Pro" button.
+  Nothing is deleted.
+- **Project** (header, both modes): *New* (asks first if there's a design), *Open…* (⌘/Ctrl-O) and *Save* (⌘/Ctrl-S, downloads `<job>.cammie`). See §13.4.
 - **Canvas**: stock rectangle drawn to scale, mm grid, rulers, selectable origin marker, dashed outline of machine work area. Pan (space/middle-drag), zoom (wheel/pinch).
 - **Grid & snapping** (controls beside the zoom buttons; remembered in localStorage as `cammie.grid.v1`):
   - Grid size: 0.5, 1, 2, 5, 10 (default), 20, 25 or 50 mm. Lines run through the work origin, so snapped objects get round X/Y values. Darker major lines every round 5/10/25/50/100… mm. Lines closer than 6 px on screen are left out (only major lines when zoomed far out).
@@ -93,6 +98,7 @@ interface Job {
   materialId: string;
   objects: DesignObject[];       // z-ordered
   toolpaths: Toolpath[];         // cut order
+  flip: 'left-right' | 'top-bottom';  // how the stock turns over for bottom cuts (§9.10)
 }
 
 type OriginAnchor =
@@ -107,22 +113,23 @@ interface DesignObject {
   kind: 'svg' | 'traced-image' | 'text' | 'rect' | 'ellipse';
   shape?: TextShape | RectShape | EllipseShape;  // params of text/shapes drawn in the app
   groupId?: string;              // objects sharing one are selected/arranged together
+  role?: 'registration';         // dowel-pin holes, checked against the flip line (§9.10)
   paths: Path[];                 // flattened outlines in object-local mm, box starting at (0,0)
   width: number; height: number; // natural size of `paths`
   transform: { x: number; y: number; rotation: number; scaleX: number; scaleY: number };
 }
 
 // One cut on one object. Objects with no toolpaths aren't cut; an object may have several.
-interface Toolpath { id: string; objectId: string; operation: Operation; }
-// Job.toolpaths: Toolpath[] — list order is cut order. Toolpaths sharing a bit form one file;
-// files run in the order their bits first appear. New toolpaths are inserted where they
+interface Toolpath { id: string; objectId: string; operation: Operation; face?: 'top' | 'bottom'; }
+// Job.toolpaths: Toolpath[] — list order is cut order. Toolpaths sharing a face and bit form one
+// file; every top file runs before any bottom file, otherwise in the order their bits first appear. New toolpaths are inserted where they
 // naturally run (pockets, holes, lines, then cut-outs), so the default order is the safe one.
 
 interface Path { points: Vec2[]; closed: boolean; }
 ```
 
 - Editing shape params (text, font, corner radius…) rebuilds `paths`.
-- **Selection**: click selects; Shift-click adds/removes; ⌘/Ctrl-A selects all. Pressing on an already-selected object keeps the selection so several objects drag together; a click without dragging picks just that object. Several selected objects share one transformer (move/resize/rotate together).
+- **Selection**: a click picks the object whose outline it lands on (within 5 screen px) or inside one of its closed outlines; text is picked anywhere in its box. Empty space inside another object's bounding box reaches whatever is behind. Where shapes overlap, the smaller one wins (outlines have no fill, so stacking isn't visible; click areas are stacked by size), so a shape inside a bigger one is always reachable. Click selects; Shift-click adds/removes; ⌘/Ctrl-A selects all. Pressing on an already-selected object keeps the selection so several objects drag together; a click without dragging picks just that object. Several selected objects share one transformer (move/resize/rotate together).
 - **Groups**: ⌘/Ctrl-G groups the selection, ⇧⌘/Ctrl-G ungroups. A group is a selection unit (clicking any member selects all) and moves/aligns as one. Cuts are per object: in Easy a cut choice applies to every selected object; in Pro adding a toolpath gives each selected object its own.
 - **Arrange**: move, scale (lock aspect by default), rotate, duplicate (⌘/Ctrl-D, copies offset 5 mm, copied groups become new groups), delete, align left/centre/right/top/middle/bottom (several units align to their combined box; a single unit aligns to the stock), centre on stock, nudge with arrow keys (1 mm, Shift = 10 mm).
 - **Undo/redo**: ⌘/Ctrl-Z, ⇧⌘/Ctrl-Z or Ctrl-Y, toolbar buttons; 100 steps of the design (objects + selection; stock/origin/material are settings, not undone). A burst of edits to the same fields of one object within 1 s (typing a number or text, repeated nudges) is one step. Shortcuts are ignored while typing in a field, so fields keep their own undo.
@@ -179,19 +186,27 @@ interface Path { points: Vec2[]; closed: boolean; }
 ```ts
 type Bit =
   | { id; name; type: 'flat';  diameter: number; flutes: number; fluteLength?: number }
-  | { id; name; type: 'vbit';  angle: number; tipDiameter: number; diameter: number; flutes: number };
+  | { id; name; type: 'vbit';  angle: number; tipDiameter: number; diameter: number; flutes: number }
+  | { id; name; type: 'round'; diameter: number; flutes: number };   // round nose / ball end
 ```
 - **Built-in library** (read-only, typical 3018 bits, 1/8" shank):
   - Flat: 1.0, 1.5, 2.0, 3.175 mm (2-flute); 3.175 mm 1-flute (plastics).
   - V-bit: 20°, 30°, 60°, 90° (tip 0.1–0.2 mm, Ø 3.175 mm).
+  - Round-nose: 2, 3.175 mm (2-flute).
+- **Round-nose bits** (no undercut bits): the end is a half-sphere of the bit's diameter, so a groove `d` deep is `2·√(d·(2r − d))` wide at the surface, reaching the full diameter at `d = r`. The depth hint shows this width like a V-bit's. Feeds scale like a flat bit of the same diameter.
 - **Custom bits**: add/edit/delete, stored in `localStorage`. Exportable/importable as JSON (nice-to-have).
 
 ### 7.2 Which bit can do what
-| Operation | Flat end mill | V-bit |
-|---|---|---|
-| Profile (on/inside/outside) | ✅ | ✅ (on-line only — engraving lines) |
-| Pocket | ✅ | ❌ |
-| V-carve | ❌ | ✅ |
+One table in `core/job/bitCapabilities.ts` drives CAM validation and which choices the UI offers (a cut the bit can't make stays visible, disabled with the reason).
+
+| Operation | Flat end mill | V-bit | Round-nose |
+|---|---|---|---|
+| Profile on the line (engrave) | ✅ | ✅ | ✅ (rounded groove) |
+| Profile inside/outside | ✅ | ❌ | ❌ |
+| Pocket | ✅ | ❌ | ❌ |
+| Chamfer | ❌ | ✅ | ❌ |
+| Drill | ✅ | ❌ | ✅ |
+| V-carve | ❌ | ✅ | ❌ |
 
 ---
 
@@ -226,7 +241,7 @@ CAM is pure, synchronous TypeScript (`generateJob`), recomputed whenever the des
 Common per-operation settings:
 ```ts
 interface OperationSettings {
-  type: 'profile' | 'pocket' | 'vcarve';
+  type: 'profile' | 'pocket' | 'chamfer' | 'drill' | 'vcarve';
   bitId: string;
   depth: number;                  // total cut depth, mm (positive number; emitted as negative Z)
   feeds: FeedOverrides;           // feed, plunge, depthPerPass, rpm, stepover (from material preset unless overridden)
@@ -234,7 +249,7 @@ interface OperationSettings {
   entry: 'plunge' | 'ramp' | 'helix';    // default: ramp (profile), helix (pocket)
   finishingPass: { enabled: boolean; allowance: number; };  // default off; allowance 0.2 mm
   // op-specific:
-  profileSide?: 'outside' | 'inside' | 'on';
+  profileSide?: 'outside' | 'inside' | 'on';   // chamfer: 'outside' | 'inside'
   tabs?: TabSettings;
 }
 ```
@@ -245,6 +260,7 @@ interface OperationSettings {
 | Work area X / Y / Z | 300 / 180 / 45 mm | Job-out-of-bounds warning. |
 | Max feed XY | 1000 mm/min | Clamp. |
 | Max feed Z | 500 mm/min | Clamp for plunge/ramp. |
+| Manual spindle control | Off | On: the spindle is switched by hand. Files emit no `M3`/`S`/`G4`/`M5` (just a comment to switch it on before running and off after); max RPM, `$30` and spin-up are hidden and not validated, the per-cut Spindle RPM field is hidden, RPM isn't clamped, and estimates leave out spin-up. |
 | Max spindle RPM | 10000 | Physical motor top speed. |
 | Max S value (`$30`) | 1000 | `S = round(rpm / maxRpm × $30)`. Many 3018 boards ship with `$30=1000`. |
 | Safe Z (retract) | 5 mm | Travel height above stock top. |
@@ -304,9 +320,26 @@ Warnings (export allowed):
 
 ### 9.7 Ordering
 Within a bit's file:
-1. Operation order: V-carve → Pocket → Profile inside → Profile on-line → Profile outside (inside features before parts get cut free).
+1. Operation order: Drill → V-carve → Pocket → Profile inside → Profile on-line → Chamfer → Profile outside (inside features before parts get cut free). New toolpaths are inserted in this order; the user can reorder them in Pro.
 2. Within a group: nearest-neighbor ordering from the previous end point to cut rapid travel; for closed loops, choose the start point nearest the previous end (subject to tab/ramp constraints).
 3. Depth order: all passes of one contour before moving on (keeps parts rigid; standard hobby approach). (Option "level-first" can be added later.)
+
+### 9.8 Chamfer (Pro)
+- V-bits only, closed paths only. Bevels the edges of a shape: **outside** = the shape's own edges (a part, holes included), **inside** = the rim of a hole of this shape.
+- The user sets the **chamfer width** (how far the bevel reaches in from the edge at the surface); it's stored as the depth `width / tan(angle / 2)`, so changing to a V-bit with another angle keeps the width. Wider than the cone can reach → error with the maximum width.
+- Tool centre = the region offset by half the tip's flat (outward for outside, inward for inside), so the flat cuts down to the drawn line and the cone bevels the kept side. Passes by depth/pass, ramp entry, climb/conventional as for profiles; no finishing pass, no tabs.
+
+### 9.9 Drill (Pro)
+- End mills and round-nose bits; closed paths only. One hole the size of the bit at the centre of each closed path's bounding box (duplicates within 0.01 mm merge, so a ring is one hole). A shape more than 0.5 mm wider than the bit gets a note to use Profile inside instead.
+- **Peck drilling**: feed down by depth/pass at plunge feed, pull up to +0.5 mm after every peck but the last to clear chips, feed back down (never a rapid below Z0, §12.3). Holes run nearest-neighbour.
+
+### 9.10 Two-sided jobs (Pro)
+- Each toolpath has a **side**: Top (default) or Bottom. Objects are always drawn as seen from the top; a bottom toolpath is the same outline cut from the back.
+- **Flip** (job setting): *left to right* turns the stock about its vertical centre line, *top to bottom* about its horizontal one. Bottom cuts are mirrored across that line before CAM runs (so climb/conventional, tabs and offsets stay correct), and mirrored back for the preview, so the preview and tab editing always show the design as seen from the top. The origin stays at the same corner of the machine bed, which the flipped stock covers exactly.
+- **Files**: one per side and bit; all top files first. Bottom files are named `<job>_<NN>_bottom_<bit>.nc`; the first one's header says to turn the stock over onto the pins (and change the bit if it changed) and re-zero Z. The Pro toolpath list shows *Top side* / *Bottom side* headings and a highlighted "Turn the stock over" step; files only move within their side.
+- **Registration holes** (Toolpaths → Registration holes, or the job panel with a pin diameter, default 6 mm): two circles on the flip line, 5 mm + a radius in from the ends, each with a Profile inside cut through the stock and 3 mm into the spoilboard (no tabs, no spoilboard warning). Each lands on itself when the stock turns over, so dowel pins put it back in place. Adding them again replaces the old ones.
+- **Working on one side**: in a two-sided job, Pro shows a *Both sides · Top · Bottom* switch next to Design / Toolpath preview. On one side, shapes cut only from the other side are hidden on the canvas and left out of clicks, ⌘A and group selection; the other side's files are hidden from the toolpath list (with a "… side hidden · Show both sides" note; file numbers stay as exported) and from the preview. Registration holes, shapes cut from both sides and shapes with no cuts yet always show. New toolpaths are added to the side shown (the top when showing both). Export always includes both sides; switching to Easy shows both.
+- Checks: bottom cuts with no registration holes cut from the top → warning; a registration hole moved off the flip line (> 0.05 mm) → warning. A dashed accent line marks the flip line on the canvas in two-sided jobs. Two-sided jobs are Pro only.
 
 ---
 
@@ -371,7 +404,7 @@ M2
 ### 12.3 Rules (GRBL 1.1 compatibility)
 - **The file only moves the mill.** Before running it, the user has zeroed the bit by hand and parked it at the work origin (X0 Y0, tip touching the top of the material). The file assumes the active work coordinate system is already correct and never changes it.
   - The first motion is always `G0 Z<safeZ>` straight up, before any XY move.
-  - Spindle on/off (`M3 S…` / `M5`) is the only non-motion machine control emitted.
+  - Spindle on/off (`M3 S…` / `M5`) is the only non-motion machine control emitted, and not even that with manual spindle control (§9.1).
   - **Never** emit homing (`$H`), `G28`/`G30`, `G92`, `G10`, work-offset selection (`G54`–`G59`), or probing (`G38.x`). The user can still put anything in the custom header/footer at their own risk.
 - Comments: **parentheses only**, no nested parens, ASCII only (sanitize object names).
 - Only emit words GRBL supports: `G0 G1 G2 G3 G4 G17 G21 G90 G94 M3 M5 M2 S F X Y Z P`.
@@ -471,7 +504,12 @@ interface Operation<S extends OperationSettings = OperationSettings> {
 | `cammie.feedOverrides.v1` | Per material+bit feed overrides |
 | `cammie.prefs.v1` | Last material, stock size, origin, UI prefs |
 
-All reads wrapped in try/catch with fallback to defaults (private mode / blocked storage must not break the app). The design itself is **not** persisted — a reload starts fresh (a "you have unsaved work" `beforeunload` prompt when objects exist).
+All reads wrapped in try/catch with fallback to defaults (private mode / blocked storage must not break the app).
+
+**Projects** (`src/persistence/projectFile.ts`):
+- A `.cammie` file is JSON: `{ format: 'cammie-project', version: 1, jobName, job, bits }`, where `job` is the whole §4 `Job` (stock, origin, material, objects, toolpaths, flip) and `bits` the custom bits its toolpaths use, so it opens on another computer. Opening adds those bits to the library unless one with the same id exists (the user's own wins).
+- Opening validates everything: not JSON / wrong format → "isn't a Cammie project file"; a newer `version` → "saved by a newer version"; malformed geometry or cuts → "damaged (… couldn't be read)", and nothing is loaded. Settings missing from older files get today's defaults; cuts whose object is missing are dropped. Opening clears undo history.
+- **Automatic backup**: the design is saved to IndexedDB (database `cammie`, store `backup`, one entry) 0.8 s after each change. IndexedDB rather than localStorage because traced designs can pass localStorage's ~5 MB. On start-up the backup is restored (if it has objects) with the note "Your design from last time is back. Use New to start over." The `beforeunload` prompt only appears when the latest backup failed (private mode, blocked storage).
 
 ### 13.5 Hosting
 - `firebase.json`: public `dist`, SPA rewrite to `/index.html`, `Cache-Control: immutable` for `/assets/**`, short cache for `index.html`.
@@ -492,6 +530,7 @@ Each phase ends in something deployable and usable.
 | **3 — Real-world cutting** | Pocket (with islands), tabs (auto + click-edit), ramp/helix entry, finishing pass, climb/conventional, cut ordering, custom bits, feed overrides memory. | Cut-out parts with pockets come out clean and stay held by tabs. |
 | **4 — Text & shapes** | Bundled fonts, text tool, rect/ellipse, group/align, undo/redo polish. | Make a name sign without leaving the app. |
 | **5 — V-carve** | Medial-axis V-carve, multi-pass step-down, depth warnings, preview widths. | Crisp V-carved lettering in hardwood. |
+| **5b — Pro & projects** | Easy/Pro modes, ribbon, toolpath list; round-nose bits; chamfer and drill; two-sided jobs with registration holes; `.cammie` Save/Open + browser backup. | A two-sided box lid with chamfered edges comes out lined up, and the project reopens the next day. |
 | **6 — Later** | Spoilboard surfacing job, 3D carve simulation (heightmap stock + Three.js), arc fitting (G2/G3), trapezoidal tab ramps, flat-bottom V-carve with clearing bit, level-first ordering, raster pocket strategy, bit library import/export. | — |
 
 ---

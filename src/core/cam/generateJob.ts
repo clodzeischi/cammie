@@ -1,5 +1,7 @@
 import { isEmptyBounds, unionBounds, EMPTY_BOUNDS, type Bounds, type Vec2 } from '../geometry/path';
-import { anchorPoint, type Job } from '../job/job';
+import { cutFrame, faceOf } from '../job/faces';
+import type { Job } from '../job/job';
+import { groupIntoFiles } from '../job/toolpaths';
 import type { MachineConfig } from '../machine/machineConfig';
 import { findMaterial } from '../materials/materials';
 import { BUILT_IN_BITS, type Bit } from '../tools/bits';
@@ -8,6 +10,7 @@ import { executePlan, type ObjectCut } from './cutPlan';
 import { planObjectCut } from './objectCut';
 import { MoveWriter } from './toolpath/moveWriter';
 import type { BitProgram, Diagnostic, GeneratedJob, ProgramSection } from './program';
+import { checkTwoSided } from './twoSidedChecks';
 
 /** Slack for floating-point noise when checking that cuts stay on the stock. */
 const EPSILON = 0.01;
@@ -34,7 +37,7 @@ export function generateJob(
     };
   }
 
-  const origin = anchorPoint(job.stock, job.origin);
+  const frames = { top: cutFrame(job, 'top'), bottom: cutFrame(job, 'bottom') };
   const objects = new Map(job.objects.map((o) => [o.id, o]));
   const cuts: ObjectCut[] = [];
   for (const toolpath of job.toolpaths) {
@@ -51,7 +54,7 @@ export function generateJob(
       toolpath.id,
       object,
       toolpath.operation,
-      { job, machine, material, bits, feedOverrides, origin },
+      { job, machine, material, bits, feedOverrides, frame: frames[faceOf(toolpath)] },
       report,
     );
     if (!cut) continue;
@@ -66,6 +69,7 @@ export function generateJob(
     });
   }
   checkMachineFits(cuts, machine, diagnostics);
+  checkTwoSided(job, diagnostics);
   const tabs = cuts.flatMap((cut) =>
     cut.tabs ? [{ toolpathId: cut.toolpathId, objectId: cut.objectId, ...cut.tabs }] : [],
   );
@@ -73,16 +77,15 @@ export function generateJob(
 }
 
 /**
- * One program per bit, in the order the toolpath list gives: files in the order
- * their bits first appear, cuts in list order within a file. New toolpaths are
- * placed so this is the safe order (see insertToolpath) unless the user moves them.
+ * One program per face and bit, in the order the toolpath list gives (see
+ * groupIntoFiles): top files first, cuts in list order within a file. New
+ * toolpaths are placed so this is the safe order (see insertToolpath) unless
+ * the user moves them.
  */
 function buildPrograms(cuts: ObjectCut[], machine: MachineConfig): BitProgram[] {
-  const byBit = new Map<string, ObjectCut[]>();
-  for (const cut of cuts) byBit.set(cut.bit.id, [...(byBit.get(cut.bit.id) ?? []), cut]);
-  const groups = [...byBit.values()];
+  const groups = groupIntoFiles(cuts, (cut) => ({ face: cut.face, bitId: cut.bit.id }));
 
-  return groups.map((group) => {
+  return groups.map(({ face, items: group }) => {
     let position: Vec2 = { x: 0, y: 0 };
     const sections: ProgramSection[] = group.map((cut) => {
       const writer = new MoveWriter(machine.safeZ, cut.feeds, position);
@@ -90,7 +93,7 @@ function buildPrograms(cuts: ObjectCut[], machine: MachineConfig): BitProgram[] 
       position = writer.position;
       return { label: cut.label, rpm: cut.feeds.rpm, moves: writer.moves };
     });
-    return { bit: group[0]!.bit, sections };
+    return { bit: group[0]!.bit, face, sections };
   });
 }
 

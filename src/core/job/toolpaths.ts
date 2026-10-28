@@ -1,19 +1,36 @@
-import type { Operation, Toolpath } from './job';
+import { faceOf } from './faces';
+import type { Face, Operation, Toolpath } from './job';
 import { cutKindOf, type CutKind } from './objectFactory';
 
-/** Pockets and holes first, then lines, then parts get cut free (SPEC.md §9.7). */
-export const CUT_PRIORITY: Record<CutKind, number> = { pocket: 1, inside: 2, on: 3, outside: 4 };
+/**
+ * Drilling, pockets and holes first, then lines and chamfers, then parts get
+ * cut free (SPEC.md §9.7).
+ */
+export const CUT_PRIORITY: Record<CutKind, number> = {
+  drill: 1,
+  pocket: 2,
+  inside: 3,
+  on: 4,
+  chamfer: 5,
+  outside: 6,
+};
 
 export const cutPriority = (op: Operation) => CUT_PRIORITY[cutKindOf(op)];
 
+/** Everything on the top runs before the stock is flipped for the bottom. */
+const FACE_RANK: Record<Face, number> = { top: 0, bottom: 1 };
+
+const runRank = (t: Toolpath) => FACE_RANK[faceOf(t)] * 100 + cutPriority(t.operation);
+
 /**
  * Adds a toolpath where it naturally runs: after everything of the same or
- * earlier priority, before the first later one. A list built this way cuts in
- * the safe order (details before parts come free) without any dragging.
+ * earlier priority (top before bottom), before the first later one. A list
+ * built this way cuts in the safe order (details before parts come free)
+ * without any dragging.
  */
 export function insertToolpath(list: readonly Toolpath[], toolpath: Toolpath): Toolpath[] {
-  const priority = cutPriority(toolpath.operation);
-  const at = list.findIndex((t) => cutPriority(t.operation) > priority);
+  const rank = runRank(toolpath);
+  const at = list.findIndex((t) => runRank(t) > rank);
   return at < 0 ? [...list, toolpath] : [...list.slice(0, at), toolpath, ...list.slice(at)];
 }
 
@@ -27,20 +44,39 @@ export function repositionToolpath(list: readonly Toolpath[], id: string): Toolp
   );
 }
 
-/** Toolpaths that share a bit, i.e. one file. */
+/**
+ * Splits items into files: one per face and bit, every top file before any
+ * bottom one, otherwise in the order each bit first appears; items keep list
+ * order within a file. Shared by the toolpath list and the CAM so they agree.
+ */
+export function groupIntoFiles<T>(
+  items: readonly T[],
+  keyOf: (item: T) => { face: Face; bitId: string },
+): Array<{ face: Face; bitId: string; items: T[] }> {
+  const groups = new Map<string, { face: Face; bitId: string; items: T[] }>();
+  for (const item of items) {
+    const { face, bitId } = keyOf(item);
+    const key = `${face}|${bitId}`;
+    const group = groups.get(key) ?? { face, bitId, items: [] };
+    group.items.push(item);
+    groups.set(key, group);
+  }
+  // Array sort is stable, so first-appearance order holds within each face.
+  return [...groups.values()].sort((a, b) => FACE_RANK[a.face] - FACE_RANK[b.face]);
+}
+
+/** Toolpaths that share a face and a bit, i.e. one file. */
 export interface ToolpathGroup {
+  face: Face;
   bitId: string;
   toolpaths: Toolpath[];
 }
 
-/** Files in run order: bits in the order they first appear, toolpaths in list order. */
+/** Files in run order (see groupIntoFiles). */
 export function toolpathGroups(list: readonly Toolpath[]): ToolpathGroup[] {
-  const groups = new Map<string, Toolpath[]>();
-  for (const t of list) {
-    const bitId = t.operation.bitId;
-    groups.set(bitId, [...(groups.get(bitId) ?? []), t]);
-  }
-  return [...groups].map(([bitId, toolpaths]) => ({ bitId, toolpaths }));
+  return groupIntoFiles(list, (t) => ({ face: faceOf(t), bitId: t.operation.bitId })).map(
+    ({ face, bitId, items }) => ({ face, bitId, toolpaths: items }),
+  );
 }
 
 const flatten = (groups: readonly ToolpathGroup[]) => groups.flatMap((g) => g.toolpaths);
@@ -58,12 +94,22 @@ export function moveToolpath(list: readonly Toolpath[], id: string, delta: -1 | 
   return flatten(groups.map((g) => (g === group ? { ...g, toolpaths } : g)));
 }
 
-/** Moves a whole file (every toolpath with that bit) one step earlier or later. */
-export function moveGroup(list: readonly Toolpath[], bitId: string, delta: -1 | 1): Toolpath[] {
+/**
+ * Moves a whole file (every toolpath with that face and bit) one step earlier
+ * or later. Files never cross the flip: top files all run first.
+ */
+export function moveGroup(
+  list: readonly Toolpath[],
+  face: Face,
+  bitId: string,
+  delta: -1 | 1,
+): Toolpath[] {
   const groups = toolpathGroups(list);
-  const from = groups.findIndex((g) => g.bitId === bitId);
+  const from = groups.findIndex((g) => g.face === face && g.bitId === bitId);
   const to = from + delta;
-  if (from < 0 || to < 0 || to >= groups.length) return flatten(groups);
+  if (from < 0 || to < 0 || to >= groups.length || groups[to]!.face !== face) {
+    return flatten(groups);
+  }
   [groups[from], groups[to]] = [groups[to]!, groups[from]!];
   return flatten(groups);
 }
@@ -71,14 +117,24 @@ export function moveGroup(list: readonly Toolpath[], bitId: string, delta: -1 | 
 export const toolpathsOf = (list: readonly Toolpath[], objectId: string) =>
   list.filter((t) => t.objectId === objectId);
 
+/** The cuts Easy mode offers, in its order. Chamfers and drilling are Pro only. */
+export const EASY_CUT_KINDS: readonly CutKind[] = ['on', 'outside', 'inside', 'pocket'];
+
 /**
- * Easy mode handles one bit and at most one cut per object. Anything more is a
- * Pro job, which Easy shows read-only rather than simplifying away.
+ * Easy mode handles one bit, at most one cut per object, only its own kinds
+ * of cut, and only the top face. Anything more is a Pro job, which Easy shows
+ * read-only rather than simplifying away.
  */
 export function fitsEasyMode(job: { toolpaths: readonly Toolpath[] }): boolean {
   const bits = new Set(job.toolpaths.map((t) => t.operation.bitId));
   const objects = new Set(job.toolpaths.map((t) => t.objectId));
-  return bits.size <= 1 && objects.size === job.toolpaths.length;
+  return (
+    bits.size <= 1 &&
+    objects.size === job.toolpaths.length &&
+    job.toolpaths.every(
+      (t) => EASY_CUT_KINDS.includes(cutKindOf(t.operation)) && faceOf(t) === 'top',
+    )
+  );
 }
 
 /** The toolpaths for copied objects: same cuts, new ids, placed in natural order. */

@@ -16,8 +16,9 @@
 
 .job-name {
   font: inherit;
-  min-width: 0;
-  width: 220px;
+  /* Gives way first when the header is crowded, so the pickers and buttons stay whole. */
+  flex: 0 1 220px;
+  min-width: 90px;
   padding: 4px 8px;
   border: 1px solid transparent;
   border-radius: var(--radius);
@@ -52,10 +53,26 @@
 }
 
 .app-header-actions {
+  flex: none;
   margin-left: auto;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.project-buttons {
+  display: flex;
+  gap: 4px;
+  padding-right: 8px;
+  border-right: 1px solid var(--border);
+}
+
+/* Narrower screens: New / Open / Save and Machine as icons (their tooltips say what they do). */
+@media (max-width: 1279px) {
+  .app-header .button-text,
+  .app-name-text {
+    display: none;
+  }
 }
 
 .app-header .button {
@@ -90,12 +107,15 @@
   background: var(--canvas-bg);
 }
 
-.view-toggle {
+/* Design / Preview and, for two-sided jobs, the side shown. */
+.canvas-toolbar {
   position: absolute;
   top: 12px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1;
+  display: flex;
+  gap: 8px;
 }
 
 .canvas-container {
