@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import type { FlipAxis } from '../../core/job/job';
-import { DEFAULT_PIN_DIAMETER } from '../../core/job/registration';
+import { DEFAULT_PIN_DIAMETER, PIN_FIT_ALLOWANCE, pinLength } from '../../core/job/registration';
 import { useJobStore } from '../../state/jobStore';
 import { addRegistrationHoles } from '../../state/twoSidedActions';
 import { NumberField, SelectField } from '../common/fields';
+
+const fmtMm = (mm: number) => `${Math.round(mm * 10) / 10} mm`;
 
 const FLIPS: ReadonlyArray<{ value: FlipAxis; label: string }> = [
   { value: 'left-right', label: 'Left to right' },
@@ -18,6 +20,7 @@ export function TwoSidedFields() {
   const flip = useJobStore((s) => s.flip);
   const setFlip = useJobStore((s) => s.setFlip);
   const hasPins = useJobStore((s) => s.objects.some((o) => o.role === 'registration'));
+  const stock = useJobStore((s) => s.stock);
   const [diameter, setDiameter] = useState(DEFAULT_PIN_DIAMETER);
   const valid = Number.isFinite(diameter) && diameter > 0;
 
@@ -40,6 +43,7 @@ export function TwoSidedFields() {
         unit="mm"
         min={0}
         value={diameter}
+        hint={`Holes are cut ${PIN_FIT_ALLOWANCE} mm wider, so the pins slide in by hand.`}
         error={valid ? undefined : 'Diameter must be greater than 0.'}
         onChange={setDiameter}
       />
@@ -53,7 +57,9 @@ export function TwoSidedFields() {
       </button>
       <p className="field-hint">
         Two holes on the flip line, cut through into the spoilboard first. Put dowel pins in them,
-        turn the stock over onto the pins, then run the bottom files.
+        turn the stock over onto the pins, then run the bottom files. Cut the pins to about{' '}
+        {fmtMm(pinLength(stock))} long, so they stop just below the stock's top, out of the bit's
+        way.
       </p>
     </fieldset>
   );

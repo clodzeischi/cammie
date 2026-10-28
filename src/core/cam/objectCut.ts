@@ -1,7 +1,7 @@
 import { boundsOfPaths, boundsOfPoints, type Bounds, type Path } from '../geometry/path';
 import { transformPaths } from '../geometry/transform';
 import { cantCutReason, canCut } from '../job/bitCapabilities';
-import type { CutFrame } from '../job/faces';
+import { faceOf, type CutFrame } from '../job/faces';
 import type { DesignObject, Job, Operation } from '../job/job';
 import { cutKindOf, type CutKind } from '../job/objectFactory';
 import type { MachineConfig } from '../machine/machineConfig';
@@ -88,7 +88,10 @@ export function planObjectCut(
 
   // Registration holes go into the spoilboard on purpose, so the pins have something to sit in.
   if (object.role !== 'registration') {
-    checkDepth(operation.depth, kind, thickness, planned.tabsHold, report);
+    // On the top of a two-sided job a loose part is lost before its bottom is cut.
+    const flippedLater =
+      ctx.frame.face === 'top' && ctx.job.toolpaths.some((t) => faceOf(t) === 'bottom');
+    checkDepth(operation.depth, kind, thickness, planned.tabsHold, flippedLater, report);
   }
 
   return {
@@ -130,6 +133,7 @@ function checkDepth(
   kind: CutKind,
   thickness: number,
   tabsHold: boolean,
+  flippedLater: boolean,
   report: Report,
 ) {
   const extra = depth - thickness;
@@ -138,6 +142,13 @@ function checkDepth(
     report('warning', `cuts ${fmt(extra)} into the spoilboard.`);
   }
   if (through && (kind === 'outside' || kind === 'inside') && !tabsHold) {
+    if (flippedLater) {
+      report(
+        'warning',
+        'cuts all the way through on the top with no tabs, so the part comes loose before the stock is turned over. Add tabs, or cut it out from the bottom.',
+      );
+      return;
+    }
     report(
       'warning',
       "cuts all the way through with no tabs. Hold the part down with tape or clamps so it can't come loose.",

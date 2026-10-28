@@ -8,6 +8,10 @@ import { defaultOperation, defaultTabs } from './objectFactory';
 export const DEFAULT_PIN_DIAMETER = 6;
 /** How far the holes go into the spoilboard, so the pins stay put when the stock is lifted off. */
 export const PIN_DEPTH_INTO_SPOILBOARD = 3;
+/** Holes are cut this much wider than the pin (mm), so it slides in by hand without wobbling. */
+export const PIN_FIT_ALLOWANCE = 0.1;
+/** Pins stop this far below the stock's top (mm), out of the bit's way. */
+const PIN_BELOW_TOP = 1;
 /** Material kept between a hole and the end of the stock (mm). */
 const EDGE_MARGIN = 5;
 
@@ -25,17 +29,24 @@ export function pinCentres(stock: Stock, flip: FlipAxis, diameter: number): [Vec
       ];
 }
 
+/** How long to cut the pins: sitting in the spoilboard, stopping just below the stock's top. */
+export function pinLength(stock: Stock): number {
+  return PIN_DEPTH_INTO_SPOILBOARD + Math.max(stock.thickness - PIN_BELOW_TOP, 1);
+}
+
 /**
- * Two round holes on the flip line, cut through the stock into the
- * spoilboard. Dowel pins in them put the flipped stock back in exactly the
- * same place, because each hole lands on itself when the stock turns over.
+ * Two round holes on the flip line for pins of `pinDiameter`, cut through the
+ * stock into the spoilboard. Dowel pins in them put the flipped stock back in
+ * exactly the same place, because each hole lands on itself when the stock
+ * turns over.
  */
 export function registrationHoles(
   stock: Stock,
   flip: FlipAxis,
-  diameter: number,
+  pinDiameter: number,
   newId: () => string,
 ): DesignObject[] {
+  const diameter = pinDiameter + PIN_FIT_ALLOWANCE;
   return pinCentres(stock, flip, diameter).map((centre, i) => {
     const circle = createShapeObject(
       newId(),

@@ -82,8 +82,9 @@ export function ToolpathList() {
                     <span>
                       <b>Turn the stock over</b> {FLIP_LABEL[flip]} onto the registration pins
                       {previous.bitId === group.bitId
-                        ? ', then re-zero Z'
-                        : `, change bit to ${bit?.name ?? 'the next bit'}, then re-zero Z`}
+                        ? ', then re-zero Z only'
+                        : `, change bit to ${bit?.name ?? 'the next bit'}, then re-zero Z only`}
+                      . Keep X/Y zero where it is: the pins line the stock up with it.
                     </span>
                   </div>
                 )}

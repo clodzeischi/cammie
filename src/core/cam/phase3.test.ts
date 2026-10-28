@@ -194,3 +194,20 @@ describe('pockets', () => {
     expect(Math.max(...vertices)).toBeLessThan(400);
   });
 });
+
+describe('pocket re-entry', () => {
+  it('never rapids below the stock top, even into the floor it already cleared', () => {
+    // A ring around an island: each depth re-enters away from where the last one ended.
+    const job = makeJob([
+      makeObject({
+        paths: [square(10, 10, 30), square(20, 20, 10)],
+        operation: pocketOp({ depth: 3 }),
+      }),
+    ]);
+    const moves = generateJob(job, DEFAULT_MACHINE_CONFIG).programs.flatMap((p) =>
+      p.sections.flatMap((s) => s.moves),
+    );
+    expect(moves.some((m) => m.kind === 'feed' && m.z < -1)).toBe(true);
+    expect(moves.filter((m) => m.kind === 'rapid' && m.z < 0)).toEqual([]);
+  });
+});

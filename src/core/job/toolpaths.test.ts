@@ -49,10 +49,16 @@ describe('insertToolpath', () => {
 });
 
 describe('toolpathGroups', () => {
-  it('makes one file per bit, in the order bits first appear', () => {
+  it('makes one file per bit, the one with the last cut-out running last', () => {
+    // The engraving runs before the end mill's file, which ends by cutting the part free.
     const groups = toolpathGroups([tp('a', hole), tp('b', engrave), tp('c', cutOut)]);
+    expect(groups.map((g) => g.bitId)).toEqual(['vbit-60', 'flat-3.175']);
+    expect(ids(groups[1]!.toolpaths)).toEqual(['a', 'c']);
+  });
+
+  it('keeps the order of a list whose files are already together', () => {
+    const groups = toolpathGroups([tp('a', hole), tp('c', cutOut), tp('b', engrave)]);
     expect(groups.map((g) => g.bitId)).toEqual(['flat-3.175', 'vbit-60']);
-    expect(ids(groups[0]!.toolpaths)).toEqual(['a', 'c']);
   });
 });
 
@@ -60,13 +66,14 @@ describe('moving toolpaths', () => {
   const list = [tp('a', hole), tp('b', engrave), tp('c', cutOut)];
 
   it('swaps a toolpath with its neighbour in the same file', () => {
-    expect(ids(moveToolpath(list, 'c', -1))).toEqual(['c', 'a', 'b']);
-    expect(ids(moveToolpath(list, 'a', -1))).toEqual(['a', 'c', 'b']);
+    expect(ids(moveToolpath(list, 'c', -1))).toEqual(['b', 'c', 'a']);
+    expect(ids(moveToolpath(list, 'a', -1))).toEqual(['b', 'a', 'c']);
   });
 
   it('moves a whole file earlier or later', () => {
-    expect(ids(moveGroup(list, 'top', 'vbit-60', -1))).toEqual(['b', 'a', 'c']);
     expect(ids(moveGroup(list, 'top', 'vbit-60', 1))).toEqual(['a', 'c', 'b']);
+    expect(ids(moveGroup(list, 'top', 'flat-3.175', -1))).toEqual(['a', 'c', 'b']);
+    expect(ids(moveGroup(list, 'top', 'vbit-60', -1))).toEqual(['b', 'a', 'c']);
   });
 });
 
