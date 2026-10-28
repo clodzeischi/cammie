@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { lookOf } from '../../core/materials/materialLooks';
-import { useGeneratedJob, useJob } from '../../state/useGeneratedJob';
+import { useDragPreviewStore } from '../../state/dragPreviewStore';
+import { useMachineStore } from '../../state/machineStore';
+import { useToolingStore } from '../../state/toolingStore';
+import { useJob } from '../../state/useGeneratedJob';
 import type { SimResponse } from '../../workers/sim.worker';
 import { useCanvasColors } from '../canvas/canvasColors';
 import { createStockScene, type CameraView, type StockScene } from './scene';
-import { createSimulator, type Simulator } from './simulator';
-
-/** Wait this long (ms) after the last change before carving again. */
-const DEBOUNCE_MS = 250;
+import { createLiveCarver, type LiveCarver } from './simulator';
 
 const VIEWS: ReadonlyArray<{ value: CameraView; label: string }> = [
   { value: 'angled', label: 'Angled' },
@@ -18,28 +18,35 @@ const VIEWS: ReadonlyArray<{ value: CameraView; label: string }> = [
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
 /**
- * The finished piece in 3D: the stock in its material, carved by every
- * exported file, with loose pieces lifted out (SPEC.md §10.1). Loaded only
- * when first opened, since three.js is big.
+ * The finished piece in 3D, beside the design: the stock in its material,
+ * carved by every exported file, with loose pieces lifted out (SPEC.md
+ * §10.1). Follows shapes while they're dragged. Loaded only when first
+ * opened, since three.js is big.
  */
 export default function StockView3D() {
   const job = useJob();
-  const { programs } = useGeneratedJob();
+  const live = useDragPreviewStore((s) => s.transforms);
+  const machine = useMachineStore((s) => s.config);
+  const bits = useToolingStore((s) => s.bits);
+  const feedOverrides = useToolingStore((s) => s.feedOverrides);
   const colors = useCanvasColors();
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<StockScene | null>(null);
-  const simulatorRef = useRef<Simulator | null>(null);
+  const carverRef = useRef<LiveCarver | null>(null);
   const [result, setResult] = useState<SimResponse | null>(null);
   const [busy, setBusy] = useState(true);
 
   useEffect(() => {
     const scene = createStockScene(containerRef.current!, colors);
-    const simulator = createSimulator();
+    const carver = createLiveCarver((carved, input, full) => {
+      scene.show(carved, input.job.stock, lookOf(input.job.materialId));
+      if (full) setResult(carved);
+    }, setBusy);
     sceneRef.current = scene;
-    simulatorRef.current = simulator;
+    carverRef.current = carver;
     return () => {
+      carver.dispose();
       scene.dispose();
-      simulator.dispose();
     };
     // Colours are applied by the effect below; the scene is made once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -47,24 +54,26 @@ export default function StockView3D() {
 
   useEffect(() => sceneRef.current?.setColors(colors), [colors]);
 
+  // Shapes being dragged count at their live position.
+  const shown = useMemo(
+    () =>
+      live
+        ? {
+            ...job,
+            objects: job.objects.map((o) => ({ ...o, transform: live[o.id] ?? o.transform })),
+          }
+        : job,
+    [job, live],
+  );
   useEffect(() => {
-    const { stock, origin, flip, materialId } = job;
-    const timer = setTimeout(async () => {
-      setBusy(true);
-      const carved = await simulatorRef.current?.run({ stock, origin, flip }, programs);
-      if (!carved) return; // replaced by a newer request
-      sceneRef.current?.show(carved, stock, lookOf(materialId));
-      setResult(carved);
-      setBusy(false);
-    }, DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [job, programs]);
+    carverRef.current?.update({ job: shown, machine, bits: [...bits], feedOverrides });
+  }, [shown, machine, bits, feedOverrides]);
 
   const loose = result?.meshes.loose.length ?? 0;
   return (
     <div className="stock-3d">
       <div ref={containerRef} className="stock-3d-canvas" />
-      {busy && <div className="stock-3d-status">Carving…</div>}
+      {busy && <div className="stock-3d-status">Updating…</div>}
       <div className="stock-3d-bar">
         <div className="segmented" role="group" aria-label="Camera">
           {VIEWS.map((v) => (

@@ -119,6 +119,8 @@ export function createStockMaterial(
     uHighlight: { value: highlight ?? new THREE.Color() },
     uHighlightAmount: { value: highlight ? HIGHLIGHT_AMOUNT : 0 },
   };
+  // The highlight colour can change with the theme without a new material.
+  material.userData.highlight = uniforms.uHighlight.value;
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader

@@ -34,8 +34,8 @@ const SPOIL_MARK = [214, 64, 52, 230];
  * Red marks on the spoilboard wherever a cut went past the stock, seen
  * through the cut. Texture rows run bottom-up, the grid's rows top-down.
  */
-function spoilMarks(result: SimResponse, stock: Stock): THREE.Mesh {
-  const { cols, rows, cell, spoilMask } = result;
+function spoilTexture(result: SimResponse): THREE.DataTexture {
+  const { cols, rows, spoilMask } = result;
   const pixels = new Uint8Array(cols * rows * 4);
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
@@ -45,12 +45,7 @@ function spoilMarks(result: SimResponse, stock: Stock): THREE.Mesh {
   }
   const texture = new THREE.DataTexture(pixels, cols, rows);
   texture.needsUpdate = true;
-  const plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(cols * cell, rows * cell),
-    new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false }),
-  );
-  plane.position.set((cols * cell) / 2, (rows * cell) / 2, -stock.thickness - 0.03);
-  return plane;
+  return texture;
 }
 
 function geometry(mesh: MeshData): THREE.BufferGeometry {
@@ -91,17 +86,45 @@ export function createStockScene(container: HTMLElement, colors: SceneColors): S
   fill.position.set(0.8, 0.6, -0.4);
   scene.add(fill);
 
-  const model = new THREE.Group();
-  scene.add(model);
   scene.background = new THREE.Color(colors.background);
   let warning = new THREE.Color(colors.warning);
   /** The stock last shown; the camera is re-aimed when it changes size. */
   let size: { width: number; height: number; depth: number } | null = null;
 
-  let spoilboard: THREE.Mesh | null = null;
+  // Everything but the carved pieces lives for the whole scene: rebuilding
+  // materials makes three.js recompile shaders, which costs far more than
+  // the new geometry. Unit-sized shapes are scaled to the stock instead.
+  const pieces = new THREE.Group();
+  scene.add(pieces);
+  const spoilboard = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshStandardMaterial({ color: '#8f8a80', roughness: 0.95 }),
+  );
+  spoilboard.visible = false;
+  scene.add(spoilboard);
+  const marksMaterial = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false });
+  const marks = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), marksMaterial);
+  scene.add(marks);
+  let stockMaterials: { key: string; board: THREE.Material; loose: THREE.Material } | null = null;
+
+  const materialsFor = (look: MaterialLook, thickness: number) => {
+    const key = `${JSON.stringify(look)}|${thickness}`;
+    if (stockMaterials?.key !== key) {
+      stockMaterials?.board.dispose();
+      stockMaterials?.loose.dispose();
+      stockMaterials = {
+        key,
+        board: createStockMaterial(look, thickness),
+        // Still the board's material, tinted with the warning colour.
+        loose: createStockMaterial(look, thickness, warning),
+      };
+    }
+    return stockMaterials;
+  };
+
   const render = () => {
     // Looking from below, the spoilboard would hide the stock's underside.
-    if (spoilboard && size) spoilboard.visible = camera.position.z > -size.depth;
+    if (size) spoilboard.visible = camera.position.z > -size.depth;
     renderer.render(scene, camera);
   };
   controls.addEventListener('change', render);
@@ -116,23 +139,22 @@ export function createStockScene(container: HTMLElement, colors: SceneColors): S
   };
   const observer = new ResizeObserver(resize);
   observer.observe(container);
+  resize(); // so the first camera fit knows the pane's shape
 
-  const clear = () => {
-    model.traverse((o) => {
-      if (o instanceof THREE.Mesh) {
-        o.geometry.dispose();
-        const material = o.material as THREE.MeshBasicMaterial;
-        material.map?.dispose();
-        material.dispose();
-      }
-    });
-    model.clear();
+  const clearPieces = () => {
+    pieces.children.forEach((o) => (o as THREE.Mesh).geometry.dispose());
+    pieces.clear();
   };
 
   const setView = (view: CameraView) => {
     if (!size) return;
     const centre = new THREE.Vector3(size.width / 2, size.height / 2, -size.depth / 2);
-    const reach = Math.max(size.width, size.height) * 1.6;
+    // Far enough that the whole stock (and its spoilboard) fits the pane both ways.
+    const radius =
+      Math.hypot(size.width + 2 * SPOILBOARD_MARGIN, size.height + 2 * SPOILBOARD_MARGIN) / 2;
+    const vertical = THREE.MathUtils.degToRad(camera.fov) / 2;
+    const horizontal = Math.atan(Math.tan(vertical) * camera.aspect);
+    const reach = (radius / Math.sin(Math.min(vertical, horizontal))) * 0.9;
     const direction =
       view === 'top'
         ? new THREE.Vector3(0, -0.001, 1)
@@ -147,32 +169,32 @@ export function createStockScene(container: HTMLElement, colors: SceneColors): S
 
   return {
     show(result, stock, look) {
-      clear();
-      model.add(
-        new THREE.Mesh(geometry(result.meshes.board), createStockMaterial(look, stock.thickness)),
-      );
+      clearPieces();
+      const materials = materialsFor(look, stock.thickness);
+      pieces.add(new THREE.Mesh(geometry(result.meshes.board), materials.board));
       for (const { mesh } of result.meshes.loose) {
-        // Still the board's material, tinted with the warning colour.
-        const material = createStockMaterial(look, stock.thickness, warning);
-        const piece = new THREE.Mesh(geometry(mesh), material);
+        const piece = new THREE.Mesh(geometry(mesh), materials.loose);
         piece.position.z = liftFor(stock);
-        model.add(piece);
+        pieces.add(piece);
       }
-      model.add(spoilMarks(result, stock));
-      spoilboard = new THREE.Mesh(
-        new THREE.BoxGeometry(
-          stock.width + 2 * SPOILBOARD_MARGIN,
-          stock.height + 2 * SPOILBOARD_MARGIN,
-          SPOILBOARD_THICKNESS,
-        ),
-        new THREE.MeshStandardMaterial({ color: '#8f8a80', roughness: 0.95 }),
+
+      marksMaterial.map?.dispose();
+      marksMaterial.map = spoilTexture(result);
+      marksMaterial.needsUpdate = true;
+      const { cols, rows, cell } = result;
+      marks.scale.set(cols * cell, rows * cell, 1);
+      marks.position.set((cols * cell) / 2, (rows * cell) / 2, -stock.thickness - 0.03);
+
+      spoilboard.scale.set(
+        stock.width + 2 * SPOILBOARD_MARGIN,
+        stock.height + 2 * SPOILBOARD_MARGIN,
+        SPOILBOARD_THICKNESS,
       );
       spoilboard.position.set(
         stock.width / 2,
         stock.height / 2,
         -stock.thickness - SPOILBOARD_THICKNESS / 2 - 0.05,
       );
-      model.add(spoilboard);
 
       const changedSize =
         !size ||
@@ -187,12 +209,20 @@ export function createStockScene(container: HTMLElement, colors: SceneColors): S
     setColors(next) {
       scene.background = new THREE.Color(next.background);
       warning = new THREE.Color(next.warning);
+      (stockMaterials?.loose.userData.highlight as THREE.Color | undefined)?.copy(warning);
       render();
     },
     dispose() {
       observer.disconnect();
       controls.dispose();
-      clear();
+      clearPieces();
+      stockMaterials?.board.dispose();
+      stockMaterials?.loose.dispose();
+      marksMaterial.map?.dispose();
+      marksMaterial.dispose();
+      marks.geometry.dispose();
+      spoilboard.geometry.dispose();
+      (spoilboard.material as THREE.Material).dispose();
       environment.dispose();
       renderer.dispose();
       renderer.domElement.remove();

@@ -4,20 +4,23 @@ import { cutFrame, faceOf } from '../core/job/faces';
 import { useJobStore } from '../state/jobStore';
 import { useMachineStore } from '../state/machineStore';
 import { useGeneratedJob } from '../state/useGeneratedJob';
+import { useView3DStore } from '../state/view3dStore';
 import { useActiveSide } from '../state/useActiveSide';
 import { DesignCanvas } from './canvas/DesignCanvas';
 import { SideSwitch } from './canvas/SideSwitch';
 import { buildPreview } from './canvas/toolpathRuns';
 import { PreviewBar } from './preview/PreviewBar';
+import { SplitDivider } from './SplitDivider';
 
 // three.js is big, so the 3D view loads the first time it's opened.
 const StockView3D = lazy(() => import('./preview3d/StockView3D'));
 
-const VIEW_LABELS = { design: 'Design', preview: 'Toolpath preview', '3d': '3D' } as const;
+const VIEW_LABELS = { design: 'Design', preview: 'Toolpath preview' } as const;
 
 /**
- * The canvas with its Design / Toolpath preview / 3D switch and, in preview,
- * the playback bar.
+ * The canvas with its Design / Toolpath preview switch (and, in preview, the
+ * playback bar), and beside it the 3D view of the finished piece, which
+ * follows every change.
  */
 export function Workspace() {
   const view = useJobStore((s) => s.view);
@@ -29,6 +32,7 @@ export function Workspace() {
   const generated = useGeneratedJob();
   const toolpaths = useJobStore((s) => s.toolpaths);
   const side = useActiveSide();
+  const pane3d = useView3DStore();
   // Files keep their real numbers when the other side's are hidden.
   const { programs, fileNumbers, tabs } = useMemo(() => {
     const shown = generated.programs
@@ -62,48 +66,76 @@ export function Workspace() {
   const done = Math.round(progress * (previews[active]?.moveCount ?? 0));
 
   return (
-    <main className="workspace">
-      <div className="canvas-toolbar">
-        <div className="segmented" role="tablist" aria-label="View">
-          {(['design', 'preview', '3d'] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="tab"
-              aria-selected={view === v}
-              className={view === v ? 'segment segment-active' : 'segment'}
-              onClick={() => setView(v)}
-            >
-              {VIEW_LABELS[v]}
-            </button>
-          ))}
+    <main
+      className="workspace"
+      style={
+        pane3d.open
+          ? { gridTemplateColumns: `${1 - pane3d.share}fr auto ${pane3d.share}fr` }
+          : undefined
+      }
+    >
+      <section className="workspace-canvas" aria-label="Design">
+        <div className="canvas-toolbar">
+          <div className="segmented" role="tablist" aria-label="View">
+            {(['design', 'preview'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                role="tab"
+                aria-selected={view === v}
+                className={view === v ? 'segment segment-active' : 'segment'}
+                onClick={() => setView(v)}
+              >
+                {VIEW_LABELS[v]}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className={pane3d.open ? 'segment-toggle segment-toggle-on' : 'segment-toggle'}
+            aria-pressed={pane3d.open}
+            title={
+              pane3d.open ? 'Hide the 3D view' : 'Show the finished piece in 3D, beside the design'
+            }
+            onClick={pane3d.toggle}
+          >
+            3D
+          </button>
+          <SideSwitch />
         </div>
-        {view !== '3d' && <SideSwitch />}
-      </div>
-      {view === '3d' ? (
-        <Suspense fallback={<div className="stock-3d-status">Loading 3D view…</div>}>
-          <StockView3D />
-        </Suspense>
-      ) : (
         <DesignCanvas
           preview={inPreview ? { previews, activeIndex: active, done, showCutWidth, tabs } : null}
         />
-      )}
-      {inPreview && (
-        <PreviewBar
-          programs={programs}
-          fileNumbers={fileNumbers}
-          stats={stats}
-          activeIndex={active}
-          onActiveChange={(i) => {
-            setActiveIndex(i);
-            setProgress(1);
-          }}
-          progress={progress}
-          onProgressChange={setProgress}
-          showCutWidth={showCutWidth}
-          onShowCutWidthChange={setShowCutWidth}
-        />
+        {inPreview && (
+          <PreviewBar
+            programs={programs}
+            fileNumbers={fileNumbers}
+            stats={stats}
+            activeIndex={active}
+            onActiveChange={(i) => {
+              setActiveIndex(i);
+              setProgress(1);
+            }}
+            progress={progress}
+            onProgressChange={setProgress}
+            showCutWidth={showCutWidth}
+            onShowCutWidthChange={setShowCutWidth}
+          />
+        )}
+      </section>
+      {pane3d.open && (
+        <>
+          <SplitDivider
+            share={pane3d.share}
+            onChange={pane3d.setShare}
+            label="Resize the 3D view"
+          />
+          <section className="workspace-3d" aria-label="3D view">
+            <Suspense fallback={<div className="stock-3d-status">Loading 3D view…</div>}>
+              <StockView3D />
+            </Suspense>
+          </section>
+        </>
       )}
     </main>
   );

@@ -1,15 +1,25 @@
 /// <reference lib="webworker" />
-import type { BitProgram } from '../core/cam/program';
+import { generateJob } from '../core/cam/generateJob';
 import type { Job } from '../core/job/job';
+import type { MachineConfig } from '../core/machine/machineConfig';
+import type { FeedOverrides } from '../core/materials/feedOverrides';
 import { SOLID_EPSILON } from '../core/sim/heightField';
 import { findParts } from '../core/sim/looseParts';
 import { simulateJob } from '../core/sim/simulateJob';
 import { buildStockMeshes, type MeshData, type StockMeshes } from '../core/sim/stockMesh';
+import type { Bit } from '../core/tools/bits';
+
+/** Everything the CAM needs, so the worker can make the toolpaths itself. */
+export interface CarveInput {
+  job: Job;
+  machine: MachineConfig;
+  bits: Bit[];
+  feedOverrides: FeedOverrides;
+}
 
 export interface SimRequest {
   id: number;
-  job: Pick<Job, 'stock' | 'origin' | 'flip'>;
-  programs: BitProgram[];
+  input: CarveInput;
   maxCells: number;
 }
 
@@ -28,18 +38,19 @@ export interface SimResponse {
 
 const buffers = (m: MeshData) => [m.positions.buffer, m.normals.buffer, m.indices.buffer];
 
-// Thin shell: all the work happens in core/sim.
+// Thin shell: the work happens in core/cam and core/sim. Making the
+// toolpaths here too keeps the page smooth while a shape is being dragged.
 self.onmessage = (event: MessageEvent<SimRequest>) => {
-  const { id, job, programs, maxCells } = event.data;
-  const field = simulateJob(job, programs, maxCells);
+  const { id, input, maxCells } = event.data;
+  const { programs } = generateJob(input.job, input.machine, input.bits, input.feedOverrides);
+  const field = simulateJob(input.job, programs, maxCells);
   const meshes = buildStockMeshes(field, findParts(field));
   const maxSpoil = field.spoil.reduce((deepest, v) => Math.max(deepest, v), 0);
-  const spoilMask = field.spoil.map((v) => (v > SOLID_EPSILON ? 1 : 0));
   const response: SimResponse = {
     id,
     meshes,
     maxSpoil,
-    spoilMask: Uint8Array.from(spoilMask),
+    spoilMask: Uint8Array.from(field.spoil, (v) => (v > SOLID_EPSILON ? 1 : 0)),
     cols: field.cols,
     rows: field.rows,
     cell: field.cell,

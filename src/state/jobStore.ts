@@ -20,7 +20,7 @@ import { createJobPrefsRepository, type JobPrefs } from '../persistence/jobPrefs
 import type { Repository } from '../persistence/versionedRepository';
 import { EMPTY_HISTORY, record, redo, undo, type History, type Snapshot } from './history';
 
-export type View = 'design' | 'preview' | '3d';
+export type View = 'design' | 'preview';
 
 /**
  * How a click changes the selection:

@@ -1,11 +1,13 @@
 import type Konva from 'konva';
-import { useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { Stage } from 'react-konva';
 import type { ObjectTabs } from '../../core/cam/program';
 import { flipLine, isTwoSided, shownOnSide } from '../../core/job/faces';
 import { anchorPoint } from '../../core/job/job';
 import { editTabsAt } from '../../core/job/tabEditing';
 import { useGridStore } from '../../state/gridStore';
+import type { ObjectTransform } from '../../core/geometry/transform';
+import { useDragPreviewStore } from '../../state/dragPreviewStore';
 import { useJobStore } from '../../state/jobStore';
 import { useActiveSide } from '../../state/useActiveSide';
 import { useCanvasColors } from './canvasColors';
@@ -48,6 +50,11 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
   const selectedIds = useJobStore((s) => s.selectedIds);
   const select = useJobStore((s) => s.select);
   const setTransforms = useJobStore((s) => s.setTransforms);
+  const setLiveTransforms = useCallback(
+    (t: Record<string, ObjectTransform> | null) =>
+      t ? useDragPreviewStore.getState().set(t) : useDragPreviewStore.getState().clear(),
+    [],
+  );
   const toolpaths = useJobStore((s) => s.toolpaths);
   const updateToolpath = useJobStore((s) => s.updateToolpath);
   const flip = useJobStore((s) => s.flip);
@@ -124,6 +131,7 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
             colors={colors}
             onSelect={select}
             onTransform={setTransforms}
+            onLiveTransform={setLiveTransforms}
             snap={snap}
           />
           {preview && <ToolpathLayer {...preview} scale={view.scale} colors={colors} />}

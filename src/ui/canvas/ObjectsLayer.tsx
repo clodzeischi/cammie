@@ -16,6 +16,8 @@ interface ObjectsLayerProps {
   colors: CanvasColors;
   onSelect: (id: string, mode: SelectMode) => void;
   onTransform: (transforms: Record<string, ObjectTransform>) => void;
+  /** Positions while dragging, resizing or rotating (null once it's released). */
+  onLiveTransform?: (transforms: Record<string, ObjectTransform> | null) => void;
   snap: SnapGrid | null;
 }
 
@@ -47,7 +49,16 @@ const CORNERS_AND_SIDES = [
 ];
 
 export function ObjectsLayer(props: ObjectsLayerProps) {
-  const { objects, selectedIds, interactive, colors, onSelect, onTransform, snap } = props;
+  const {
+    objects,
+    selectedIds,
+    interactive,
+    colors,
+    onSelect,
+    onTransform,
+    onLiveTransform,
+    snap,
+  } = props;
   const nodes = useRef(new Map<string, Konva.Group>());
   const transformer = useRef<Konva.Transformer>(null);
   const register = useCallback((id: string, node: Konva.Group | null) => {
@@ -63,17 +74,30 @@ export function ObjectsLayer(props: ObjectsLayerProps) {
     tr.getLayer()?.batchDraw();
   }, [selectedIds, interactive, objects]);
 
-  /** Reports where the dragged object, and everything moving with it, ended up. */
+  /** Where the dragged object, and everything moving with it, is now. */
+  const movedWith = useCallback((id: string) => {
+    const attached = transformer.current?.nodes() ?? [];
+    const moved = attached.some((n) => n.id() === id) ? attached : [nodes.current.get(id)];
+    const transforms: Record<string, ObjectTransform> = {};
+    for (const node of moved) if (node) transforms[node.id()] = readTransform(node);
+    return transforms;
+  }, []);
+  const reportMoving = useCallback(
+    (id: string) => onLiveTransform?.(movedWith(id)),
+    [movedWith, onLiveTransform],
+  );
   const reportMoved = useCallback(
     (id: string) => {
-      const attached = transformer.current?.nodes() ?? [];
-      const moved = attached.some((n) => n.id() === id) ? attached : [nodes.current.get(id)];
-      const transforms: Record<string, ObjectTransform> = {};
-      for (const node of moved) if (node) transforms[node.id()] = readTransform(node);
-      onTransform(transforms);
+      onTransform(movedWith(id));
+      onLiveTransform?.(null);
     },
-    [onTransform],
+    [movedWith, onTransform, onLiveTransform],
   );
+  const transformed = (tr: Konva.Transformer) => {
+    const transforms: Record<string, ObjectTransform> = {};
+    for (const node of tr.nodes()) transforms[node.id()] = readTransform(node);
+    return transforms;
+  };
 
   // A lone rectangle or ellipse can be stretched freely; anything else keeps its proportions.
   const only = selectedIds.length === 1 ? objects.find((o) => o.id === selectedIds[0]) : undefined;
@@ -99,6 +123,7 @@ export function ObjectsLayer(props: ObjectsLayerProps) {
           interactive={interactive}
           register={register}
           onSelect={onSelect}
+          onMoving={reportMoving}
           onMoved={reportMoved}
           snap={snap}
         />
@@ -114,12 +139,10 @@ export function ObjectsLayer(props: ObjectsLayerProps) {
         anchorDragBoundFunc={(_old, pos, evt) =>
           transformer.current ? snapAnchor(transformer.current, pos, snap, evt) : pos
         }
+        onTransform={(e) => onLiveTransform?.(transformed(e.currentTarget as Konva.Transformer))}
         onTransformEnd={(e) => {
-          const transforms: Record<string, ObjectTransform> = {};
-          for (const node of (e.currentTarget as Konva.Transformer).nodes()) {
-            transforms[node.id()] = readTransform(node);
-          }
-          onTransform(transforms);
+          onTransform(transformed(e.currentTarget as Konva.Transformer));
+          onLiveTransform?.(null);
         }}
         anchorStroke={colors.pathSelected}
         borderStroke={colors.pathSelected}
@@ -139,6 +162,7 @@ interface ObjectNodeProps {
   interactive: boolean;
   register: (id: string, node: Konva.Group | null) => void;
   onSelect: (id: string, mode: SelectMode) => void;
+  onMoving: (id: string) => void;
   onMoved: (id: string) => void;
   snap: SnapGrid | null;
 }
@@ -148,7 +172,7 @@ interface ObjectNodeProps {
  * of points for every object on each render would be slow.
  */
 const ObjectNode = memo(function ObjectNode(props: ObjectNodeProps) {
-  const { object, color, interactive, register, onSelect, onMoved, snap } = props;
+  const { object, color, interactive, register, onSelect, onMoving, onMoved, snap } = props;
   const { id, transform } = object;
   const node = useRef<Konva.Group | null>(null);
   const ref = useCallback(
@@ -183,6 +207,7 @@ const ObjectNode = memo(function ObjectNode(props: ObjectNodeProps) {
       // A click that didn't drag picks just this object out of a selection.
       onClick={(e) => !e.evt.shiftKey && onSelect(id, 'replace')}
       onTap={() => onSelect(id, 'replace')}
+      onDragMove={() => onMoving(id)}
       onDragEnd={() => onMoved(id)}
     >
       {/* Text is grabbed anywhere in its box; picking out thin letters would be fiddly. */}
