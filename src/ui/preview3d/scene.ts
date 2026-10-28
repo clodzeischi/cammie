@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { Stock } from '../../core/job/job';
 import type { MaterialLook } from '../../core/materials/materialLooks';
 import type { MeshData } from '../../core/sim/stockMesh';
 import type { SimResponse } from '../../workers/sim.worker';
+import { createStockMaterial } from './stockMaterial';
 
 export type CameraView = 'angled' | 'top' | 'underneath';
 
@@ -24,6 +26,32 @@ const liftFor = (stock: Stock) => Math.max(4, stock.thickness * 0.8);
 /** The spoilboard reaches this far past the stock (mm) and is this thick. */
 const SPOILBOARD_MARGIN = 15;
 const SPOILBOARD_THICKNESS = 8;
+
+/** Spoilboard colour where cuts went into it. */
+const SPOIL_MARK = [214, 64, 52, 230];
+
+/**
+ * Red marks on the spoilboard wherever a cut went past the stock, seen
+ * through the cut. Texture rows run bottom-up, the grid's rows top-down.
+ */
+function spoilMarks(result: SimResponse, stock: Stock): THREE.Mesh {
+  const { cols, rows, cell, spoilMask } = result;
+  const pixels = new Uint8Array(cols * rows * 4);
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      if (!spoilMask[row * cols + col]) continue;
+      pixels.set(SPOIL_MARK, ((rows - 1 - row) * cols + col) * 4);
+    }
+  }
+  const texture = new THREE.DataTexture(pixels, cols, rows);
+  texture.needsUpdate = true;
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(cols * cell, rows * cell),
+    new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false }),
+  );
+  plane.position.set((cols * cell) / 2, (rows * cell) / 2, -stock.thickness - 0.03);
+  return plane;
+}
 
 function geometry(mesh: MeshData): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry();
@@ -49,8 +77,14 @@ export function createStockScene(container: HTMLElement, colors: SceneColors): S
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.screenSpacePanning = true;
 
-  scene.add(new THREE.HemisphereLight('#ffffff', '#6b6256', 1.6));
-  const sun = new THREE.DirectionalLight('#ffffff', 1.8);
+  // Soft surroundings to reflect: without them metals render nearly black.
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+  scene.environment = environment;
+  scene.environmentIntensity = 0.5;
+  scene.add(new THREE.HemisphereLight('#ffffff', '#6b6256', 1.1));
+  const sun = new THREE.DirectionalLight('#ffffff', 1.6);
   sun.position.set(-0.6, -0.8, 1.2);
   scene.add(sun);
   const fill = new THREE.DirectionalLight('#ffffff', 0.5);
@@ -87,7 +121,9 @@ export function createStockScene(container: HTMLElement, colors: SceneColors): S
     model.traverse((o) => {
       if (o instanceof THREE.Mesh) {
         o.geometry.dispose();
-        (o.material as THREE.Material).dispose();
+        const material = o.material as THREE.MeshBasicMaterial;
+        material.map?.dispose();
+        material.dispose();
       }
     });
     model.clear();
@@ -112,16 +148,17 @@ export function createStockScene(container: HTMLElement, colors: SceneColors): S
   return {
     show(result, stock, look) {
       clear();
-      const material = new THREE.MeshStandardMaterial({ color: look.color, roughness: 0.85 });
-      model.add(new THREE.Mesh(geometry(result.meshes.board), material));
+      model.add(
+        new THREE.Mesh(geometry(result.meshes.board), createStockMaterial(look, stock.thickness)),
+      );
       for (const { mesh } of result.meshes.loose) {
-        const piece = new THREE.Mesh(
-          geometry(mesh),
-          new THREE.MeshStandardMaterial({ color: warning, roughness: 0.7 }),
-        );
+        // Still the board's material, tinted with the warning colour.
+        const material = createStockMaterial(look, stock.thickness, warning);
+        const piece = new THREE.Mesh(geometry(mesh), material);
         piece.position.z = liftFor(stock);
         model.add(piece);
       }
+      model.add(spoilMarks(result, stock));
       spoilboard = new THREE.Mesh(
         new THREE.BoxGeometry(
           stock.width + 2 * SPOILBOARD_MARGIN,
@@ -156,6 +193,7 @@ export function createStockScene(container: HTMLElement, colors: SceneColors): S
       observer.disconnect();
       controls.dispose();
       clear();
+      environment.dispose();
       renderer.dispose();
       renderer.domElement.remove();
     },
