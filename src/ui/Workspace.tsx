@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { estimateProgram } from '../core/cam/estimate';
 import { cutFrame, faceOf } from '../core/job/faces';
 import { useJobStore } from '../state/jobStore';
@@ -10,7 +10,15 @@ import { SideSwitch } from './canvas/SideSwitch';
 import { buildPreview } from './canvas/toolpathRuns';
 import { PreviewBar } from './preview/PreviewBar';
 
-/** The canvas with its Design / Preview switch and, in preview, the playback bar. */
+// three.js is big, so the 3D view loads the first time it's opened.
+const StockView3D = lazy(() => import('./preview3d/StockView3D'));
+
+const VIEW_LABELS = { design: 'Design', preview: 'Toolpath preview', '3d': '3D' } as const;
+
+/**
+ * The canvas with its Design / Toolpath preview / 3D switch and, in preview,
+ * the playback bar.
+ */
 export function Workspace() {
   const view = useJobStore((s) => s.view);
   const setView = useJobStore((s) => s.setView);
@@ -57,7 +65,7 @@ export function Workspace() {
     <main className="workspace">
       <div className="canvas-toolbar">
         <div className="segmented" role="tablist" aria-label="View">
-          {(['design', 'preview'] as const).map((v) => (
+          {(['design', 'preview', '3d'] as const).map((v) => (
             <button
               key={v}
               type="button"
@@ -66,15 +74,21 @@ export function Workspace() {
               className={view === v ? 'segment segment-active' : 'segment'}
               onClick={() => setView(v)}
             >
-              {v === 'design' ? 'Design' : 'Toolpath preview'}
+              {VIEW_LABELS[v]}
             </button>
           ))}
         </div>
-        <SideSwitch />
+        {view !== '3d' && <SideSwitch />}
       </div>
-      <DesignCanvas
-        preview={inPreview ? { previews, activeIndex: active, done, showCutWidth, tabs } : null}
-      />
+      {view === '3d' ? (
+        <Suspense fallback={<div className="stock-3d-status">Loading 3D view…</div>}>
+          <StockView3D />
+        </Suspense>
+      ) : (
+        <DesignCanvas
+          preview={inPreview ? { previews, activeIndex: active, done, showCutWidth, tabs } : null}
+        />
+      )}
       {inPreview && (
         <PreviewBar
           programs={programs}

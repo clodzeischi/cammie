@@ -20,7 +20,7 @@ import { createJobPrefsRepository, type JobPrefs } from '../persistence/jobPrefs
 import type { Repository } from '../persistence/versionedRepository';
 import { EMPTY_HISTORY, record, redo, undo, type History, type Snapshot } from './history';
 
-export type View = 'design' | 'preview';
+export type View = 'design' | 'preview' | '3d';
 
 /**
  * How a click changes the selection:
@@ -333,8 +333,8 @@ export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = 
       setView: (view) =>
         set((s) => ({
           view,
-          selectedIds: view === 'preview' ? [] : s.selectedIds,
-          selectedToolpathId: view === 'preview' ? null : s.selectedToolpathId,
+          selectedIds: view === 'design' ? s.selectedIds : [],
+          selectedToolpathId: view === 'design' ? s.selectedToolpathId : null,
         })),
     };
   });

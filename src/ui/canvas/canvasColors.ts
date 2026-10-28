@@ -11,6 +11,10 @@ export interface CanvasColors {
   axisX: string;
   axisY: string;
   rapid: string;
+  /** Behind the stock (the 3D view's backdrop). */
+  background: string;
+  /** Pieces that come loose, in the 3D view. */
+  warning: string;
   /** One colour per exported file / bit. */
   toolpaths: string[];
 }
@@ -25,6 +29,8 @@ const TOKENS = {
   axisX: '--canvas-axis-x',
   axisY: '--canvas-axis-y',
   rapid: '--canvas-rapid',
+  background: '--canvas-bg',
+  warning: '--warning',
 } as const;
 
 const TOOLPATH_TOKENS = ['--canvas-toolpath-1', '--canvas-toolpath-2', '--canvas-toolpath-3'];
