@@ -27,6 +27,13 @@ const readTransform = (node: Konva.Node): ObjectTransform => ({
   scaleY: node.scaleY(),
 });
 
+/** How far (screen px) from a line a click still picks its object. */
+const HIT_SLACK_PX = 10;
+
+/** Size on the stock, for stacking click areas (rotation doesn't change it). */
+const area = (o: DesignObject) =>
+  Math.abs(o.width * o.transform.scaleX * o.height * o.transform.scaleY);
+
 /** Smallest size (screen px) the resize handles will shrink an object to. */
 const MIN_BOX_PX = 4;
 
@@ -71,6 +78,10 @@ export function ObjectsLayer(props: ObjectsLayerProps) {
   // A lone rectangle or ellipse can be stretched freely; anything else keeps its proportions.
   const only = selectedIds.length === 1 ? objects.find((o) => o.id === selectedIds[0]) : undefined;
   const freeResize = isBasicShape(only?.shape);
+  // Outlines have no fill, so drawing order doesn't show. Stack click areas by
+  // size instead, smallest on top: a shape inside a bigger one is always
+  // clickable, and the bigger one still is everywhere else.
+  const stacked = useMemo(() => [...objects].sort((a, b) => area(b) - area(a)), [objects]);
 
   return (
     // Remount when switching modes: Konva doesn't rebuild a layer's hit areas when
@@ -80,7 +91,7 @@ export function ObjectsLayer(props: ObjectsLayerProps) {
       opacity={interactive ? 1 : 0.35}
       listening={interactive}
     >
-      {objects.map((object) => (
+      {stacked.map((object) => (
         <ObjectNode
           key={object.id}
           object={object}
@@ -174,17 +185,22 @@ const ObjectNode = memo(function ObjectNode(props: ObjectNodeProps) {
       onTap={() => onSelect(id, 'replace')}
       onDragEnd={() => onMoved(id)}
     >
-      {/* Invisible box so the whole object is grabbable, not just its thin lines. */}
-      <Rect width={object.width} height={object.height} fill="transparent" />
+      {/* Text is grabbed anywhere in its box; picking out thin letters would be fiddly. */}
+      {object.kind === 'text' && (
+        <Rect width={object.width} height={object.height} fill="transparent" />
+      )}
+      {/* Everything else is picked by its lines (with some slack) or the inside of a
+          closed outline, so a click on empty space reaches the shape behind. */}
       {flat.map((points, i) => (
         <Line
           key={i}
           points={points}
           closed={object.paths[i]!.closed}
+          fill={object.paths[i]!.closed ? 'transparent' : undefined}
           stroke={color}
           strokeWidth={1.25}
           strokeScaleEnabled={false}
-          listening={false}
+          hitStrokeWidth={HIT_SLACK_PX}
           perfectDrawEnabled={false}
         />
       ))}
