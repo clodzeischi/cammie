@@ -1,4 +1,4 @@
-import { makeObject } from '../core/cam/testFixtures';
+import { makeObject, profileOp } from '../core/cam/testFixtures';
 import { createMemoryStore } from '../persistence/keyValueStore';
 import {
   createJobPrefsRepository,
@@ -167,5 +167,67 @@ describe('projects', () => {
     store.getState().clearDesign();
     expect(store.getState()).toMatchObject({ objects: [], toolpaths: [], jobName: '' });
     expect(store.getState().stock.width).toBe(80);
+  });
+});
+
+describe('working on one side', () => {
+  const setup = () => {
+    const store = newStore();
+    const s = () => store.getState();
+    ['top', 'bottom', 'both', 'uncut', 'pin'].forEach((id) =>
+      s().addObject(
+        makeObject({ id, ...(id === 'pin' && { role: 'registration' as const }) }),
+        null,
+      ),
+    );
+    const cut = (id: string, face?: 'bottom') =>
+      s().setToolpaths([
+        ...s().toolpaths,
+        {
+          id: `${id}-${face ?? 'top'}`,
+          objectId: id,
+          operation: profileOp(),
+          ...(face && { face }),
+        },
+      ]);
+    cut('top');
+    cut('bottom', 'bottom');
+    cut('both');
+    cut('both', 'bottom');
+    return { store, s };
+  };
+
+  it('hides shapes cut only from the other side, from selection too', () => {
+    const { s } = setup();
+    s().selectAll();
+    s().setSideView('bottom');
+    expect(s().selectedIds).toEqual(['bottom', 'both', 'uncut', 'pin']);
+    s().select(null);
+    s().selectAll();
+    expect(s().selectedIds).toEqual(['bottom', 'both', 'uncut', 'pin']);
+    s().select('top');
+    expect(s().selectedIds).toEqual([]);
+  });
+
+  it('adds new cuts to the side being worked on', () => {
+    const { s } = setup();
+    s().setSideView('bottom');
+    s().addToolpaths(['uncut'], () => profileOp());
+    expect(s().toolpaths.find((t) => t.objectId === 'uncut')?.face).toBe('bottom');
+    s().setSideView('both');
+    s().addToolpaths(['uncut'], () => profileOp());
+    expect(
+      s()
+        .toolpaths.filter((t) => t.objectId === 'uncut')
+        .map((t) => t.face),
+    ).toEqual([undefined, 'bottom']);
+  });
+
+  it('shows everything once the job is no longer two-sided', () => {
+    const store = newStore();
+    store.getState().addObject(makeObject({ id: 'a' }));
+    store.getState().setSideView('bottom');
+    store.getState().selectAll();
+    expect(store.getState().selectedIds).toEqual(['a']);
   });
 });

@@ -3,6 +3,7 @@ import {
   anchorPoint,
   canvasToMachine,
   machineToCanvas,
+  type DesignObject,
   type Face,
   type FlipAxis,
   type Job,
@@ -74,3 +75,27 @@ export const FLIP_LABEL: Record<FlipAxis, string> = {
   'left-right': 'left to right',
   'top-bottom': 'top to bottom',
 };
+
+/** Which side the user is working on: everything, or just one face's shapes and files. */
+export type SideView = 'both' | Face;
+
+/** A job is two-sided once anything is cut from the bottom or it has registration holes. */
+export const isTwoSided = (job: Pick<Job, 'objects' | 'toolpaths'>): boolean =>
+  job.toolpaths.some((t) => faceOf(t) === 'bottom') ||
+  job.objects.some((o) => o.role === 'registration');
+
+/**
+ * Whether a shape shows while working on one side. Hidden: shapes cut only
+ * from the other side. Always shown: registration holes (they belong to both
+ * sides), shapes cut from both, and shapes with no cuts yet, so new work
+ * never disappears.
+ */
+export function shownOnSide(
+  object: Pick<DesignObject, 'id' | 'role'>,
+  toolpaths: readonly Toolpath[],
+  side: SideView,
+): boolean {
+  if (side === 'both' || object.role === 'registration') return true;
+  const own = toolpaths.filter((t) => t.objectId === object.id);
+  return own.length === 0 || own.some((t) => faceOf(t) === side);
+}

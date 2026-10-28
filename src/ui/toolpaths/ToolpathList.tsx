@@ -6,6 +6,7 @@ import { bitDetail, findBit } from '../../core/tools/bits';
 import { useJobStore } from '../../state/jobStore';
 import { useGeneratedJob } from '../../state/useGeneratedJob';
 import { useToolingStore } from '../../state/toolingStore';
+import { useActiveSide } from '../../state/useActiveSide';
 import { bitIcon } from '../bitIcons';
 import { CUT_KINDS } from '../cutKinds';
 import { Icon } from '../icons/Icon';
@@ -32,11 +33,14 @@ export function ToolpathList() {
   const setToolpaths = useJobStore((s) => s.setToolpaths);
   const removeToolpaths = useJobStore((s) => s.removeToolpaths);
   const flip = useJobStore((s) => s.flip);
+  const setSideView = useJobStore((s) => s.setSideView);
+  const side = useActiveSide();
   const bits = useToolingStore((s) => s.bits);
   const { diagnostics } = useGeneratedJob();
   const problems = severities(diagnostics);
   const groups = toolpathGroups(toolpaths);
   const twoSided = groups.some((g) => g.face === 'bottom');
+  const hiddenFiles = groups.filter((g) => side !== 'both' && g.face !== side).length;
   const nameOf = (id: string) => objects.find((o) => o.id === id)?.name ?? 'Missing object';
 
   return (
@@ -58,6 +62,8 @@ export function ToolpathList() {
       ) : (
         <ol className="toolpath-groups">
           {groups.map((group, gi) => {
+            // Hidden while working on the other side; numbering still counts it.
+            if (side !== 'both' && group.face !== side) return null;
             const bit = findBit(group.bitId, bits);
             const previous = groups[gi - 1];
             const flipsHere = previous !== undefined && previous.face !== group.face;
@@ -194,6 +200,15 @@ export function ToolpathList() {
             );
           })}
         </ol>
+      )}
+      {hiddenFiles > 0 && (
+        <p className="pane-hint">
+          {side === 'top' ? 'Bottom' : 'Top'} side hidden ({hiddenFiles}{' '}
+          {hiddenFiles === 1 ? 'file' : 'files'}).{' '}
+          <button type="button" className="link-button" onClick={() => setSideView('both')}>
+            Show both sides
+          </button>
+        </p>
       )}
       {groups.length > 0 && (
         <p className="pane-hint">

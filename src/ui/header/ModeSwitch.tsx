@@ -1,9 +1,16 @@
-import { useModeStore } from '../../state/modeStore';
+import { useJobStore } from '../../state/jobStore';
+import { useModeStore, type ModeState } from '../../state/modeStore';
 
 /** Easy ↔ Pro. Switching never changes the design; Pro-only jobs show read-only in Easy. */
 export function ModeSwitch() {
   const mode = useModeStore((s) => s.mode);
-  const setMode = useModeStore((s) => s.setMode);
+  const setModeOnly = useModeStore((s) => s.setMode);
+  const setSideView = useJobStore((s) => s.setSideView);
+  // Easy has no side switch, so it always shows both sides.
+  const setMode: ModeState['setMode'] = (next) => {
+    if (next === 'easy') setSideView('both');
+    setModeOnly(next);
+  };
   const pro = mode === 'pro';
 
   return (

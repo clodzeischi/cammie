@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import { estimateProgram } from '../core/cam/estimate';
-import { cutFrame } from '../core/job/faces';
+import { cutFrame, faceOf } from '../core/job/faces';
 import { useJobStore } from '../state/jobStore';
 import { useMachineStore } from '../state/machineStore';
 import { useGeneratedJob } from '../state/useGeneratedJob';
+import { useActiveSide } from '../state/useActiveSide';
 import { DesignCanvas } from './canvas/DesignCanvas';
+import { SideSwitch } from './canvas/SideSwitch';
 import { buildPreview } from './canvas/toolpathRuns';
 import { PreviewBar } from './preview/PreviewBar';
 
@@ -16,7 +18,23 @@ export function Workspace() {
   const origin = useJobStore((s) => s.origin);
   const flip = useJobStore((s) => s.flip);
   const machine = useMachineStore((s) => s.config);
-  const { programs, tabs } = useGeneratedJob();
+  const generated = useGeneratedJob();
+  const toolpaths = useJobStore((s) => s.toolpaths);
+  const side = useActiveSide();
+  // Files keep their real numbers when the other side's are hidden.
+  const { programs, fileNumbers, tabs } = useMemo(() => {
+    const shown = generated.programs
+      .map((program, i) => ({ program, number: i + 1 }))
+      .filter(({ program }) => side === 'both' || program.face === side);
+    return {
+      programs: shown.map((s) => s.program),
+      fileNumbers: shown.map((s) => s.number),
+      tabs: generated.tabs.filter((t) => {
+        const toolpath = toolpaths.find((tp) => tp.id === t.toolpathId);
+        return side === 'both' || (toolpath && faceOf(toolpath) === side);
+      }),
+    };
+  }, [generated, side, toolpaths]);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [progress, setProgress] = useState(1);
@@ -37,19 +55,22 @@ export function Workspace() {
 
   return (
     <main className="workspace">
-      <div className="segmented view-toggle" role="tablist" aria-label="View">
-        {(['design', 'preview'] as const).map((v) => (
-          <button
-            key={v}
-            type="button"
-            role="tab"
-            aria-selected={view === v}
-            className={view === v ? 'segment segment-active' : 'segment'}
-            onClick={() => setView(v)}
-          >
-            {v === 'design' ? 'Design' : 'Toolpath preview'}
-          </button>
-        ))}
+      <div className="canvas-toolbar">
+        <div className="segmented" role="tablist" aria-label="View">
+          {(['design', 'preview'] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              role="tab"
+              aria-selected={view === v}
+              className={view === v ? 'segment segment-active' : 'segment'}
+              onClick={() => setView(v)}
+            >
+              {v === 'design' ? 'Design' : 'Toolpath preview'}
+            </button>
+          ))}
+        </div>
+        <SideSwitch />
       </div>
       <DesignCanvas
         preview={inPreview ? { previews, activeIndex: active, done, showCutWidth, tabs } : null}
@@ -57,6 +78,7 @@ export function Workspace() {
       {inPreview && (
         <PreviewBar
           programs={programs}
+          fileNumbers={fileNumbers}
           stats={stats}
           activeIndex={active}
           onActiveChange={(i) => {

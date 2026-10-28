@@ -4,6 +4,8 @@ import type { BitProgram } from '../../core/cam/program';
 
 interface PreviewBarProps {
   programs: BitProgram[];
+  /** Each program's number among all the job's files (some may be hidden). */
+  fileNumbers: number[];
   stats: ProgramStats[];
   activeIndex: number;
   onActiveChange: (index: number) => void;
@@ -23,7 +25,7 @@ export function PreviewBar(props: PreviewBarProps) {
   const active = stats[activeIndex];
 
   if (programs.length === 0) {
-    return <div className="preview-bar muted">No toolpaths yet. Check the list on the right.</div>;
+    return <div className="preview-bar muted">No toolpaths to show yet.</div>;
   }
 
   return (
@@ -39,7 +41,7 @@ export function PreviewBar(props: PreviewBarProps) {
               className={i === activeIndex ? 'segment segment-active' : 'segment'}
               onClick={() => props.onActiveChange(i)}
             >
-              {i + 1}. {program.face === 'bottom' ? 'Bottom: ' : ''}
+              {props.fileNumbers[i]}. {program.face === 'bottom' ? 'Bottom: ' : ''}
               {program.bit.name}
             </button>
           ))}

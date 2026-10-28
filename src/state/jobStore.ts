@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { withGroupMates } from '../core/job/arrange';
+import { faceOf, isTwoSided, shownOnSide, type SideView } from '../core/job/faces';
 import type {
   DesignObject,
   Face,
@@ -42,6 +43,8 @@ export interface JobState extends Job {
   /** The toolpath shown in the side panel (Pro mode); its object is selected too. */
   selectedToolpathId: string | null;
   view: View;
+  /** Two-sided jobs: show both sides, or hide the shapes and files of the other one. */
+  sideView: SideView;
   history: History;
 
   setStock: (patch: Partial<Stock>) => void;
@@ -67,7 +70,10 @@ export interface JobState extends Job {
     toolpaths?: Toolpath[],
   ) => void;
   removeObjects: (ids: string[]) => void;
-  /** Gives each object a new toolpath where it naturally runs, and selects the first. */
+  /**
+   * Gives each object a new toolpath where it naturally runs, and selects the
+   * first. It's cut from the side being worked on (the top when showing both).
+   */
   addToolpaths: (objectIds: string[], operation: (objectId: string) => Operation) => void;
   /** Settings edits; `reposition` moves it to its natural place (its cut type changed). */
   updateToolpath: (id: string, operation: Operation, reposition?: boolean) => void;
@@ -84,18 +90,31 @@ export interface JobState extends Job {
   undo: () => void;
   redo: () => void;
   setView: (view: View) => void;
+  setSideView: (side: SideView) => void;
   /** Replaces everything with an opened project; it starts with no undo history. */
   loadProject: (project: { jobName: string; job: Job }) => void;
   /** Starts an empty design, keeping the stock, origin and material. */
   clearDesign: () => void;
 }
 
+/** The side actually shown: a job that isn't two-sided always shows everything. */
+export const activeSide = (s: Pick<JobState, 'objects' | 'toolpaths' | 'sideView'>): SideView =>
+  isTwoSided(s) ? s.sideView : 'both';
+
+/** Ids of the shapes shown for the side being worked on. */
+const shownIds = (s: JobState): Set<string> => {
+  const side = activeSide(s);
+  return new Set(s.objects.filter((o) => shownOnSide(o, s.toolpaths, side)).map((o) => o.id));
+};
+
 /** Stretched rectangles and ellipses store their real size (see withBakedScale). */
 const normalise = (objects: DesignObject[]) => objects.map(withBakedScale);
 
 function nextSelection(state: JobState, id: string | null, mode: SelectMode): string[] {
   if (id === null) return [];
-  const unit = withGroupMates(state.objects, [id]);
+  // Group mates on the hidden side stay unselected, so they can't be dragged unseen.
+  const shown = shownIds(state);
+  const unit = withGroupMates(state.objects, [id]).filter((u) => shown.has(u));
   const selected = state.selectedIds.includes(id);
   if (mode === 'keep' && selected) return state.selectedIds;
   if (mode !== 'toggle') return unit;
@@ -149,6 +168,7 @@ export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = 
       selectedIds: [],
       selectedToolpathId: null,
       view: 'design',
+      sideView: 'both',
       history: EMPTY_HISTORY,
 
       setStock: (patch) => set((s) => ({ stock: { ...s.stock, ...patch } })),
@@ -206,7 +226,11 @@ export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = 
         });
       },
       addToolpaths: (objectIds, operation) => {
-        const added = objectIds.map((id) => newToolpath(id, operation(id)));
+        const bottom = activeSide(get()) === 'bottom';
+        const added = objectIds.map((id) => ({
+          ...newToolpath(id, operation(id)),
+          ...(bottom && { face: 'bottom' as const }),
+        }));
         if (added.length === 0) return;
         change({
           toolpaths: added.reduce(insertToolpath, get().toolpaths),
@@ -267,13 +291,13 @@ export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = 
       },
       select: (id, mode = 'replace') =>
         set((s) => ({ selectedIds: nextSelection(s, id, mode), selectedToolpathId: null })),
-      selectAll: () =>
-        set((s) => ({ selectedIds: s.objects.map((o) => o.id), selectedToolpathId: null })),
+      selectAll: () => set((s) => ({ selectedIds: [...shownIds(s)], selectedToolpathId: null })),
       undo: () => restore(undo(get().history, snapshot())),
       redo: () => restore(redo(get().history, snapshot())),
       loadProject: ({ jobName, job }) =>
         set({
           ...job,
+          sideView: 'both',
           jobName,
           jobNameFrom: null,
           selectedIds: [],
@@ -291,6 +315,20 @@ export function createJobStore(prefs: Repository<JobPrefs>, now: () => number = 
           selectedToolpathId: null,
           view: 'design',
           history: EMPTY_HISTORY,
+        }),
+      setSideView: (sideView) =>
+        set((s) => {
+          const next = { ...s, sideView };
+          const shown = shownIds(next);
+          const toolpath = s.toolpaths.find((t) => t.id === s.selectedToolpathId);
+          return {
+            sideView,
+            selectedIds: s.selectedIds.filter((id) => shown.has(id)),
+            selectedToolpathId:
+              toolpath && (activeSide(next) === 'both' || faceOf(toolpath) === activeSide(next))
+                ? toolpath.id
+                : null,
+          };
         }),
       setView: (view) =>
         set((s) => ({

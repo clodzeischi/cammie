@@ -2,11 +2,12 @@ import type Konva from 'konva';
 import { useMemo, useRef } from 'react';
 import { Stage } from 'react-konva';
 import type { ObjectTabs } from '../../core/cam/program';
-import { faceOf, flipLine } from '../../core/job/faces';
+import { flipLine, isTwoSided, shownOnSide } from '../../core/job/faces';
 import { anchorPoint } from '../../core/job/job';
 import { editTabsAt } from '../../core/job/tabEditing';
 import { useGridStore } from '../../state/gridStore';
 import { useJobStore } from '../../state/jobStore';
+import { useActiveSide } from '../../state/useActiveSide';
 import { useCanvasColors } from './canvasColors';
 import { GridControls } from './GridControls';
 import { ObjectsLayer } from './ObjectsLayer';
@@ -50,8 +51,12 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
   const toolpaths = useJobStore((s) => s.toolpaths);
   const updateToolpath = useJobStore((s) => s.updateToolpath);
   const flip = useJobStore((s) => s.flip);
-  const twoSided =
-    toolpaths.some((t) => faceOf(t) === 'bottom') || objects.some((o) => o.role === 'registration');
+  const twoSided = isTwoSided({ objects, toolpaths });
+  const side = useActiveSide();
+  const shown = useMemo(
+    () => objects.filter((o) => shownOnSide(o, toolpaths, side)),
+    [objects, toolpaths, side],
+  );
   const { view, setView, fit } = useViewport(stock, size);
   const gridSpacing = useGridStore((s) => s.spacing);
   const snapOn = useGridStore((s) => s.snap);
@@ -113,7 +118,7 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
             flipLine={twoSided ? flipLine(stock, flip) : null}
           />
           <ObjectsLayer
-            objects={objects}
+            objects={shown}
             selectedIds={selectedIds}
             interactive={!preview}
             colors={colors}
