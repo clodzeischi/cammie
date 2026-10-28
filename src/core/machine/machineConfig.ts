@@ -13,6 +13,11 @@ export interface MachineConfig {
   workArea: { x: number; y: number; z: number };
   maxFeedXY: number;
   maxFeedZ: number;
+  /**
+   * The spindle is switched on and off by hand (e.g. a speed knob on the
+   * motor), so files carry no spindle commands and RPM settings don't apply.
+   */
+  manualSpindle: boolean;
   maxSpindleRpm: number;
   /** GRBL `$30` value: the S word that means full speed. */
   maxSValue: number;
@@ -29,6 +34,7 @@ export const DEFAULT_MACHINE_CONFIG: MachineConfig = {
   workArea: { x: 300, y: 180, z: 45 },
   maxFeedXY: 1000,
   maxFeedZ: 500,
+  manualSpindle: false,
   maxSpindleRpm: 10000,
   maxSValue: 1000,
   safeZ: 5,

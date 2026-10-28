@@ -15,6 +15,7 @@ describe('machineConfigRepository', () => {
     const custom = {
       ...DEFAULT_MACHINE_CONFIG,
       safeZ: 8,
+      manualSpindle: true,
       endPosition: { mode: 'park' as const, x: 10, y: 170 },
     };
     repo.save(custom);

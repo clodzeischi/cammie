@@ -72,6 +72,9 @@ export const grblPost: PostProcessor = {
     }
     out.line(comment(`Estimated time: ${formatDuration(ctx.estimatedSeconds)}`));
     out.line(comment('Start with the bit at X0 Y0, touching the top of the material'));
+    if (machine.manualSpindle) {
+      out.line(comment('Spindle: switch it on by hand before running, and off when done'));
+    }
     out.line('G21 G90 G94 G17');
     userLines(machine.customHeader).forEach((l) => out.line(l));
 
@@ -81,7 +84,7 @@ export const grblPost: PostProcessor = {
     let rpm: number | null = null;
     for (const section of program.sections) {
       out.line(comment(section.label));
-      if (section.rpm !== rpm) {
+      if (!machine.manualSpindle && section.rpm !== rpm) {
         const s = formatInt(rpmToSValue(section.rpm, machine));
         out.line(rpm === null ? `M3 S${s}` : `S${s}`);
         if (machine.spindleDwell > 0) out.line(`G4 P${machine.spindleDwell}`);
@@ -92,7 +95,7 @@ export const grblPost: PostProcessor = {
 
     out.raise(machine.safeZ);
     userLines(machine.customFooter).forEach((l) => out.line(l));
-    out.line('M5');
+    if (!machine.manualSpindle) out.line('M5');
     const end = machine.endPosition;
     if (end.mode === 'origin') out.move({ kind: 'rapid', x: 0, y: 0, z: machine.safeZ });
     if (end.mode === 'park') out.move({ kind: 'rapid', x: end.x, y: end.y, z: machine.safeZ });

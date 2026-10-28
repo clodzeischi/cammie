@@ -257,6 +257,7 @@ interface OperationSettings {
 | Work area X / Y / Z | 300 / 180 / 45 mm | Job-out-of-bounds warning. |
 | Max feed XY | 1000 mm/min | Clamp. |
 | Max feed Z | 500 mm/min | Clamp for plunge/ramp. |
+| Manual spindle control | Off | On: the spindle is switched by hand. Files emit no `M3`/`S`/`G4`/`M5` (just a comment to switch it on before running and off after); max RPM, `$30` and spin-up are hidden and not validated, the per-cut Spindle RPM field is hidden, RPM isn't clamped, and estimates leave out spin-up. |
 | Max spindle RPM | 10000 | Physical motor top speed. |
 | Max S value (`$30`) | 1000 | `S = round(rpm / maxRpm × $30)`. Many 3018 boards ship with `$30=1000`. |
 | Safe Z (retract) | 5 mm | Travel height above stock top. |
@@ -399,7 +400,7 @@ M2
 ### 12.3 Rules (GRBL 1.1 compatibility)
 - **The file only moves the mill.** Before running it, the user has zeroed the bit by hand and parked it at the work origin (X0 Y0, tip touching the top of the material). The file assumes the active work coordinate system is already correct and never changes it.
   - The first motion is always `G0 Z<safeZ>` straight up, before any XY move.
-  - Spindle on/off (`M3 S…` / `M5`) is the only non-motion machine control emitted.
+  - Spindle on/off (`M3 S…` / `M5`) is the only non-motion machine control emitted, and not even that with manual spindle control (§9.1).
   - **Never** emit homing (`$H`), `G28`/`G30`, `G92`, `G10`, work-offset selection (`G54`–`G59`), or probing (`G38.x`). The user can still put anything in the custom header/footer at their own risk.
 - Comments: **parentheses only**, no nested parens, ASCII only (sanitize object names).
 - Only emit words GRBL supports: `G0 G1 G2 G3 G4 G17 G21 G90 G94 M3 M5 M2 S F X Y Z P`.

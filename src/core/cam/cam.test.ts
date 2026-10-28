@@ -204,3 +204,18 @@ describe('estimateProgram', () => {
     expect(stats.seconds).toBeGreaterThan(0);
   });
 });
+
+describe('manual spindle', () => {
+  it('skips RPM checks and spin-up time when the spindle is switched by hand', () => {
+    const machine = { ...DEFAULT_MACHINE_CONFIG, manualSpindle: true };
+    const job = makeJob([makeObject({ operation: profileOp({ depth: 1, entry: 'plunge' }) })]);
+    // An RPM override past the machine's max would normally be lowered with a note.
+    const overrides = { 'plywood|vbit-60': { rpm: 50000 } };
+    const { programs, diagnostics } = generateJob(job, machine, undefined, overrides);
+    expect(diagnostics).toEqual([]);
+    const withDwell = estimateProgram(programs[0]!, { ...machine, manualSpindle: false });
+    expect(estimateProgram(programs[0]!, machine).seconds).toBeCloseTo(
+      withDwell.seconds - machine.spindleDwell,
+    );
+  });
+});

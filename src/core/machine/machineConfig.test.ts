@@ -51,4 +51,14 @@ describe('validateMachineConfig', () => {
     });
     expect(errors.map((e) => e.field)).toEqual(['endPosition.x']);
   });
+
+  it('ignores the hidden spindle settings when the spindle is switched by hand', () => {
+    const bad = { ...DEFAULT_MACHINE_CONFIG, maxSpindleRpm: 0, maxSValue: -1, spindleDwell: NaN };
+    expect(validateMachineConfig(bad).map((e) => e.field)).toEqual([
+      'maxSpindleRpm',
+      'maxSValue',
+      'spindleDwell',
+    ]);
+    expect(validateMachineConfig({ ...bad, manualSpindle: true })).toEqual([]);
+  });
 });

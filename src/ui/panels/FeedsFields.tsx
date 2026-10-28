@@ -1,6 +1,7 @@
 import { overridesFor } from '../../core/materials/feedOverrides';
 import { presetFeeds, type Feeds, type Material } from '../../core/materials/materials';
 import type { Bit } from '../../core/tools/bits';
+import { useMachineStore } from '../../state/machineStore';
 import { useToolingStore } from '../../state/toolingStore';
 import { NumberField } from '../common/fields';
 
@@ -26,6 +27,11 @@ const FIELDS: Array<{ key: keyof Feeds; label: string; unit: string }> = [
 export function FeedsFields({ material, bit, showStepover }: FeedsFieldsProps) {
   const all = useToolingStore((s) => s.feedOverrides);
   const setFeeds = useToolingStore((s) => s.setFeeds);
+  // A hand-switched spindle runs at its knob's speed, so there's no RPM to set.
+  const manualSpindle = useMachineStore((s) => s.config.manualSpindle);
+  const shown = FIELDS.filter(
+    (f) => (showStepover || f.key !== 'stepover') && !(manualSpindle && f.key === 'rpm'),
+  );
   const preset = presetFeeds(material, bit);
   const overrides = overridesFor(all, material.id, bit.id);
   const hasOverrides = Object.keys(overrides).length > 0;
@@ -45,7 +51,7 @@ export function FeedsFields({ material, bit, showStepover }: FeedsFieldsProps) {
         Saved for {material.name} with the {bit.name}, and used by every cut with that pair.
       </p>
       <div className="field-row">
-        {FIELDS.filter((f) => showStepover || f.key !== 'stepover').map(({ key, label, unit }) => (
+        {shown.map(({ key, label, unit }) => (
           <NumberField
             key={key}
             label={label}

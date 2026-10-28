@@ -60,44 +60,64 @@ export function MachineSettingsForm({ config, errors, onChange }: MachineSetting
             onChange={(v) => set({ maxFeedZ: v })}
           />
         </div>
-        <div className="field-row">
-          <NumberField
-            label="Max spindle speed"
-            unit="RPM"
-            step={100}
-            value={config.maxSpindleRpm}
-            error={errorFor('maxSpindleRpm')}
-            onChange={(v) => set({ maxSpindleRpm: v })}
+      </fieldset>
+
+      <fieldset>
+        <legend>Spindle</legend>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={config.manualSpindle}
+            onChange={(e) => set({ manualSpindle: e.target.checked })}
           />
-          <NumberField
-            label="Max S value ($30)"
-            value={config.maxSValue}
-            error={errorFor('maxSValue')}
-            hint="Check with $$ in gSender. Many 3018 boards use 1000."
-            onChange={(v) => set({ maxSValue: v })}
-          />
-        </div>
+          Manual spindle control
+        </label>
+        {config.manualSpindle ? (
+          <p className="field-hint">
+            Files won't turn the spindle on or off or set its speed. Switch it on by hand before
+            running each file, and off when it's done.
+          </p>
+        ) : (
+          <>
+            <div className="field-row">
+              <NumberField
+                label="Max spindle speed"
+                unit="RPM"
+                step={100}
+                value={config.maxSpindleRpm}
+                error={errorFor('maxSpindleRpm')}
+                onChange={(v) => set({ maxSpindleRpm: v })}
+              />
+              <NumberField
+                label="Max S value ($30)"
+                value={config.maxSValue}
+                error={errorFor('maxSValue')}
+                hint="Check with $$ in gSender. Many 3018 boards use 1000."
+                onChange={(v) => set({ maxSValue: v })}
+              />
+            </div>
+            <NumberField
+              label="Spindle spin-up"
+              unit="s"
+              value={config.spindleDwell}
+              error={errorFor('spindleDwell')}
+              hint="Wait after starting the spindle, before cutting."
+              onChange={(v) => set({ spindleDwell: v })}
+            />
+          </>
+        )}
       </fieldset>
 
       <fieldset>
         <legend>Motion</legend>
-        <div className="field-row">
-          <NumberField
-            label="Safe Z"
-            unit="mm"
-            value={config.safeZ}
-            error={errorFor('safeZ')}
-            hint="Travel height above the material."
-            onChange={(v) => set({ safeZ: v })}
-          />
-          <NumberField
-            label="Spindle spin-up"
-            unit="s"
-            value={config.spindleDwell}
-            error={errorFor('spindleDwell')}
-            onChange={(v) => set({ spindleDwell: v })}
-          />
-        </div>
+        <NumberField
+          label="Safe Z"
+          unit="mm"
+          value={config.safeZ}
+          error={errorFor('safeZ')}
+          hint="Travel height above the material."
+          onChange={(v) => set({ safeZ: v })}
+        />
         <SelectField
           label="When the job ends"
           value={end.mode}
@@ -138,7 +158,9 @@ export function MachineSettingsForm({ config, errors, onChange }: MachineSetting
         />
         <TextAreaField
           label="End of file"
-          placeholder="(runs before the spindle stops)"
+          placeholder={
+            config.manualSpindle ? '(runs at the end)' : '(runs before the spindle stops)'
+          }
           value={config.customFooter}
           onChange={(v) => set({ customFooter: v })}
         />
