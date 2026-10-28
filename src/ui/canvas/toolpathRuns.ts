@@ -25,6 +25,9 @@ export interface ProgramPreview {
   positions: Vec2[];
 }
 
+/** V-carve preview lines start a new stroke when the groove width changes by this much (mm). */
+const WIDTH_STEP = 0.05;
+
 /**
  * Draws a program on the design. `frame` is the program's face, so bottom
  * cuts are mirrored back and show where they land on the design.
@@ -38,11 +41,18 @@ export function buildPreview(program: BitProgram, frame: CutFrame): ProgramPrevi
   for (const section of program.sections) {
     // reduce, not Math.max(...moves): big programs overflow the argument stack.
     const depth = section.moves.reduce((deepest, m) => Math.max(deepest, -m.z), 0);
-    const width = grooveWidth(program.bit, depth);
+    const sectionWidth = grooveWidth(program.bit, depth);
+    let z = 0;
     for (const move of section.moves) {
       const from = positions[positions.length - 1]!;
       const to = frame.toCanvas(move);
-      if (!current || current.kind !== move.kind) {
+      // V-carves: as wide as the deeper end of this move, in steps so strokes stay long.
+      const width =
+        section.variableWidth && move.kind === 'feed'
+          ? Math.round(grooveWidth(program.bit, Math.max(0, -z, -move.z)) / WIDTH_STEP) * WIDTH_STEP
+          : sectionWidth;
+      z = move.z;
+      if (!current || current.kind !== move.kind || current.width !== width) {
         current = {
           kind: move.kind,
           points: [from.x, from.y],

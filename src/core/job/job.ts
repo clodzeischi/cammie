@@ -92,8 +92,20 @@ export interface DrillOperation extends CutBase {
   type: 'drill';
 }
 
-/** Later phases add V-carve. */
-export type Operation = ProfileOperation | PocketOperation | ChamferOperation | DrillOperation;
+/**
+ * Carves inside closed shapes with a V-bit along their centre lines, deeper
+ * where they're wider, so walls slope and corners come out sharp (SPEC.md
+ * §9.5). The depth follows from the shape and the bit; `depth` is unused but
+ * kept so switching cut types loses nothing.
+ */
+export interface VCarveOperation extends CutBase {
+  type: 'vcarve';
+  /** Warn when the carve goes deeper than this (mm); null = half the stock's thickness. */
+  warnDepth: number | null;
+}
+
+export type Operation =
+  ProfileOperation | PocketOperation | ChamferOperation | DrillOperation | VCarveOperation;
 
 export type TextAlign = 'left' | 'center' | 'right';
 
@@ -148,8 +160,8 @@ export interface DesignObject {
 /**
  * One cut on one object. Objects without toolpaths are shown but not cut, and
  * an object can have several (e.g. a pocket and then a cut-out). Toolpaths
- * using the same bit share a file; files run in the order their bits first
- * appear in the list, and toolpaths run in list order within a file.
+ * using the same bit share a file (see groupIntoFiles for the file order), and
+ * toolpaths run in list order within a file.
  */
 export interface Toolpath {
   id: string;

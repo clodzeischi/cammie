@@ -34,6 +34,7 @@ export function generateJob(
       programs: [],
       diagnostics: [{ severity: 'error', message: 'Pick a material.' }],
       tabs: [],
+      carveDepths: {},
     };
   }
 
@@ -73,7 +74,10 @@ export function generateJob(
   const tabs = cuts.flatMap((cut) =>
     cut.tabs ? [{ toolpathId: cut.toolpathId, objectId: cut.objectId, ...cut.tabs }] : [],
   );
-  return { programs: buildPrograms(cuts, machine), diagnostics, tabs };
+  const carveDepths = Object.fromEntries(
+    cuts.filter((cut) => cut.plan.kind === 'carve').map((cut) => [cut.toolpathId, cut.depth]),
+  );
+  return { programs: buildPrograms(cuts, machine), diagnostics, tabs, carveDepths };
 }
 
 /**
@@ -91,7 +95,12 @@ function buildPrograms(cuts: ObjectCut[], machine: MachineConfig): BitProgram[] 
       const writer = new MoveWriter(machine.safeZ, cut.feeds, position);
       executePlan(writer, cut.plan);
       position = writer.position;
-      return { label: cut.label, rpm: cut.feeds.rpm, moves: writer.moves };
+      return {
+        label: cut.label,
+        rpm: cut.feeds.rpm,
+        moves: writer.moves,
+        ...(cut.plan.kind === 'carve' && { variableWidth: true }),
+      };
     });
     return { bit: group[0]!.bit, face, sections };
   });

@@ -1,5 +1,5 @@
 import { generateJob } from '../../core/cam/generateJob';
-import { makeJob } from '../../core/cam/testFixtures';
+import { makeJob, makeObject, vcarveOp } from '../../core/cam/testFixtures';
 import { cutFrame } from '../../core/job/faces';
 import { DEFAULT_MACHINE_CONFIG } from '../../core/machine/machineConfig';
 import { buildPreview, completedRuns } from './toolpathRuns';
@@ -43,5 +43,14 @@ describe('buildPreview', () => {
     }));
     const big = { ...program, sections: [{ label: 'Big', rpm: 10000, moves }] };
     expect(buildPreview(big, frame).moveCount).toBe(500_000);
+  });
+
+  it('draws V-carves as wide as the groove at each point, widest along the middle', () => {
+    const carve = makeJob([makeObject({ operation: vcarveOp() })]);
+    const preview = buildPreview(generateJob(carve, DEFAULT_MACHINE_CONFIG).programs[0]!, frame);
+    const widths = preview.runs.filter((r) => r.kind === 'feed').map((r) => r.width);
+    expect(new Set(widths).size).toBeGreaterThan(3);
+    // A 10 mm square with a 90° bit is carved to the bit's full 3.175 mm width at most.
+    expect(Math.max(...widths)).toBeCloseTo(3.15, 1);
   });
 });

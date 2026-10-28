@@ -37,6 +37,9 @@ export function describeCut(
     const size = bit ? `${mm(bit.diameter)} ` : '';
     return `Drills a ${size}hole ${op.depth >= thickness ? 'right through the stock' : `${depth} deep`} at the centre of each shape in “${name}”.`;
   }
+  if (op.type === 'vcarve') {
+    return `Carves inside “${name}” with the ${bitName}, deeper where it's wider, so the walls slope and corners come out sharp.`;
+  }
   if (op.type === 'chamfer') {
     const width = bit?.type === 'vbit' ? `${mm(chamferWidth(bit, op.depth))} ` : '';
     const edge = op.side === 'outside' ? `the edges of “${name}”` : `the rim of the “${name}” hole`;

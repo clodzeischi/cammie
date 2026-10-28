@@ -24,6 +24,8 @@ export interface ProgramSection {
   label: string;
   rpm: number;
   moves: Move[];
+  /** The groove's width changes along the cut (V-carve), so previews draw each move at its own depth. */
+  variableWidth?: boolean;
 }
 
 /** Everything cut with one bit from one face of the stock, i.e. one `.nc` file. */
@@ -53,6 +55,8 @@ export interface GeneratedJob {
   programs: BitProgram[];
   diagnostics: Diagnostic[];
   tabs: ObjectTabs[];
+  /** How deep each V-carve toolpath goes at its widest point (mm), by toolpath id. */
+  carveDepths: Record<string, number>;
 }
 
 export const hasErrors = (diagnostics: readonly Diagnostic[]): boolean =>

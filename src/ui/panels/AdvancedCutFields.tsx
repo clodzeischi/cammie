@@ -25,8 +25,8 @@ export function AdvancedCutFields({ operation, onChange }: AdvancedCutFieldsProp
   // A V-bit bevel is one light cut: a finishing pass would only re-cut it.
   const finishable = !onLine && operation.type !== 'chamfer';
   const { finishing } = operation;
-  // Drilling goes straight down; none of these apply.
-  if (operation.type === 'drill') return null;
+  // Drilling goes straight down and V-carving follows the centre lines; none of these apply.
+  if (operation.type === 'drill' || operation.type === 'vcarve') return null;
   const set = (patch: SharedPatch) => onChange({ ...operation, ...patch });
 
   return (

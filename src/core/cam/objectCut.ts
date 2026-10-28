@@ -13,6 +13,7 @@ import type { ObjectCut, PlanResult } from './cutPlan';
 import { planDrill } from './drillPlan';
 import { planPocket } from './pocketPlan';
 import { planProfile, type ProfilePlanInput } from './profilePlan';
+import { planVCarve } from './vcarvePlan';
 import type { Diagnostic } from './program';
 import { feedLabel, resolveFeeds } from './resolveFeeds';
 
@@ -30,6 +31,7 @@ type Report = (severity: Diagnostic['severity'], message: string) => void;
 
 const LABEL: Record<CutKind, string> = {
   drill: 'Drill',
+  vcarve: 'V-carve',
   pocket: 'Pocket',
   inside: 'Inside',
   on: 'On the line',
@@ -87,7 +89,8 @@ export function planObjectCut(
   if (!planned) return null;
 
   // Registration holes go into the spoilboard on purpose, so the pins have something to sit in.
-  if (object.role !== 'registration') {
+  // V-carves check their own depth: it follows from the shape, not the setting.
+  if (object.role !== 'registration' && kind !== 'vcarve') {
     // On the top of a two-sided job a loose part is lost before its bottom is cut.
     const flippedLater =
       ctx.frame.face === 'top' && ctx.job.toolpaths.some((t) => faceOf(t) === 'bottom');
@@ -100,10 +103,14 @@ export function planObjectCut(
     face: ctx.frame.face,
     label: `${LABEL[kind]}: ${object.name}`,
     bit,
-    depth: operation.depth,
+    depth: planned.depth ?? operation.depth,
     feeds,
     plan: planned.plan,
-    cutBounds: canvasCutBounds(planned.allPaths, grooveWidth(bit, operation.depth) / 2, ctx.frame),
+    cutBounds: canvasCutBounds(
+      planned.allPaths,
+      kind === 'vcarve' ? 0 : grooveWidth(bit, operation.depth) / 2,
+      ctx.frame,
+    ),
     tabs: planned.tabs,
   };
 }
@@ -120,6 +127,10 @@ function planFor(input: PlanInput, report: Report): PlanResult | null {
       return planDrill(operation, bit, feeds, paths, report);
     case 'chamfer':
       return bit.type === 'vbit' ? planChamfer(operation, bit, feeds, paths, report) : null;
+    case 'vcarve':
+      return bit.type === 'vbit'
+        ? planVCarve(operation, bit, feeds, paths, input.thickness, report)
+        : null;
     case 'profile':
       return planProfile({ ...input, operation }, report);
   }

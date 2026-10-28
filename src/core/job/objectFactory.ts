@@ -11,6 +11,7 @@ import type {
   ShapeParams,
   Stock,
   TabSettings,
+  VCarveOperation,
 } from './job';
 
 /** New objects start as a shallow V-bit engrave: a fine line that's easy to deepen. */
@@ -38,7 +39,7 @@ export const defaultOperation = (): ProfileOperation => ({
 });
 
 /** The choices in the "Cut type" menu. */
-export type CutKind = ProfileSide | 'pocket' | 'chamfer' | 'drill';
+export type CutKind = ProfileSide | 'pocket' | 'chamfer' | 'drill' | 'vcarve';
 
 export const cutKindOf = (op: Operation): CutKind => (op.type === 'profile' ? op.side : op.type);
 
@@ -70,6 +71,10 @@ export function withCutKind(op: Operation, kind: CutKind): Operation {
   const base = { bitId, depth, direction, entry, finishing };
   if (kind === 'pocket') return { ...base, type: 'pocket' } satisfies PocketOperation;
   if (kind === 'drill') return { ...base, type: 'drill' } satisfies DrillOperation;
+  if (kind === 'vcarve') {
+    const warnDepth = op.type === 'vcarve' ? op.warnDepth : null;
+    return { ...base, type: 'vcarve', warnDepth } satisfies VCarveOperation;
+  }
   if (kind === 'chamfer') {
     // A hole's rim when it was cut as a hole; otherwise the shape's own edge.
     const side = op.type === 'profile' && op.side === 'inside' ? 'inside' : 'outside';

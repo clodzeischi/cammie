@@ -21,6 +21,13 @@ export const CUT_KINDS: Record<CutKind, CutKindInfo> = {
     icon: 'engrave',
     color: 'var(--cut-on)',
   },
+  vcarve: {
+    pro: 'V-carve',
+    easy: 'Carve letters',
+    hint: 'Carves inside the shape, deeper where it is wider',
+    icon: 'vcarve',
+    color: 'var(--cut-vcarve)',
+  },
   outside: {
     pro: 'Profile outside',
     easy: 'Cut out',
@@ -58,9 +65,10 @@ export const CUT_KINDS: Record<CutKind, CutKindInfo> = {
   },
 };
 
-/** Pro menu and button order: lines, then cut-outs, holes, pockets, chamfers and drilling. */
+/** Pro menu and button order: lines, carving, then cut-outs, holes, pockets, chamfers and drilling. */
 export const CUT_KIND_ORDER: readonly CutKind[] = [
   'on',
+  'vcarve',
   'outside',
   'inside',
   'pocket',

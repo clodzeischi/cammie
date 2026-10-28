@@ -3,16 +3,17 @@ import type { Face, Operation, Toolpath } from './job';
 import { cutKindOf, type CutKind } from './objectFactory';
 
 /**
- * Drilling, pockets and holes first, then lines and chamfers, then parts get
- * cut free (SPEC.md §9.7).
+ * Drilling, V-carving, pockets and holes first, then lines and chamfers, then
+ * parts get cut free (SPEC.md §9.7).
  */
 export const CUT_PRIORITY: Record<CutKind, number> = {
   drill: 1,
-  pocket: 2,
-  inside: 3,
-  on: 4,
-  chamfer: 5,
-  outside: 6,
+  vcarve: 2,
+  pocket: 3,
+  inside: 4,
+  on: 5,
+  chamfer: 6,
+  outside: 7,
 };
 
 export const cutPriority = (op: Operation) => CUT_PRIORITY[cutKindOf(op)];
@@ -123,7 +124,7 @@ export const toolpathsOf = (list: readonly Toolpath[], objectId: string) =>
   list.filter((t) => t.objectId === objectId);
 
 /** The cuts Easy mode offers, in its order. Chamfers and drilling are Pro only. */
-export const EASY_CUT_KINDS: readonly CutKind[] = ['on', 'outside', 'inside', 'pocket'];
+export const EASY_CUT_KINDS: readonly CutKind[] = ['on', 'vcarve', 'outside', 'inside', 'pocket'];
 
 /**
  * Easy mode handles one bit, at most one cut per object, only its own kinds
