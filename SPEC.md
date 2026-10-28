@@ -66,8 +66,11 @@ Pro
   choices (Engrave line, Cut out, Cut hole, Clear area); choices the bit can't do stay visible,
   disabled with the reason. Only depth (and tabs) are shown; feeds and entry come from presets.
   Chamfers and drilling are Pro only.
-- **Mode rules**: Easy → Pro never changes anything. A job with more than one bit, or more than one
-  cut on a shape, opens read-only in Easy with a "Switch to Pro" button. Nothing is deleted.
+- **Mode rules**: Easy → Pro never changes anything. Pro → Easy is blocked while the job uses Pro
+  features (more than one bit, more than one cut on a shape, chamfers or drilling, bottom cuts):
+  the toggle and the "Easy" label are disabled, and hovering says "Cannot switch, Pro features in
+  use". A Pro job opened or restored while in Easy shows read-only with a "Switch to Pro" button.
+  Nothing is deleted.
 - **Project** (header, both modes): *New* (asks first if there's a design), *Open…* (⌘/Ctrl-O) and *Save* (⌘/Ctrl-S, downloads `<job>.cammie`). See §13.4.
 - **Canvas**: stock rectangle drawn to scale, mm grid, rulers, selectable origin marker, dashed outline of machine work area. Pan (space/middle-drag), zoom (wheel/pinch).
 - **Grid & snapping** (controls beside the zoom buttons; remembered in localStorage as `cammie.grid.v1`):

@@ -180,6 +180,18 @@
   background: var(--accent);
 }
 
+/* Easy is out of reach while Pro features are in use. The disabled controls let the
+   pointer through, so hovering anywhere on the switch shows the wrapper's tooltip. */
+.switch:disabled,
+.mode-label:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.mode-switch-blocked {
+  cursor: not-allowed;
+}
+
 .header-pickers {
   display: flex;
   gap: 8px;
