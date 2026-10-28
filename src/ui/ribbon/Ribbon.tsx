@@ -166,6 +166,13 @@ function ToolpathsTab() {
           active={view === 'preview'}
           onClick={() => setView(view === 'preview' ? 'design' : 'preview')}
         />
+        <RibbonButton
+          icon="cube"
+          label="3D"
+          title="See the finished piece in 3D"
+          active={view === '3d'}
+          onClick={() => setView(view === '3d' ? 'design' : '3d')}
+        />
       </RibbonGroup>
     </>
   );

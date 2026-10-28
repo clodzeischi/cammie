@@ -25,7 +25,7 @@ Status: Draft v1 · 2026-10-17
 | 3D relief / heightmap carving, undercut bits (T-slot, dovetail) | 2D / 2.5D only. Round-nose bits engrave grooves (§7). |
 | Mobile phone layout | Phones get a blocking message (see §11). Tablets are supported. |
 | Inch units | mm everywhere, output is always `G21`. |
-| 3D carve simulation | Planned for a later phase (§14), not v1. |
+| Animated 3D carving | The 3D view (§10.1) shows the finished piece only; the 2D preview has playback. |
 | Homing, probing, zeroing | The user zeros the bit by hand at the work origin. The `.nc` file only moves the mill (§12.3). |
 | Spoilboard surfacing | Later phase (§14). |
 
@@ -352,6 +352,14 @@ Within a bit's file:
 - **Playback scrubber**: slider over the move list to animate the tool position, with estimated time remaining.
 - Stats panel per bit: estimated run time (accounting for feed/rapid rates; GRBL acceleration not modeled, ~10–20% optimistic, labeled as such), cut length, max depth, bounding box.
 
+### 10.1 3D view of the finished piece
+A third view, **3D** (also on the Pro ribbon under *Check*), shows what the stock will look like after every exported file has run, both sides, so the user can check what their settings do: pocket vs hole vs cut-out, depth against the stock, V and round-nose groove shapes. No animation.
+- **Simulation** (`src/core/sim`, in a worker): the stock is two height maps over a grid seen from the top, the top surface and the bottom surface (machine Z, 0 = top, −thickness = bottom). Every move of every file presses the bit's real shape into the grid: a flat circle (end mill), a cone with its flat tip (V-bit), a ball (round-nose). Bottom files go through the same face frames as the CAM, so they land mirrored exactly as cut, raising the bottom surface. Where the surfaces meet, the stock is cut through. Cell size ≈ √(area / 600k), 0.05–0.5 mm (≈ 0.2 mm on 200 × 150 mm); the view says how accurate it is. About 0.3 s for 1.5 M cells.
+- **Loose pieces**: the remaining material is split into connected pieces; any piece that doesn't reach the stock's outer edge (where it's clamped) comes loose: parts cut out without tabs, hole slugs. They're drawn lifted above the board and tinted toward the warning colour, with "N pieces come loose … add tabs".
+- **Spoilboard**: a slab under the stock (hidden when looking from below); cells where a cut went past the stock are marked red on it, and the deepest overcut is reported.
+- **Looks** (`src/core/materials/materialLooks.ts`): drawn by a shader from the position in the stock, so cut walls and pocket floors show the inside. Wood grain along X; plywood plies (odd count, ≈ 1.5 mm each) with alternating grain and glue lines between them; MDF smooth skins over a fibrous core; brushed aluminium; speckled foam; plain plastics (acrylic slightly see-through). A soft room environment lights metals.
+- **View**: three.js (0.186.1, loaded the first time 3D is opened), orbit / pan / zoom, *Angled*, *Top* and *Underneath* cameras, theme background. Meshes are built in the worker; the page only draws them, and only when the camera moves.
+
 ---
 
 ## 11. Mobile / Small Screen Gate
@@ -441,6 +449,7 @@ CAM produces a machine-agnostic `ToolpathProgram` (list of moves: rapid/feed wit
 | Fonts → paths | `opentype.js` |
 | Bitmap trace | Own marching-squares tracer in `src/core/trace` (in a worker) |
 | Voronoi (V-carve) | `d3-delaunay` |
+| 3D view | `three` (lazy chunk) |
 | Workers | Vite native workers + `comlink` |
 | Zip export | `jszip` |
 | Tests | Vitest (unit, golden G-code snapshots), Playwright (a few smoke e2e) |
@@ -531,7 +540,8 @@ Each phase ends in something deployable and usable.
 | **4 — Text & shapes** | Bundled fonts, text tool, rect/ellipse, group/align, undo/redo polish. | Make a name sign without leaving the app. |
 | **5 — V-carve** | Medial-axis V-carve, multi-pass step-down, depth warnings, preview widths. | Crisp V-carved lettering in hardwood. |
 | **5b — Pro & projects** | Easy/Pro modes, ribbon, toolpath list; round-nose bits; chamfer and drill; two-sided jobs with registration holes; `.cammie` Save/Open + browser backup. | A two-sided box lid with chamfered edges comes out lined up, and the project reopens the next day. |
-| **6 — Later** | Spoilboard surfacing job, 3D carve simulation (heightmap stock + Three.js), arc fitting (G2/G3), trapezoidal tab ramps, flat-bottom V-carve with clearing bit, level-first ordering, raster pocket strategy, bit library import/export. | — |
+| **5c — 3D view** | Finished-piece 3D view: two-sided height-map simulation, loose pieces, spoilboard marks, procedural material looks (§10.1). | Pockets, holes, cut-outs and depths read at a glance; untabbed parts are obvious. |
+| **6 — Later** | Spoilboard surfacing job, arc fitting (G2/G3), trapezoidal tab ramps, flat-bottom V-carve with clearing bit, level-first ordering, raster pocket strategy, bit library import/export. | — |
 
 ---
 

@@ -208,6 +208,13 @@ const ICONS = {
       <rect x="7.5" y="13" width="9" height="7" rx="0.5" {...F} />
     </>
   ),
+  cube: (
+    <>
+      <path d="M12 3.5 20 8v8l-8 4.5L4 16V8z" />
+      <path d="M12 12.5V20.5M12 12.5 20 8M12 12.5 4 8" />
+      <path d="M12 12.5 20 8l-8-4.5L4 8z" {...F} />
+    </>
+  ),
   chevronUp: <path d="m6 15 6-6 6 6" />,
   chevronDown: <path d="m6 9 6 6 6-6" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,
