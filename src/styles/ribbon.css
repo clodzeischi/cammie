@@ -119,26 +119,6 @@
   white-space: nowrap;
 }
 
-/* Easy: one compact row, icon beside the label. */
-.ribbon-easy .ribbon-body {
-  padding: 4px 8px;
-}
-
-.ribbon-easy .ribbon-group-label {
-  display: none;
-}
-
-.ribbon-easy .ribbon-button {
-  flex-direction: row;
-  gap: 6px;
-  min-width: 0;
-  padding: 6px 10px;
-}
-
-.ribbon-easy .ribbon-label {
-  font-size: 13px;
-}
-
 /* ---------- Header: mode switch and Easy pickers ---------- */
 .mode-switch {
   display: flex;
@@ -210,7 +190,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  min-width: 0;
+  /* Shrinks when the header is crowded, but stays wide enough to read "Plywood (bi…". */
+  flex: 0 1 210px;
+  min-width: 140px;
   padding: 0 4px 0 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -219,8 +201,8 @@
 }
 
 .picker select {
+  flex: 1;
   min-width: 0;
-  max-width: 180px;
   padding: 4px 2px;
   font: inherit;
   border: none;

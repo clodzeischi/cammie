@@ -71,24 +71,35 @@ export function ProjectButtons({ notice }: ProjectButtonsProps) {
 
   return (
     <div className="project-buttons" role="group" aria-label="Project">
-      <button type="button" className="button" title="Start a new design" onClick={startNew}>
-        <Icon name="newFile" size={16} /> New
+      <button
+        type="button"
+        className="button"
+        title="Start a new design"
+        aria-label="New"
+        onClick={startNew}
+      >
+        <Icon name="newFile" size={16} />
+        <span className="button-text">New</span>
       </button>
       <button
         type="button"
         className="button"
         title={`Open a ${PROJECT_EXTENSION} project (${MOD_KEY}O)`}
+        aria-label="Open"
         onClick={() => inputRef.current?.click()}
       >
-        <Icon name="open" size={16} /> Open
+        <Icon name="open" size={16} />
+        <span className="button-text">Open</span>
       </button>
       <button
         type="button"
         className="button"
         title={`Save the design as a ${PROJECT_EXTENSION} file (${MOD_KEY}S)`}
+        aria-label="Save"
         onClick={save}
       >
-        <Icon name="save" size={16} /> Save
+        <Icon name="save" size={16} />
+        <span className="button-text">Save</span>
       </button>
       <input
         ref={inputRef}

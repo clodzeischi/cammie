@@ -45,7 +45,7 @@ export function AppShell() {
       <header className="app-header">
         <span className="app-name">
           <img src="/Cammie_Logo.png" alt="" className="app-logo" />
-          Cammie
+          <span className="app-name-text">Cammie</span>
         </span>
         <input
           className="job-name"
@@ -59,8 +59,15 @@ export function AppShell() {
           <ProjectButtons notice={restored} />
           <ModeSwitch />
           {easy && (
-            <button type="button" className="button" onClick={() => setMachineOpen(true)}>
-              <Icon name="machine" size={16} /> Machine
+            <button
+              type="button"
+              className="button"
+              title="Machine settings"
+              aria-label="Machine"
+              onClick={() => setMachineOpen(true)}
+            >
+              <Icon name="machine" size={16} />
+              <span className="button-text">Machine</span>
             </button>
           )}
           <button

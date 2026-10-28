@@ -25,8 +25,9 @@ interface RibbonProps {
 }
 
 /**
- * Commands along the top. Pro groups them into Design, Toolpaths and Setup
- * tabs; Easy shows one row of drawing tools, with material and bit in the header.
+ * Commands along the top, in the same button style in both modes. Pro groups
+ * them into Shapes, Toolpaths and Setup tabs; Easy shows just the drawing
+ * tools, with material and bit in the header.
  */
 export function Ribbon({ onOpenBits, onOpenMachine }: RibbonProps) {
   const mode = useModeStore((s) => s.mode);
@@ -34,7 +35,7 @@ export function Ribbon({ onOpenBits, onOpenMachine }: RibbonProps) {
 
   if (mode === 'easy') {
     return (
-      <nav className="ribbon ribbon-easy" aria-label="Tools">
+      <nav className="ribbon" aria-label="Tools">
         <div className="ribbon-body">
           <RibbonGroup label="Add">
             <ImportButton />

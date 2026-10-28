@@ -61,7 +61,7 @@ Pro
   a "Change bit, then re-zero Z" step between groups. Rows and whole files move up/down; rows
   show a dot when they have a warning or error. Selecting a row opens its settings, headed by one
   plain sentence saying what it will do.
-- **Easy**: one toolbar row (Import, Text, Rectangle, Circle, Undo, Redo); material and the job's
+- **Easy**: the same ribbon buttons as Pro (icon over label, group labels), without tabs: Import, Text, Rectangle, Circle · Undo, Redo. Material and the job's
   one bit sit in the header. Selecting shapes asks "How should this be cut?" with four plain
   choices (Engrave line, Cut out, Cut hole, Clear area); choices the bit can't do stay visible,
   disabled with the reason. Only depth (and tabs) are shown; feeds and entry come from presets.
