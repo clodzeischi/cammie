@@ -78,8 +78,8 @@ export function EasyCutFields({ objectIds }: EasyCutFieldsProps) {
       )}
       {engraveOnly && (
         <p className="field-hint">
-          This bit engraves lines and carves letters. To cut shapes out, pick an end mill in the
-          Bit menu at the top.
+          This bit engraves lines and carves letters. To cut shapes out, pick an end mill in the Bit
+          menu at the top.
         </p>
       )}
 

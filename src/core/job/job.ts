@@ -105,11 +105,7 @@ export interface VCarveOperation extends CutBase {
 }
 
 export type Operation =
-  | ProfileOperation
-  | PocketOperation
-  | ChamferOperation
-  | DrillOperation
-  | VCarveOperation;
+  ProfileOperation | PocketOperation | ChamferOperation | DrillOperation | VCarveOperation;
 
 export type TextAlign = 'left' | 'center' | 'right';
 
