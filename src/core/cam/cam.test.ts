@@ -119,8 +119,9 @@ describe('generateJob', () => {
     ]);
     const { programs } = generateJob(job, DEFAULT_MACHINE_CONFIG);
     expect(programs.map((p) => [p.bit.id, p.sections.length])).toEqual([
-      ['vbit-60', 2],
+      // vbit-60's file holds the last cut in the list, so it runs last.
       ['vbit-90', 1],
+      ['vbit-60', 2],
     ]);
   });
 

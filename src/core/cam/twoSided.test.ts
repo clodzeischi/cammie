@@ -2,7 +2,14 @@ import { buildExportFiles } from '../../app/exportFiles';
 import { boundsOfPoints, signedArea } from '../geometry/path';
 import { cutFrame, flipPoint } from '../job/faces';
 import type { Job, Toolpath } from '../job/job';
-import { pinCentres, registrationCut, registrationHoles } from '../job/registration';
+import {
+  PIN_DEPTH_INTO_SPOILBOARD,
+  PIN_FIT_ALLOWANCE,
+  pinCentres,
+  pinLength,
+  registrationCut,
+  registrationHoles,
+} from '../job/registration';
 import { fitsEasyMode, insertToolpath, moveGroup, toolpathGroups } from '../job/toolpaths';
 import { DEFAULT_MACHINE_CONFIG } from '../machine/machineConfig';
 import { grblPost } from '../post/grbl/grblPost';
@@ -130,12 +137,20 @@ describe('registration holes', () => {
       expect(flipPoint(c, stock, 'top-bottom')).toEqual(c);
     }
     expect(holes.map((h) => h.role)).toEqual(['registration', 'registration']);
-    expect(holes[0]!.transform).toMatchObject({ x: 47, y: 5 });
+    expect(holes[0]!.transform).toMatchObject({ x: 46.95 });
+    expect(holes[0]!.transform.y).toBeCloseTo(5);
+    // A little wider than the pin, so it slides in by hand.
+    const b = boundsOfPoints(holes[0]!.paths[0]!.points);
+    expect(b.maxX - b.minX).toBeCloseTo(6 + PIN_FIT_ALLOWANCE, 1);
+  });
+
+  it('suggest a pin length that stops just below the stock top', () => {
+    expect(pinLength(stock)).toBe(PIN_DEPTH_INTO_SPOILBOARD + 5);
   });
 
   const withPins = (pins = holes): Job => {
-    // An engraving on the bottom (pockets rapid into their own cleared floor, which the linter flags).
-    const base = bottom(makeJob([makeObject({ operation: profileOp() })]));
+    // A pocket on the bottom: its re-entries into the cleared floor must not rapid below Z0.
+    const base = bottom(makeJob([makeObject({ operation: pocketOp({ depth: 2 }) })]));
     return {
       ...base,
       objects: [...base.objects, ...pins],
@@ -168,13 +183,16 @@ describe('registration holes', () => {
     const job = withPins();
     const { programs } = generateJob(job, machine);
     const files = buildExportFiles(programs, job, machine, 'Box', grblPost);
-    expect(files.map((f) => f.name)).toEqual(['box_01_flat-3.175.nc', 'box_02_bottom_vbit-60.nc']);
+    expect(files.map((f) => f.name)).toEqual([
+      'box_01_flat-3.175.nc',
+      'box_02_bottom_flat-3.175.nc',
+    ]);
     expect(programs[0]!.sections.map((s) => s.label)).toEqual([
       'Inside: Registration hole 1',
       'Inside: Registration hole 2',
     ]);
     expect(files[1]!.text).toContain(
-      '(File 2 of 2: bottom side. Turn the stock over left to right onto the registration pins, change the bit and re-zero Z before running)',
+      '(File 2 of 2: bottom side. Turn the stock over left to right onto the registration pins and re-zero Z only: keep X/Y zero where it is, the pins line the stock up with it)',
     );
     files.forEach((f) => expect(lintGcode(f.text, machine)).toEqual([]));
   });
@@ -182,5 +200,31 @@ describe('registration holes', () => {
   it('use the same frame for the design and the machine on the top', () => {
     const frame = cutFrame(makeJob(), 'top');
     expect(frame.toCanvas(frame.toMachine({ x: 12, y: 34 }))).toEqual({ x: 12, y: 34 });
+  });
+});
+
+describe('top cut-outs in a two-sided job', () => {
+  const cutOut = (tabs: boolean) =>
+    makeObject({
+      operation: profileOp({
+        side: 'outside',
+        bitId: 'flat-3.175',
+        depth: 6,
+        tabs: { ...profileOp().tabs, enabled: tabs },
+      }),
+    });
+  const engraveBottom = makeObject({ id: 'b', operation: profileOp() });
+  const messages = (job: Job) => generateJob(job, machine).diagnostics.map((d) => d.message);
+
+  it('warn when the part has no tabs, because it falls out before the flip', () => {
+    const job = bottom(makeJob([cutOut(false), engraveBottom]), ['tp-b']);
+    expect(messages(job)).toContainEqual(
+      expect.stringMatching(/comes loose before the stock is turned over/),
+    );
+  });
+
+  it('are fine with tabs', () => {
+    const job = bottom(makeJob([cutOut(true), engraveBottom]), ['tp-b']);
+    expect(messages(job).some((m) => m.includes('comes loose'))).toBe(false);
   });
 });

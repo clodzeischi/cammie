@@ -47,12 +47,14 @@ export class MoveWriter {
 
   /**
    * Travel to (x, y) and get down to `surfaceZ` (the top of whatever is
-   * already cut there): retract, rapid across, rapid to just above, feed the rest.
+   * already cut there): retract, rapid across, rapid to just above the stock,
+   * feed the rest. Rapids never go below the stock's top (SPEC.md §15), even
+   * into a floor that's already cleared: a missed step or a chip could be there.
    */
   approach(p: Vec2, surfaceZ: number) {
     this.retract();
     this.rapid(p.x, p.y, this.safeZ);
-    const clearance = Math.min(surfaceZ + APPROACH_CLEARANCE, this.safeZ);
+    const clearance = Math.min(Math.max(surfaceZ, 0) + APPROACH_CLEARANCE, this.safeZ);
     this.rapid(p.x, p.y, clearance);
     this.feed(p.x, p.y, surfaceZ, this.feeds.plunge);
   }

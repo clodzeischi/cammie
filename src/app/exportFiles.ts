@@ -52,7 +52,7 @@ export function buildExportFiles(
       ...(i === firstBottom && {
         setupNote: `bottom side. Turn the stock over ${FLIP_LABEL[job.flip]} onto the registration pins${
           i > 0 && programs[i - 1]!.bit.id !== program.bit.id ? ', change the bit' : ''
-        } and re-zero Z before running`,
+        } and re-zero Z only: keep X/Y zero where it is, the pins line the stock up with it`,
       }),
       estimatedSeconds: estimateProgram(program, machine).seconds,
       appVersion: APP_VERSION,

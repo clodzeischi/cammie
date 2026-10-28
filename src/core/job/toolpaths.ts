@@ -46,23 +46,28 @@ export function repositionToolpath(list: readonly Toolpath[], id: string): Toolp
 
 /**
  * Splits items into files: one per face and bit, every top file before any
- * bottom one, otherwise in the order each bit first appears; items keep list
- * order within a file. Shared by the toolpath list and the CAM so they agree.
+ * bottom one; items keep list order within a file. Files run in the order of
+ * each bit's last item, so the file holding the final cut-outs runs last and
+ * a chamfer or engraving on another bit isn't left until after parts are cut
+ * free. A list the user has reordered is contiguous per file, so this keeps
+ * their order. Shared by the toolpath list and the CAM so they agree.
  */
 export function groupIntoFiles<T>(
   items: readonly T[],
   keyOf: (item: T) => { face: Face; bitId: string },
 ): Array<{ face: Face; bitId: string; items: T[] }> {
-  const groups = new Map<string, { face: Face; bitId: string; items: T[] }>();
-  for (const item of items) {
+  const groups = new Map<string, { face: Face; bitId: string; items: T[]; last: number }>();
+  items.forEach((item, i) => {
     const { face, bitId } = keyOf(item);
     const key = `${face}|${bitId}`;
-    const group = groups.get(key) ?? { face, bitId, items: [] };
+    const group = groups.get(key) ?? { face, bitId, items: [], last: i };
     group.items.push(item);
+    group.last = i;
     groups.set(key, group);
-  }
-  // Array sort is stable, so first-appearance order holds within each face.
-  return [...groups.values()].sort((a, b) => FACE_RANK[a.face] - FACE_RANK[b.face]);
+  });
+  return [...groups.values()]
+    .sort((a, b) => FACE_RANK[a.face] - FACE_RANK[b.face] || a.last - b.last)
+    .map(({ face, bitId, items }) => ({ face, bitId, items }));
 }
 
 /** Toolpaths that share a face and a bit, i.e. one file. */

@@ -82,8 +82,8 @@ describe('generateJob with profiles', () => {
       makeObject({ id: 'text', name: 'Text' }),
     ]);
     const { programs } = generateJob(job, DEFAULT_MACHINE_CONFIG);
-    expect(programs.map((p) => p.bit.id)).toEqual(['flat-3.175', 'vbit-60']);
-    expect(programs[0]!.sections.map((s) => s.label)).toEqual(['Inside: Hole', 'Outside: Part']);
+    expect(programs.map((p) => p.bit.id)).toEqual(['vbit-60', 'flat-3.175']);
+    expect(programs[1]!.sections.map((s) => s.label)).toEqual(['Inside: Hole', 'Outside: Part']);
   });
 
   it('rejects inside/outside with a V-bit, and open-only shapes', () => {
