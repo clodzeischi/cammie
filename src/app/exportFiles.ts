@@ -1,6 +1,5 @@
 import { estimateProgram } from '../core/cam/estimate';
 import type { BitProgram } from '../core/cam/program';
-import { FLIP_LABEL } from '../core/job/faces';
 import type { Job } from '../core/job/job';
 import type { MachineConfig } from '../core/machine/machineConfig';
 import { findMaterial } from '../core/materials/materials';
@@ -24,10 +23,7 @@ export function slugify(name: string): string {
   return slug || 'cammie-job';
 }
 
-/**
- * One file per bit and side, numbered in cutting order: `owl_01_vbit-60.nc`,
- * then `owl_02_bottom_flat-3.175.nc` once the stock is turned over.
- */
+/** One file per bit, numbered in cutting order: `owl_01_vbit-60.nc`, `owl_02_flat-3.175.nc`. */
 export function buildExportFiles(
   programs: BitProgram[],
   job: Job,
@@ -37,10 +33,8 @@ export function buildExportFiles(
 ): ExportFile[] {
   const base = slugify(jobName);
   const materialName = findMaterial(job.materialId)?.name ?? job.materialId;
-  const firstBottom = programs.findIndex((p) => p.face === 'bottom');
   return programs.map((program, i) => {
-    const side = program.face === 'bottom' ? 'bottom_' : '';
-    const name = `${base}_${String(i + 1).padStart(2, '0')}_${side}${bitSlug(program.bit)}.${post.fileExtension}`;
+    const name = `${base}_${String(i + 1).padStart(2, '0')}_${bitSlug(program.bit)}.${post.fileExtension}`;
     const text = post.render(program, {
       machine,
       fileName: name,
@@ -49,11 +43,6 @@ export function buildExportFiles(
       originLabel: job.origin.replace('-', ' '),
       fileIndex: i + 1,
       fileCount: programs.length,
-      ...(i === firstBottom && {
-        setupNote: `bottom side. Turn the stock over ${FLIP_LABEL[job.flip]} onto the registration pins${
-          i > 0 && programs[i - 1]!.bit.id !== program.bit.id ? ', change the bit' : ''
-        } and re-zero Z only: keep X/Y zero where it is, the pins line the stock up with it`,
-      }),
       estimatedSeconds: estimateProgram(program, machine).seconds,
       appVersion: APP_VERSION,
     });

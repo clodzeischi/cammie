@@ -1,13 +1,11 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
 import { estimateProgram } from '../core/cam/estimate';
-import { cutFrame, faceOf } from '../core/job/faces';
+import { cutFrame } from '../core/job/job';
 import { useJobStore } from '../state/jobStore';
 import { useMachineStore } from '../state/machineStore';
 import { useGeneratedJob } from '../state/useGeneratedJob';
 import { useView3DStore } from '../state/view3dStore';
-import { useActiveSide } from '../state/useActiveSide';
 import { DesignCanvas } from './canvas/DesignCanvas';
-import { SideSwitch } from './canvas/SideSwitch';
 import { buildPreview } from './canvas/toolpathRuns';
 import { PreviewBar } from './preview/PreviewBar';
 import { SplitDivider } from './SplitDivider';
@@ -15,7 +13,7 @@ import { SplitDivider } from './SplitDivider';
 // three.js is big, so the 3D view loads the first time it's opened.
 const StockView3D = lazy(() => import('./preview3d/StockView3D'));
 
-const VIEW_LABELS = { design: 'Design', preview: 'Toolpath preview' } as const;
+const VIEW_LABELS = { design: 'Design', preview: 'Preview' } as const;
 
 /**
  * The canvas with its Design / Toolpath preview switch (and, in preview, the
@@ -27,34 +25,17 @@ export function Workspace() {
   const setView = useJobStore((s) => s.setView);
   const stock = useJobStore((s) => s.stock);
   const origin = useJobStore((s) => s.origin);
-  const flip = useJobStore((s) => s.flip);
   const machine = useMachineStore((s) => s.config);
-  const generated = useGeneratedJob();
-  const toolpaths = useJobStore((s) => s.toolpaths);
-  const side = useActiveSide();
+  const { programs, tabs } = useGeneratedJob();
   const pane3d = useView3DStore();
-  // Files keep their real numbers when the other side's are hidden.
-  const { programs, fileNumbers, tabs } = useMemo(() => {
-    const shown = generated.programs
-      .map((program, i) => ({ program, number: i + 1 }))
-      .filter(({ program }) => side === 'both' || program.face === side);
-    return {
-      programs: shown.map((s) => s.program),
-      fileNumbers: shown.map((s) => s.number),
-      tabs: generated.tabs.filter((t) => {
-        const toolpath = toolpaths.find((tp) => tp.id === t.toolpathId);
-        return side === 'both' || (toolpath && faceOf(toolpath) === side);
-      }),
-    };
-  }, [generated, side, toolpaths]);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [progress, setProgress] = useState(1);
   const [showCutWidth, setShowCutWidth] = useState(true);
 
   const previews = useMemo(
-    () => programs.map((p) => buildPreview(p, cutFrame({ stock, origin, flip }, p.face))),
-    [programs, stock, origin, flip],
+    () => programs.map((p) => buildPreview(p, cutFrame({ stock, origin }))),
+    [programs, stock, origin],
   );
   const stats = useMemo(
     () => programs.map((p) => estimateProgram(p, machine)),
@@ -101,7 +82,6 @@ export function Workspace() {
           >
             3D
           </button>
-          <SideSwitch />
         </div>
         <DesignCanvas
           preview={inPreview ? { previews, activeIndex: active, done, showCutWidth, tabs } : null}
@@ -109,7 +89,6 @@ export function Workspace() {
         {inPreview && (
           <PreviewBar
             programs={programs}
-            fileNumbers={fileNumbers}
             stats={stats}
             activeIndex={active}
             onActiveChange={(i) => {

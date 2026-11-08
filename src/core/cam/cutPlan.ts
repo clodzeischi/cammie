@@ -1,8 +1,8 @@
 import type { Bounds, Path, Vec2 } from '../geometry/path';
-import type { Face } from '../job/job';
 import type { Feeds } from '../materials/materials';
 import type { Bit } from '../tools/bits';
 import { cutPocket, type PocketRings } from './pocket';
+import { cutCarve, type CarveParams } from './toolpath/carve';
 import { cutLoops, type CutLoopsParams } from './toolpath/cutLoops';
 import { cutDrill, type DrillParams } from './toolpath/drill';
 import type { MoveWriter } from './toolpath/moveWriter';
@@ -17,7 +17,8 @@ export type CutPlan =
       entry: CutLoopsParams['entry'];
       finish: CutLoopsParams | null;
     }
-  | ({ kind: 'drill' } & DrillParams);
+  | ({ kind: 'drill' } & DrillParams)
+  | ({ kind: 'carve' } & CarveParams);
 
 /** Where tabs are and where they could go, in canvas space, for the preview editor. */
 export interface TabPreview {
@@ -31,7 +32,6 @@ export interface TabPreview {
 export interface ObjectCut {
   toolpathId: string;
   objectId: string;
-  face: Face;
   label: string;
   bit: Bit;
   depth: number;
@@ -50,6 +50,8 @@ export interface PlanResult {
   tabs: TabPreview | null;
   /** True when tabs will actually hold the part. */
   tabsHold: boolean;
+  /** How deep the cut really goes, when that isn't the operation's depth (V-carve). */
+  depth?: number;
 }
 
 export function executePlan(writer: MoveWriter, plan: CutPlan): void {
@@ -59,6 +61,10 @@ export function executePlan(writer: MoveWriter, plan: CutPlan): void {
   }
   if (plan.kind === 'drill') {
     cutDrill(writer, plan);
+    return;
+  }
+  if (plan.kind === 'carve') {
+    cutCarve(writer, plan);
     return;
   }
   cutPocket(writer, { rings: plan.rings, depths: plan.depths, entry: plan.entry });

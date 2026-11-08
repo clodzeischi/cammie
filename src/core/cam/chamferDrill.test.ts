@@ -1,5 +1,5 @@
 import { boundsOfPoints, type Path } from '../geometry/path';
-import { fitsEasyMode, insertToolpath } from '../job/toolpaths';
+import { insertToolpath } from '../job/toolpaths';
 import { DEFAULT_MACHINE_CONFIG } from '../machine/machineConfig';
 import { grblPost } from '../post/grbl/grblPost';
 import { lintGcode } from '../post/grbl/lintGcode';
@@ -123,10 +123,5 @@ describe('cut order', () => {
       tp('drill', drillOp()),
     ].reduce(insertToolpath, []);
     expect(list.map((t) => t.id)).toEqual(['drill', 'pocket', 'chamfer', 'out']);
-  });
-
-  it('treats chamfers and drilling as Pro jobs', () => {
-    expect(fitsEasyMode(makeJob([makeObject({ operation: chamferOp() })]))).toBe(false);
-    expect(fitsEasyMode(makeJob([makeObject({ operation: pocketOp() })]))).toBe(true);
   });
 });

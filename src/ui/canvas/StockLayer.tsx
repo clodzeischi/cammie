@@ -1,5 +1,4 @@
 import { Arrow, Circle, Layer, Line, Rect } from 'react-konva';
-import type { Vec2 } from '../../core/geometry/path';
 import { gridLines, majorEvery } from '../../core/job/grid';
 import { anchorPoint, type OriginAnchor, type Stock } from '../../core/job/job';
 import type { CanvasColors } from './canvasColors';
@@ -12,8 +11,6 @@ interface StockLayerProps {
   /** Grid cell size (mm). */
   gridSpacing: number;
   colors: CanvasColors;
-  /** Two-sided jobs: the line the stock turns over about. */
-  flipLine?: [Vec2, Vec2] | null;
 }
 
 /** Grid lines closer together than this on screen (px) are left out. */
@@ -21,7 +18,7 @@ const MIN_LINE_GAP_PX = 6;
 
 /** The material: board, grid (through the work origin), and the X0 Y0 marker with axis arrows. */
 export function StockLayer(props: StockLayerProps) {
-  const { stock, origin, scale, gridSpacing, colors, flipLine } = props;
+  const { stock, origin, scale, gridSpacing, colors } = props;
   const o = anchorPoint(stock, origin);
   // Zoomed far out, a fine grid would be a grey smear: keep only the major lines.
   const showMinor = gridSpacing * scale >= MIN_LINE_GAP_PX;
@@ -61,15 +58,6 @@ export function StockLayer(props: StockLayerProps) {
         strokeScaleEnabled={false}
       />
       {lines}
-      {flipLine && (
-        <Line
-          points={flipLine.flatMap((p) => [p.x, p.y])}
-          stroke={colors.pathSelected}
-          strokeWidth={1.5}
-          dash={[px(8), px(5)]}
-          strokeScaleEnabled={false}
-        />
-      )}
       {/* Machine +X points right, +Y points up (canvas Y is flipped). */}
       <Arrow
         points={[o.x, o.y, o.x + px(28), o.y]}

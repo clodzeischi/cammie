@@ -4,8 +4,6 @@ import type { BitProgram } from '../../core/cam/program';
 
 interface PreviewBarProps {
   programs: BitProgram[];
-  /** Each program's number among all the job's files (some may be hidden). */
-  fileNumbers: number[];
   stats: ProgramStats[];
   activeIndex: number;
   onActiveChange: (index: number) => void;
@@ -34,15 +32,14 @@ export function PreviewBar(props: PreviewBarProps) {
         <div className="segmented" role="tablist" aria-label="File">
           {programs.map((program, i) => (
             <button
-              key={`${program.face}|${program.bit.id}`}
+              key={program.bit.id}
               type="button"
               role="tab"
               aria-selected={i === activeIndex}
               className={i === activeIndex ? 'segment segment-active' : 'segment'}
               onClick={() => props.onActiveChange(i)}
             >
-              {props.fileNumbers[i]}. {program.face === 'bottom' ? 'Bottom: ' : ''}
-              {program.bit.name}
+              {i + 1}. {program.bit.name}
             </button>
           ))}
         </div>

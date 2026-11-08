@@ -1,8 +1,7 @@
 import { boundsOfPaths, boundsOfPoints, type Bounds, type Path } from '../geometry/path';
 import { transformPaths } from '../geometry/transform';
 import { cantCutReason, canCut } from '../job/bitCapabilities';
-import { faceOf, type CutFrame } from '../job/faces';
-import type { DesignObject, Job, Operation } from '../job/job';
+import type { CutFrame, DesignObject, Job, Operation } from '../job/job';
 import { cutKindOf, type CutKind } from '../job/objectFactory';
 import type { MachineConfig } from '../machine/machineConfig';
 import { overridesFor, type FeedOverrides } from '../materials/feedOverrides';
@@ -13,6 +12,7 @@ import type { ObjectCut, PlanResult } from './cutPlan';
 import { planDrill } from './drillPlan';
 import { planPocket } from './pocketPlan';
 import { planProfile, type ProfilePlanInput } from './profilePlan';
+import { planVCarve } from './vcarvePlan';
 import type { Diagnostic } from './program';
 import { feedLabel, resolveFeeds } from './resolveFeeds';
 
@@ -22,7 +22,7 @@ export interface CutContext {
   material: Material;
   bits: readonly Bit[];
   feedOverrides: FeedOverrides;
-  /** Canvas ↔ machine for the face this toolpath is cut from. */
+  /** Canvas ↔ machine coordinates. */
   frame: CutFrame;
 }
 
@@ -30,6 +30,7 @@ type Report = (severity: Diagnostic['severity'], message: string) => void;
 
 const LABEL: Record<CutKind, string> = {
   drill: 'Drill',
+  vcarve: 'V-carve',
   pocket: 'Pocket',
   inside: 'Inside',
   on: 'On the line',
@@ -86,24 +87,22 @@ export function planObjectCut(
   );
   if (!planned) return null;
 
-  // Registration holes go into the spoilboard on purpose, so the pins have something to sit in.
-  if (object.role !== 'registration') {
-    // On the top of a two-sided job a loose part is lost before its bottom is cut.
-    const flippedLater =
-      ctx.frame.face === 'top' && ctx.job.toolpaths.some((t) => faceOf(t) === 'bottom');
-    checkDepth(operation.depth, kind, thickness, planned.tabsHold, flippedLater, report);
-  }
+  // V-carves check their own depth: it follows from the shape, not the setting.
+  if (kind !== 'vcarve') checkDepth(operation.depth, kind, thickness, planned.tabsHold, report);
 
   return {
     toolpathId,
     objectId: object.id,
-    face: ctx.frame.face,
     label: `${LABEL[kind]}: ${object.name}`,
     bit,
-    depth: operation.depth,
+    depth: planned.depth ?? operation.depth,
     feeds,
     plan: planned.plan,
-    cutBounds: canvasCutBounds(planned.allPaths, grooveWidth(bit, operation.depth) / 2, ctx.frame),
+    cutBounds: canvasCutBounds(
+      planned.allPaths,
+      kind === 'vcarve' ? 0 : grooveWidth(bit, operation.depth) / 2,
+      ctx.frame,
+    ),
     tabs: planned.tabs,
   };
 }
@@ -120,6 +119,10 @@ function planFor(input: PlanInput, report: Report): PlanResult | null {
       return planDrill(operation, bit, feeds, paths, report);
     case 'chamfer':
       return bit.type === 'vbit' ? planChamfer(operation, bit, feeds, paths, report) : null;
+    case 'vcarve':
+      return bit.type === 'vbit'
+        ? planVCarve(operation, bit, feeds, paths, input.thickness, report)
+        : null;
     case 'profile':
       return planProfile({ ...input, operation }, report);
   }
@@ -133,7 +136,6 @@ function checkDepth(
   kind: CutKind,
   thickness: number,
   tabsHold: boolean,
-  flippedLater: boolean,
   report: Report,
 ) {
   const extra = depth - thickness;
@@ -142,13 +144,6 @@ function checkDepth(
     report('warning', `cuts ${fmt(extra)} into the spoilboard.`);
   }
   if (through && (kind === 'outside' || kind === 'inside') && !tabsHold) {
-    if (flippedLater) {
-      report(
-        'warning',
-        'cuts all the way through on the top with no tabs, so the part comes loose before the stock is turned over. Add tabs, or cut it out from the bottom.',
-      );
-      return;
-    }
     report(
       'warning',
       "cuts all the way through with no tabs. Hold the part down with tape or clamps so it can't come loose.",

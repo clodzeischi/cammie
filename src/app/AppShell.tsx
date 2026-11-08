@@ -1,44 +1,33 @@
-import { useState } from 'react';
-import { hasErrors } from '../core/cam/program';
-import { fitsEasyMode } from '../core/job/toolpaths';
-import { grblPost } from '../core/post/grbl/grblPost';
+import { useDialogStore } from '../state/dialogStore';
 import { useJobStore } from '../state/jobStore';
-import { useMachineStore } from '../state/machineStore';
-import { useModeStore } from '../state/modeStore';
-import { useGeneratedJob, useJob } from '../state/useGeneratedJob';
-import { EasyGate } from '../ui/header/EasyGate';
-import { EasyJobPickers } from '../ui/header/EasyJobPickers';
-import { ModeSwitch } from '../ui/header/ModeSwitch';
+import { useNoticeStore } from '../state/noticeStore';
+import { Toast } from '../ui/common/Toast';
+import { ExportButton } from '../ui/header/ExportButton';
+import { HistoryButtons } from '../ui/header/HistoryButtons';
 import { ProjectButtons } from '../ui/header/ProjectButtons';
-import { Icon } from '../ui/icons/Icon';
+import { SettingsMenu } from '../ui/header/SettingsMenu';
+import { StockButton } from '../ui/header/StockButton';
+import { ArrangeDialog } from '../ui/panels/ArrangeDialog';
 import { BitLibraryDialog } from '../ui/panels/BitLibraryDialog';
+import { HoleDialog } from '../ui/panels/HoleDialog';
 import { MachineSettingsDialog } from '../ui/panels/MachineSettingsDialog';
 import { Sidebar } from '../ui/panels/Sidebar';
-import { Ribbon } from '../ui/ribbon/Ribbon';
-import { ToolpathList } from '../ui/toolpaths/ToolpathList';
+import { StockDialog } from '../ui/panels/StockDialog';
+import { ToolRail } from '../ui/toolbar/ToolRail';
 import { Workspace } from '../ui/Workspace';
-import { buildExportFiles, downloadFiles } from './exportFiles';
 import { useAppShortcuts } from './useAppShortcuts';
 import { useProjectBackup } from './useProjectBackup';
 
+/**
+ * The screen, left to right in the order of the work: job settings and
+ * export along the top, tools on the left, the canvas, and one panel on the
+ * right (the cut plan, or whatever is selected).
+ */
 export function AppShell() {
-  const [machineOpen, setMachineOpen] = useState(false);
-  const [bitsOpen, setBitsOpen] = useState(false);
   const jobName = useJobStore((s) => s.jobName);
   const setJobName = useJobStore((s) => s.setJobName);
-  const machine = useMachineStore((s) => s.config);
-  const mode = useModeStore((s) => s.mode);
-  const job = useJob();
-  const generated = useGeneratedJob();
   useAppShortcuts();
   const restored = useProjectBackup();
-
-  const easy = mode === 'easy';
-  const gated = easy && !fitsEasyMode(job);
-  const blocked = hasErrors(generated.diagnostics) || generated.programs.length === 0;
-  const exportJob = () =>
-    downloadFiles(buildExportFiles(generated.programs, job, machine, jobName, grblPost), jobName);
-  const fileCount = generated.programs.length;
 
   return (
     <div className="app-shell">
@@ -54,48 +43,48 @@ export function AppShell() {
           value={jobName}
           onChange={(e) => setJobName(e.target.value)}
         />
-        {easy && !gated && <EasyJobPickers />}
+        <StockButton />
         <div className="app-header-actions">
+          <HistoryButtons />
           <ProjectButtons notice={restored} />
-          <ModeSwitch />
-          {easy && (
-            <button
-              type="button"
-              className="button"
-              title="Machine settings"
-              aria-label="Machine"
-              onClick={() => setMachineOpen(true)}
-            >
-              <Icon name="machine" size={16} />
-              <span className="button-text">Machine</span>
-            </button>
-          )}
-          <button
-            type="button"
-            className="button button-primary"
-            disabled={blocked}
-            title={blocked ? 'Fix the items under Checks first' : undefined}
-            onClick={exportJob}
-          >
-            <Icon name="export" size={16} /> Export
-            {fileCount > 1 ? ` ${fileCount} files (.zip)` : ''}
-          </button>
+          <SettingsMenu />
+          <ExportButton />
         </div>
       </header>
 
-      {!gated && (
-        <Ribbon onOpenBits={() => setBitsOpen(true)} onOpenMachine={() => setMachineOpen(true)} />
-      )}
-
-      <div className={easy ? 'app-body app-body-easy' : 'app-body app-body-pro'}>
-        {!easy && <ToolpathList />}
+      <div className="app-body">
+        <ToolRail />
         <Workspace />
         <Sidebar />
-        {gated && <EasyGate />}
       </div>
 
-      {machineOpen && <MachineSettingsDialog onClose={() => setMachineOpen(false)} />}
-      {bitsOpen && <BitLibraryDialog onClose={() => setBitsOpen(false)} />}
+      <Dialogs />
+      <Notice />
     </div>
   );
+}
+
+function Dialogs() {
+  const open = useDialogStore((s) => s.open);
+  const close = useDialogStore((s) => s.close);
+  switch (open) {
+    case 'stock':
+      return <StockDialog onClose={close} />;
+    case 'machine':
+      return <MachineSettingsDialog onClose={close} />;
+    case 'bits':
+      return <BitLibraryDialog onClose={close} />;
+    case 'hole':
+      return <HoleDialog onClose={close} />;
+    case 'arrange':
+      return <ArrangeDialog onClose={close} />;
+    case null:
+      return null;
+  }
+}
+
+function Notice() {
+  const notice = useNoticeStore((s) => s.notice);
+  const dismiss = useNoticeStore((s) => s.dismiss);
+  return notice ? <Toast message={notice} onDismiss={dismiss} /> : null;
 }

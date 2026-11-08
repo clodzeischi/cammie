@@ -32,6 +32,7 @@
   --cut-pocket: #a86d00;
   --cut-chamfer: #2f68ad;
   --cut-drill: #a3324a;
+  --cut-vcarve: #4d7a1f;
   --accent-soft: rgb(181 86 43 / 0.12);
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
@@ -69,6 +70,7 @@
     --cut-pocket: #f0b44c;
     --cut-chamfer: #7fb0f0;
     --cut-drill: #f07890;
+    --cut-vcarve: #9ccf5c;
     --accent-soft: rgb(224 122 72 / 0.16);
     color-scheme: dark;
   }

@@ -7,10 +7,16 @@ export interface GridPrefs {
   spacing: number;
   /** Whether dragging and resizing snap to the grid. */
   snap: boolean;
+  /** Whether the design shows what each cut removes. */
+  showCuts: boolean;
 }
 
 export const GRID_PREFS_KEY = 'cammie.grid.v1';
-export const DEFAULT_GRID_PREFS: GridPrefs = { spacing: DEFAULT_GRID_SPACING, snap: true };
+export const DEFAULT_GRID_PREFS: GridPrefs = {
+  spacing: DEFAULT_GRID_SPACING,
+  snap: true,
+  showCuts: true,
+};
 
 export function reviveGridPrefs(stored: unknown): GridPrefs {
   const s = (typeof stored === 'object' && stored !== null ? stored : {}) as Record<
@@ -22,6 +28,7 @@ export function reviveGridPrefs(stored: unknown): GridPrefs {
       ? (s.spacing as number)
       : DEFAULT_GRID_PREFS.spacing,
     snap: typeof s.snap === 'boolean' ? s.snap : DEFAULT_GRID_PREFS.snap,
+    showCuts: typeof s.showCuts === 'boolean' ? s.showCuts : DEFAULT_GRID_PREFS.showCuts,
   };
 }
 

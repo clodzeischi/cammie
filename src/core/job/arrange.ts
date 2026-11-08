@@ -108,13 +108,15 @@ export function nudgeObjects(
 export const DUPLICATE_OFFSET = 5;
 
 /**
- * Copies of the selected objects, offset so they're visible. Copied groups
- * become new groups, so the copy and the original move independently.
+ * Copies of the selected objects, offset so they're visible (`offset` mm down
+ * and to the right). Copied groups become new groups, so the copy and the
+ * original move independently.
  */
 export function duplicateObjects(
   objects: readonly DesignObject[],
   ids: readonly string[],
   newId: () => string,
+  offset = DUPLICATE_OFFSET,
 ): DesignObject[] {
   const groupIds = new Map<string, string>();
   return objects
@@ -123,7 +125,7 @@ export function duplicateObjects(
       const { groupId } = o;
       if (groupId && !groupIds.has(groupId)) groupIds.set(groupId, newId());
       return {
-        ...ungrouped(moveBy(o, { x: DUPLICATE_OFFSET, y: DUPLICATE_OFFSET })),
+        ...ungrouped(moveBy(o, { x: offset, y: offset })),
         id: newId(),
         name: `${o.name} copy`,
         ...(groupId && { groupId: groupIds.get(groupId)! }),

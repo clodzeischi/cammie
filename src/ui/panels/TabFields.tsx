@@ -57,7 +57,7 @@ export function TabFields({ tabs, autoWidth, through, onChange }: TabFieldsProps
           />
           <p className="field-hint">
             {tabs.manual ? `${tabs.manual.length} tab(s) placed by hand.` : 'Placed automatically.'}{' '}
-            Click the toolpath in Toolpath preview to add or remove tabs.
+            Click the cut in Preview to add or remove tabs.
           </p>
           {tabs.manual && (
             <button type="button" className="link-button" onClick={() => set({ manual: null })}>

@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import type { CutKind } from '../../core/job/objectFactory';
 
 /** Konva draws on a <canvas>, so it needs real colour strings, not CSS variables. */
 export interface CanvasColors {
@@ -17,6 +18,8 @@ export interface CanvasColors {
   warning: string;
   /** One colour per exported file / bit. */
   toolpaths: string[];
+  /** One colour per kind of cut, as in the toolpath list (see cutKinds). */
+  cuts: Record<CutKind, string>;
 }
 
 const TOKENS = {
@@ -35,6 +38,16 @@ const TOKENS = {
 
 const TOOLPATH_TOKENS = ['--canvas-toolpath-1', '--canvas-toolpath-2', '--canvas-toolpath-3'];
 
+const CUT_TOKENS: Record<CutKind, string> = {
+  on: '--cut-on',
+  outside: '--cut-outside',
+  inside: '--cut-inside',
+  pocket: '--cut-pocket',
+  vcarve: '--cut-vcarve',
+  chamfer: '--cut-chamfer',
+  drill: '--cut-drill',
+};
+
 let cached: CanvasColors | null = null;
 
 function read(): CanvasColors {
@@ -43,8 +56,11 @@ function read(): CanvasColors {
   const get = (name: string) => style.getPropertyValue(name).trim() || '#888';
   const colors = Object.fromEntries(
     Object.entries(TOKENS).map(([key, token]) => [key, get(token)]),
-  ) as Omit<CanvasColors, 'toolpaths'>;
-  cached = { ...colors, toolpaths: TOOLPATH_TOKENS.map(get) };
+  ) as Omit<CanvasColors, 'toolpaths' | 'cuts'>;
+  const cuts = Object.fromEntries(
+    Object.entries(CUT_TOKENS).map(([kind, token]) => [kind, get(token)]),
+  ) as Record<CutKind, string>;
+  cached = { ...colors, toolpaths: TOOLPATH_TOKENS.map(get), cuts };
   return cached;
 }
 

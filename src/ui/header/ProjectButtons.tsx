@@ -48,6 +48,7 @@ export function ProjectButtons({ notice }: ProjectButtonsProps) {
     }
     openProject(parsed.project);
     dismiss();
+    if (parsed.notes.length > 0) setToast({ kind: 'info', text: parsed.notes.join(' ') });
   };
 
   const startNew = () => {

@@ -4,10 +4,10 @@ import { useToolingStore } from './toolingStore';
 
 /** The design as it would be saved. */
 export function currentProject(): Project {
-  const { stock, origin, materialId, objects, toolpaths, flip, jobName } = useJobStore.getState();
+  const { stock, origin, materialId, objects, toolpaths, jobName } = useJobStore.getState();
   return {
     jobName,
-    job: { stock, origin, materialId, objects, toolpaths, flip },
+    job: { stock, origin, materialId, objects, toolpaths },
     bits: useToolingStore.getState().customBits,
   };
 }

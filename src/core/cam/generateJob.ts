@@ -1,6 +1,5 @@
 import { isEmptyBounds, unionBounds, EMPTY_BOUNDS, type Bounds, type Vec2 } from '../geometry/path';
-import { cutFrame, faceOf } from '../job/faces';
-import type { Job } from '../job/job';
+import { cutFrame, type Job } from '../job/job';
 import { groupIntoFiles } from '../job/toolpaths';
 import type { MachineConfig } from '../machine/machineConfig';
 import { findMaterial } from '../materials/materials';
@@ -10,7 +9,6 @@ import { executePlan, type ObjectCut } from './cutPlan';
 import { planObjectCut } from './objectCut';
 import { MoveWriter } from './toolpath/moveWriter';
 import type { BitProgram, Diagnostic, GeneratedJob, ProgramSection } from './program';
-import { checkTwoSided } from './twoSidedChecks';
 
 /** Slack for floating-point noise when checking that cuts stay on the stock. */
 const EPSILON = 0.01;
@@ -34,10 +32,11 @@ export function generateJob(
       programs: [],
       diagnostics: [{ severity: 'error', message: 'Pick a material.' }],
       tabs: [],
+      carveDepths: {},
     };
   }
 
-  const frames = { top: cutFrame(job, 'top'), bottom: cutFrame(job, 'bottom') };
+  const frame = cutFrame(job);
   const objects = new Map(job.objects.map((o) => [o.id, o]));
   const cuts: ObjectCut[] = [];
   for (const toolpath of job.toolpaths) {
@@ -54,7 +53,7 @@ export function generateJob(
       toolpath.id,
       object,
       toolpath.operation,
-      { job, machine, material, bits, feedOverrides, frame: frames[faceOf(toolpath)] },
+      { job, machine, material, bits, feedOverrides, frame },
       report,
     );
     if (!cut) continue;
@@ -69,31 +68,38 @@ export function generateJob(
     });
   }
   checkMachineFits(cuts, machine, diagnostics);
-  checkTwoSided(job, diagnostics);
   const tabs = cuts.flatMap((cut) =>
     cut.tabs ? [{ toolpathId: cut.toolpathId, objectId: cut.objectId, ...cut.tabs }] : [],
   );
-  return { programs: buildPrograms(cuts, machine), diagnostics, tabs };
+  const carveDepths = Object.fromEntries(
+    cuts.filter((cut) => cut.plan.kind === 'carve').map((cut) => [cut.toolpathId, cut.depth]),
+  );
+  return { programs: buildPrograms(cuts, machine), diagnostics, tabs, carveDepths };
 }
 
 /**
- * One program per face and bit, in the order the toolpath list gives (see
- * groupIntoFiles): top files first, cuts in list order within a file. New
+ * One program per bit, in the order the toolpath list gives (see
+ * groupIntoFiles), cuts in list order within a file. New
  * toolpaths are placed so this is the safe order (see insertToolpath) unless
  * the user moves them.
  */
 function buildPrograms(cuts: ObjectCut[], machine: MachineConfig): BitProgram[] {
-  const groups = groupIntoFiles(cuts, (cut) => ({ face: cut.face, bitId: cut.bit.id }));
+  const groups = groupIntoFiles(cuts, (cut) => cut.bit.id);
 
-  return groups.map(({ face, items: group }) => {
+  return groups.map(({ items: group }) => {
     let position: Vec2 = { x: 0, y: 0 };
     const sections: ProgramSection[] = group.map((cut) => {
       const writer = new MoveWriter(machine.safeZ, cut.feeds, position);
       executePlan(writer, cut.plan);
       position = writer.position;
-      return { label: cut.label, rpm: cut.feeds.rpm, moves: writer.moves };
+      return {
+        label: cut.label,
+        rpm: cut.feeds.rpm,
+        moves: writer.moves,
+        ...(cut.plan.kind === 'carve' && { variableWidth: true }),
+      };
     });
-    return { bit: group[0]!.bit, face, sections };
+    return { bit: group[0]!.bit, sections };
   });
 }
 

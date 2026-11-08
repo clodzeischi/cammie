@@ -1,7 +1,6 @@
 import { offsetRegion, regionOf } from '../clipper/clipper';
 import { distance, type Path, type Vec2 } from '../geometry/path';
 import type { CutDirection, EntryStyle } from '../job/job';
-import { orderPaths } from './ordering';
 import { Loop } from './toolpath/loop';
 import { loopPass } from './toolpath/loopPass';
 import type { MoveWriter } from './toolpath/moveWriter';
@@ -64,8 +63,20 @@ export function pocketRings(
   };
 }
 
-/** Does segment ab cross any edge of the loops? */
-function crossesAny(a: Vec2, b: Vec2, loops: readonly Path[]): boolean {
+/** Link ends closer than this (mm) to a loop count as touching it, not crossing. */
+const TOUCH = 1e-4;
+
+/**
+ * Does segment ab cross any edge of the loops? A link often ends right on the
+ * outermost ring, which is also the boundary being tested; rounding would make
+ * that touch look like a crossing, so the segment's ends are trimmed by TOUCH.
+ */
+function crossesAny(from: Vec2, to: Vec2, loops: readonly Path[]): boolean {
+  const length = distance(from, to);
+  if (length <= 2 * TOUCH) return false;
+  const t = TOUCH / length;
+  const a = { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t };
+  const b = { x: to.x - (to.x - from.x) * t, y: to.y - (to.y - from.y) * t };
   const cross = (o: Vec2, p: Vec2, q: Vec2) =>
     (p.x - o.x) * (q.y - o.y) - (p.y - o.y) * (q.x - o.x);
   for (const loop of loops) {
@@ -89,10 +100,22 @@ export interface PocketMovesParams {
   entry: EntryStyle;
 }
 
+/** The ring nearest `p`, and where on it (mm along it) the tool should join it. */
+function nearestRing(rings: readonly Loop[], p: Vec2): { index: number; s: number } {
+  let best = { index: 0, s: 0, distance: Infinity };
+  rings.forEach((ring, index) => {
+    const { s, distance } = ring.closest(p);
+    if (distance < best.distance) best = { index, s, distance };
+  });
+  return best;
+}
+
 /**
  * Clears the pocket one depth at a time, innermost ring first and working out
- * to the walls. Between neighbouring rings the tool stays down; anywhere else
- * it lifts, travels and eases back in.
+ * to the walls. Each ring is joined at the point nearest the tool, anywhere
+ * along it, not just at a corner: a ramped pass ends part-way along a side,
+ * and a rectangle's ring only has four corners. Between neighbouring rings the
+ * tool stays down; anywhere else it lifts, travels and eases back in.
  */
 export function cutPocket(writer: MoveWriter, { rings, depths, entry }: PocketMovesParams): void {
   const maxLink = rings.step * 2 + 0.01;
@@ -101,21 +124,19 @@ export function cutPocket(writer: MoveWriter, { rings, depths, entry }: PocketMo
     const z = -depth;
     let linked = false;
     for (let level = rings.levels.length - 1; level >= 0; level--) {
-      let remaining = rings.levels[level]!;
+      const remaining = rings.levels[level]!.map((path) => new Loop(path));
       while (remaining.length > 0) {
-        // Nearest ring next, rotated to start at its closest point.
         const here = writer.position;
-        const [next, ...rest] = orderPaths(remaining, { x: here.x, y: here.y }).paths;
-        remaining = rest;
-        const loop = new Loop(next!);
-        const start = loop.pointAt(0);
+        const { index, s } = nearestRing(remaining, here);
+        const [loop] = remaining.splice(index, 1) as [Loop];
+        const start = loop.pointAt(s);
         const canLink =
           linked && distance(here, start) <= maxLink && !crossesAny(here, start, rings.toolArea);
 
         if (canLink) {
           writer.follow([{ x: start.x, y: start.y, z }]);
           writer.follow(
-            loopPass({ loop, start: 0, fromZ: z, toZ: z, rampLength: 0, tabs: [], tabZ: -Infinity })
+            loopPass({ loop, start: s, fromZ: z, toZ: z, rampLength: 0, tabs: [], tabZ: -Infinity })
               .vertices,
           );
         } else {
@@ -125,7 +146,7 @@ export function cutPocket(writer: MoveWriter, { rings, depths, entry }: PocketMo
           writer.follow(
             loopPass({
               loop,
-              start: 0,
+              start: s,
               fromZ: previousZ,
               toZ: z,
               rampLength: ramp,

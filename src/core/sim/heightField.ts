@@ -15,7 +15,7 @@ export interface HeightField {
   thickness: number;
   /** Top surface: 0 where uncut, lower where top cuts went. */
   top: Float32Array;
-  /** Bottom surface: −thickness where uncut, higher where bottom cuts went. */
+  /** Bottom surface: the stock's underside, −thickness. */
   bottom: Float32Array;
   /** How far cuts went past the stock into the spoilboard (mm, 0 = not at all). */
   spoil: Float32Array;

@@ -33,58 +33,51 @@ Status: Draft v1 · 2026-10-17
 
 ## 3. Core Workflow & UI Layout
 
-One screen with two modes, switched by an **Easy ↔ Pro** toggle in the header. Pro is the full
-model; Easy is the same app with limits switched on, so both share one job and one code path.
-New visitors start in Easy; the last mode is remembered (`cammie.mode.v1`, with Easy's bit).
+One screen, laid out in the order of the work: job settings and export along the top, tools on
+the left, the canvas, and one panel on the right. (Easy/Pro modes were removed on 2026-11-07; a
+stale `cammie.mode.v1` key is ignored. The ribbon was replaced by the tool rail on 2026-11-07.)
 
 ```
-Pro
-┌──────────────────────────────────────────────────────────────────────────┐
-│ Cammie [job name]        [New][Open][Save]  EASY ◯━ PRO   [Export 2 files]│
-├──────────────────────────────────────────────────────────────────────────┤
-│ Shapes | Toolpaths | Setup                    (ribbon: labelled buttons)  │
-├──────────────┬────────────────────────────────────┬──────────────────────┤
-│ Toolpaths    │                                    │ Selected toolpath,   │
-│ ① End mill   │      Design canvas                 │ object, or job       │
-│   Pocket     │                                    │ settings             │
-│   Cut out    │                                    │                      │
-│ ↻ Change bit │                                    │                      │
-│ ② V-bit 60°  │  [Design] [Toolpath preview]       │ Checks               │
-│   Engrave    │                                    │                      │
-└──────────────┴────────────────────────────────────┴──────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────────┐
+│ Cammie [job name] [▣ MDF · 200×150×12 mm]     ↶ ↷  New Open Save  ⚙  [Export •2]│
+├────┬─────────────────────────────────────────────────┬─────────────────────────┤
+│ ↖  │          [Design | Preview] [3D]                │ CUT PLAN                │
+│ ✎  │                                                 │ ① V-bit 60°             │
+│ ∿  │                                                 │    Star · Engrave …     │
+│ ── │                  canvas                         │ ↻ Change bit            │
+│ T  │                                                 │ ② End mill 3.175        │
+│ ▭ ◯│                                                 │    Rect · Cut it out    │
+│ ⬡ ☆│                                                 │ Checks                  │
+│ ⚙ ⊙│                                                 │ [Arrange on stock]      │
+│ ── │                                                 │  (or, with a selection, │
+│ ⤓  │                    Cuts ☑ Snap ☑ 10 mm − + Fit  │   the inspector)        │
+└────┴─────────────────────────────────────────────────┴─────────────────────────┘
 ```
 
-- **Ribbon (Pro)**: *Shapes* (Import, Text, Rectangle, Circle · Duplicate, Group, Ungroup, Delete ·
-  Undo, Redo), *Toolpaths* (Engrave, Profile outside, Profile inside, Pocket, Chamfer, Drill · Simulate), *Setup*
-  (Stock & material, Bits, Machine). Every button has a text label.
-- **Toolpath list (Pro)**: the whole plan in cut order. One group per bit (= one `.nc` file), with
-  a "Change bit, then re-zero Z" step between groups. Rows and whole files move up/down; rows
-  show a dot when they have a warning or error. Selecting a row opens its settings, headed by one
-  plain sentence saying what it will do.
-- **Easy**: the same ribbon buttons as Pro (icon over label, group labels), without tabs: Import, Text, Rectangle, Circle · Undo, Redo. Material and the job's
-  one bit sit in the header. Selecting shapes asks "How should this be cut?" with four plain
-  choices (Engrave line, Cut out, Cut hole, Clear area); choices the bit can't do stay visible,
-  disabled with the reason. Only depth (and tabs) are shown; feeds and entry come from presets.
-  Chamfers and drilling are Pro only.
-- **Mode rules**: Easy → Pro never changes anything. Pro → Easy is blocked while the job uses Pro
-  features (more than one bit, more than one cut on a shape, chamfers or drilling, bottom cuts):
-  the toggle and the "Easy" label are disabled, and hovering says "Cannot switch, Pro features in
-  use". A Pro job opened or restored while in Easy shows read-only with a "Switch to Pro" button.
-  Nothing is deleted.
-- **Project** (header, both modes): *New* (asks first if there's a design), *Open…* (⌘/Ctrl-O) and *Save* (⌘/Ctrl-S, downloads `<job>.cammie`). See §13.4.
+- **Header**: job name; the **stock button** ("MDF · 200 × 150 × 12 mm"), the only place to change stock size, material and work origin (a dialog; changes apply as typed); Undo/Redo; *New* (asks first if there's a design), *Open…* (⌘/Ctrl-O) and *Save* (⌘/Ctrl-S, downloads `<job>.cammie`, §13.4); **⚙ Settings** menu (*Machine…*, *Bits…*); **Export**, with a red count of problems that block it or an amber count of warnings (tooltip says where to look; nothing shown for an empty job).
+- **Tool rail** (left; icons with tooltips giving name, key and what it does). Single-key shortcuts when not typing and no modifier is held: *Select* V, *Line* L, *Curve* C · *Text* T, *Rectangle* R, *Circle* E, *Polygon* P, *Star* S, *Cog* G, *Hole* H · *Import* I. Line/Curve show pressed while drawing; Select stops drawing and point editing.
+- **Canvas toolbar**: *Design | Preview* (§10) and the **3D** toggle (§10.1), each in exactly one place. Bottom right: *Cuts*, *Snap*, grid size, zoom, Fit.
+- **Right panel** (always there, 300 px):
+  - **Nothing selected → Cut plan**: every cut in cut order, one group per bit (= one `.nc` file) with a "Change bit, then re-zero Z" step between groups; rows and whole files move up/down; rows show a dot when they have a warning or error; clicking a row opens that cut. Underneath: **Checks** (§9.6; clicking one opens its cut or shape) and *Arrange on stock* (§6.4, with two or more shapes). An empty job shows four getting-started steps instead (set stock → draw or import → select a shape and *Add a cut* → preview and Export).
+  - **One shape → inspector**, in working order: the shape's own settings (text, corner radius, sides, teeth, smoothing…); **Cuts** (its cuts, each opening its settings, and one **+ Add a cut** menu); **Position & size**; **Align & group**; *Delete shape*. *Done* deselects (back to the plan).
+  - **Several shapes**: *+ Add a cut to N shapes*, Align & group, Delete.
+  - **A cut** (from the plan or the shape): one plain sentence saying what it will do, then its settings (§9). "← shape name" goes back to the shape.
+- **Cut names are plain words**, with the CAM term underneath in menus and the cut panel: *Engrave the line* (Engrave), *Cut it out* (Profile outside), *Cut a hole* (Profile inside), *Clear the inside* (Pocket), *Carve with a V-bit* (V-carve), *Bevel the edges* (Chamfer), *Drill*. "Toolpath" doesn't appear in the interface; the code keeps its names.
+- **Add a cut** menu: each kind with its icon in the cut's colour, the plain name, and "term · what it does". Picking one adds it to every selected shape with a suitable bit (see `bitForNewCut`) and opens it.
+- **Right-click on the canvas**: on a shape, it's picked (keeping a selection it belongs to) and the menu offers *Add a cut* (the same list), *Edit points* (lines and curves), Cut/Copy/Paste, Duplicate, Group/Ungroup, Delete, with their shortcuts. On empty canvas: Paste, Select all, *Arrange on stock…*, *Stock & material…*.
+- **New shapes start uncut**.
+- **Hole** (tool rail, H): asks for diameter (default 6 mm), depth (default stock + 0.2 mm, i.e. through) and an end mill (default: the one the job already uses for holes). Adds a circle named "Hole Ø…" with a **Drill** cut when the bit is within 0.05 mm of the hole's size, otherwise **Cut a hole**; a bit wider than the hole is refused. The hole is then an ordinary shape.
 - **Canvas**: stock rectangle drawn to scale, mm grid, rulers, selectable origin marker, dashed outline of machine work area. Pan (space/middle-drag), zoom (wheel/pinch).
-- **Grid & snapping** (controls beside the zoom buttons; remembered in localStorage as `cammie.grid.v1`):
+- **Grid, snapping and cuts** (controls beside the zoom buttons; remembered in localStorage as `cammie.grid.v1`):
+  - *Cuts* (on by default): shades what each cut removes, in its colour (§9.11).
   - Grid size: 0.5, 1, 2, 5, 10 (default), 20, 25 or 50 mm. Lines run through the work origin, so snapped objects get round X/Y values. Darker major lines every round 5/10/25/50/100… mm. Lines closer than 6 px on screen are left out (only major lines when zoomed far out).
   - Snap (on by default): dragging moves the object so whichever of its box edges is nearest a grid line lands on it (per axis); resize handles land on grid points; rotation isn't snapped. Hold Alt/Option while dragging to place freely. Typed positions and arrow-key nudges are never snapped.
-- **Right panel**: properties of selected object(s); job settings when nothing is selected (stock, origin, material).
-- **View toggle**: *Design* vs *Toolpath preview* (§10).
-- **Warnings tray**: non-blocking issues (§9.6). Blocking errors disable Export with a reason.
 
 ### 3.1 Typical session
-1. Set stock size & thickness, choose material (persisted as "last used").
-2. Import an SVG, or type text.
-3. Select objects → choose operation (Profile outside / inside / on-line, Pocket, V-carve), depth, bit.
-4. Switch to *Toolpath preview*, check, then **Export** → downloads one `.nc` per bit.
+1. Check the stock button: size, thickness, material (remembered as "last used").
+2. Draw with the tool rail, import an SVG/image, or type text.
+3. Select a shape → *Add a cut* → set depth and bit.
+4. Look at the shading, *Preview* and 3D, then **Export** → one `.nc` per bit.
 
 ---
 
@@ -98,7 +91,6 @@ interface Job {
   materialId: string;
   objects: DesignObject[];       // z-ordered
   toolpaths: Toolpath[];         // cut order
-  flip: 'left-right' | 'top-bottom';  // how the stock turns over for bottom cuts (§9.10)
 }
 
 type OriginAnchor =
@@ -110,19 +102,19 @@ type OriginAnchor =
 interface DesignObject {
   id: string;
   name: string;
-  kind: 'svg' | 'traced-image' | 'text' | 'rect' | 'ellipse';
-  shape?: TextShape | RectShape | EllipseShape;  // params of text/shapes drawn in the app
+  kind: 'svg' | 'traced-image' | 'text' | 'rect' | 'ellipse' | 'polygon' | 'star' | 'cog' | 'polyline';
+  shape?: TextShape | RectShape | EllipseShape | PolygonShape | StarShape | CogShape | PolylineShape;
+                                 // params of text/shapes drawn in the app (§6.2, §6.3)
   groupId?: string;              // objects sharing one are selected/arranged together
-  role?: 'registration';         // dowel-pin holes, checked against the flip line (§9.10)
   paths: Path[];                 // flattened outlines in object-local mm, box starting at (0,0)
   width: number; height: number; // natural size of `paths`
   transform: { x: number; y: number; rotation: number; scaleX: number; scaleY: number };
 }
 
 // One cut on one object. Objects with no toolpaths aren't cut; an object may have several.
-interface Toolpath { id: string; objectId: string; operation: Operation; face?: 'top' | 'bottom'; }
-// Job.toolpaths: Toolpath[] — list order is cut order. Toolpaths sharing a face and bit form one
-// file; every top file runs before any bottom file, otherwise in the order of each bit's last toolpath (so the file with the final cut-outs runs last and a chamfer on another bit runs before them). New toolpaths are inserted where they
+interface Toolpath { id: string; objectId: string; operation: Operation; }
+// Job.toolpaths: Toolpath[] — list order is cut order. Toolpaths sharing a bit form one
+// file; files run in the order of each bit's last toolpath (so the file with the final cut-outs runs last and a chamfer on another bit runs before them). New toolpaths are inserted where they
 // naturally run (pockets, holes, lines, then cut-outs), so the default order is the safe one.
 
 interface Path { points: Vec2[]; closed: boolean; }
@@ -130,8 +122,8 @@ interface Path { points: Vec2[]; closed: boolean; }
 
 - Editing shape params (text, font, corner radius…) rebuilds `paths`.
 - **Selection**: a click picks the object whose outline it lands on (within 5 screen px) or inside one of its closed outlines; text is picked anywhere in its box. Empty space inside another object's bounding box reaches whatever is behind. Where shapes overlap, the smaller one wins (outlines have no fill, so stacking isn't visible; click areas are stacked by size), so a shape inside a bigger one is always reachable. Click selects; Shift-click adds/removes; ⌘/Ctrl-A selects all. Pressing on an already-selected object keeps the selection so several objects drag together; a click without dragging picks just that object. Several selected objects share one transformer (move/resize/rotate together).
-- **Groups**: ⌘/Ctrl-G groups the selection, ⇧⌘/Ctrl-G ungroups. A group is a selection unit (clicking any member selects all) and moves/aligns as one. Cuts are per object: in Easy a cut choice applies to every selected object; in Pro adding a toolpath gives each selected object its own.
-- **Arrange**: move, scale (lock aspect by default), rotate, duplicate (⌘/Ctrl-D, copies offset 5 mm, copied groups become new groups), delete, align left/centre/right/top/middle/bottom (several units align to their combined box; a single unit aligns to the stock), centre on stock, nudge with arrow keys (1 mm, Shift = 10 mm).
+- **Groups**: ⌘/Ctrl-G groups the selection, ⇧⌘/Ctrl-G ungroups. A group is a selection unit (clicking any member selects all) and moves/aligns as one. Cuts are per object: adding a toolpath gives each selected object its own.
+- **Arrange**: move, scale (lock aspect by default), rotate, duplicate (⌘/Ctrl-D, copies offset 5 mm, copied groups become new groups), cut/copy/paste (⌘/Ctrl-X/C/V, within the app: shapes with their toolpaths; each paste of the same copy lands 5 mm further down and right, so repeated pastes don't stack; pasting works after the originals were cut), auto-arrange on the stock (§6.4), delete, align left/centre/right/top/middle/bottom (several units align to their combined box; a single unit aligns to the stock), centre on stock, nudge with arrow keys (1 mm, Shift = 10 mm).
 - **Undo/redo**: ⌘/Ctrl-Z, ⇧⌘/Ctrl-Z or Ctrl-Y, toolbar buttons; 100 steps of the design (objects + selection; stock/origin/material are settings, not undone). A burst of edits to the same fields of one object within 1 s (typing a number or text, repeated nudges) is one step. Shortcuts are ignored while typing in a field, so fields keep their own undo.
 
 ---
@@ -176,7 +168,20 @@ interface Path { points: Vec2[]; closed: boolean; }
 
 ### 6.2 Shapes
 - Rectangle (w, h, corner radius, default 60 × 40), Circle/Ellipse (w, h, default Ø40). All parametric and editable numerically; width/height live under Placement like any object.
-- Resizing a rectangle or ellipse (canvas or fields) stores the new real size and keeps scale at 1, so corners stay round instead of squashing. On their own they get side handles for free stretching; everything else resizes proportionally from the corners. Curves are flattened to 0.01 mm.
+- Polygon (sides 3–64, default hexagon Ø40; rests on a flat bottom edge, so 4 sides is a square), Star (points 3–64, inner size 10–90 % of the outer, default 5 points Ø40, one point straight up), Cog (teeth 3–200, tooth depth in mm, tooth width as a share of each tooth's spacing, centre hole Ø, default 12 teeth Ø50 with an 8 mm hole; straight-flanked teeth, 60 % as wide at the tip as at the root; a hole that would reach the teeth's roots is left out). Each is drawn in a w × h box as a circle of diameter w squashed to h. Changing sides/points/teeth keeps the shape's centre in place.
+- Resizing any drawn shape (canvas or fields) stores the new real size and keeps scale at 1, so corners stay round instead of squashing (a cog's tooth depth and hole scale with its width). On their own they get side handles for free stretching; everything else (text, imports) resizes proportionally from the corners. Curves are flattened to 0.01 mm.
+
+### 6.3 Lines and curves
+- **Line** and **Curve** tools place points with clicks on the canvas (the selection is dropped first). Points snap to the grid when snapping is on (Alt places freely). Clicking the first point (within 10 screen px, or the same grid point) closes the shape (≥ 3 points); double-clicking on the last point or pressing Enter finishes an open line (≥ 2 points); Backspace takes back the last point; Esc cancels. A hint over the canvas says this while drawing. Dragging still pans.
+- Stored as `PolylineShape { points, closed, smoothing }`, points in the object's own space. Smoothing 0 = straight segments; above 0 each segment is a Catmull-Rom curve through the points with tangents scaled by the smoothing (1 = standard Catmull-Rom), so the outline always passes through every point. Line starts at 0, Curve at 100 %; the side panel has a Smoothing slider and a Closed checkbox. Named "Line" or "Curve" by smoothing.
+- **Editing points**: double-click the shape (or *Edit points* in the panel) to show a handle on every point and a dashed line joining them. Dragging a handle moves that point (snapping like drawing); double-clicking the dashed line adds a point there, double-clicking a handle removes it (never below 2 points open / 3 closed). Other points stay where they were. While editing, the shape doesn't drag or show resize handles; Esc, Enter, *Done editing points* or selecting something else ends it.
+
+### 6.4 Auto-arrange (nesting)
+- *Arrange on stock* (cut plan, or right-click on empty canvas) packs shapes onto the stock so the space left over is one large area: the selection (with whole groups), or every shape. Unselected shapes stay put and are worked around.
+- Parts: a group, or a shape together with every shape whose box lies entirely inside its box (text on a plaque). Shapes that merely overlap, like pasted copies, are separate parts.
+- Each part is packed by the box around its actual outline. Unless *Keep each shape's rotation* is ticked (remembered in `cammie.arrange.v1`), it may turn by 90° or to the angle that gives the tightest box (from the convex hull; the best box has a side along a hull edge).
+- Packing: MaxRects free-space list, top-left first; each part takes the spot and turn whose bottom edge, then right edge, is lowest. Several orders (area, longest side, height, width) are tried; the layout leaving fewest parts out, then the most compact one, wins. *Spacing* (default: widest groove any toolpath cuts + 2 mm, rounded up to 0.5 mm) is kept between parts and from the stock's edges.
+- One undo step. Parts that don't fit stay where they were and the dialog says how many.
 
 ---
 
@@ -224,7 +229,7 @@ Values per material for a **3.175 mm 2-flute flat**; other diameters scale (see 
 | Plywood (birch) | 550 | 200 | 0.8 | 10000 | 40% |
 | Acrylic (cast) — 1-flute preferred | 400 | 120 | 0.5 | 9000 | 35% |
 | HDPE / plastics | 600 | 200 | 1.0 | 9000 | 40% |
-| Aluminum (6061) — expert | 150 | 40 | 0.15 | 10000 | 20% |
+| Aluminum (6061) — expert | 400 | 100 | 0.15 | 10000 | 20% |
 | Foam / soft wax | 1200 | 400 | 3.0 | 8000 | 50% |
 
 - **Diameter scaling**: depth/pass scales ∝ diameter (≈ 0.3×Ø for softwood, capped at the preset); feed scales ∝ diameter for Ø < 3.175 mm (smaller bits break), never above preset.
@@ -251,6 +256,7 @@ interface OperationSettings {
   // op-specific:
   profileSide?: 'outside' | 'inside' | 'on';   // chamfer: 'outside' | 'inside'
   tabs?: TabSettings;
+  warnDepth?: number | null;      // vcarve: warn deeper than this (mm); null = half the stock
 }
 ```
 
@@ -295,14 +301,18 @@ interface TabSettings { enabled: boolean; count: number; width: number; height: 
 - Strategy: **contour-parallel offset** — repeatedly offset inward by `stepover × Ø` with Clipper2 until empty; link rings inside→out (or out→in), stay down between rings when the link stays inside the pocket, otherwise retract.
 - Finishing pass: wall pass at final boundary after roughing with allowance; floor gets the final ring.
 - Entry: **ramp along the innermost ring** at ≤ 3°, wrapping round it as many laps as needed (a helix on round pockets), so the tool always enters inside the area being cleared. Disconnected rings at a depth get their own ramp entry; neighbouring rings are linked at depth when the link is ≤ 2 × stepover and doesn't cross a wall or island.
+- Each ring is joined at the point on it nearest the tool, anywhere along it (not only at a vertex): a ramped pass ends part-way along a side, and a rectangle's ring has only four corners, so joining at a vertex made the link too long and the tool lifted at every ring. A link that only touches the outermost ring at its end doesn't count as crossing it. A simple pocket is therefore one unbroken spiral per depth.
 - Material left behind in corners narrower than the bit → warning highlighting the area (compare pocket region vs union of swept tool area).
 
 ### 9.5 V-carve
-- V-bits only, closed paths only.
-- Algorithm: **medial-axis carving**. Sample boundaries densely (~0.05 mm), compute Voronoi (d3-delaunay), keep edges inside the shape → medial axis. Depth at each point = `distance_to_boundary / tan(angle / 2)`. Prune tiny branches (noise from sampling). Emit as 3D polylines (X/Y/Z varying).
-- If total depth at any point > depthPerPass, the carve is done in multiple step-down passes, each clamped at `max(-passDepth, -z)`.
-- **No flat-bottom / clearing tool in v1.** If the max computed depth exceeds the stock thickness, or a user-set "max depth warn" (default 50% of thickness), show a warning with the actual depth. Thin strokes at a given bit size are fine; very wide areas will be deep.
-- Preview: render with line width representing cut width at the surface.
+- V-bits only, closed paths only (open lines get "use On the line").
+- Algorithm: **medial-axis carving**. Outlines are sampled every 0.05 mm (spacing grows above 200k samples), the Voronoi diagram comes from `d3-delaunay`'s Delaunay triangulation (circumcentres), and only edges with both ends inside the shape (even-odd, so holes in letters stay uncarved) are kept. Noise is dropped: edges between samples ≤ 2 apart on the same outline, edges whose two nearest outline points are less than 30° apart as seen from the edge (keeps branches into corners up to 150°), and dead-end twigs shorter than 3 samples.
+- Depth at each point = `max(0, r − tip/2) / tan(angle / 2)`, where r is the distance to the outline, capped at the cone's depth; strokes narrower than the tip aren't carved.
+- Chains that touch form a piece (roughly a letter); each piece is joined into as few continuous lines as possible (starting at dead ends) and carved completely before the next, nearest first. Lines are simplified in 3D to 0.01 mm.
+- Step-down: pass floors from `passDepths(deepest, depthPerPass)`. The first pass follows every line flattened at its floor; later passes only the stretches below the previous floor. Lines are split exactly where they cross each floor, so slopes stay true.
+- **No flat-bottom / clearing tool yet** (phase 6). Warnings: deeper than the cut's "Warn deeper than" (default half the stock thickness, settable per cut); deeper than the stock; wider than the bit by more than 0.3 mm (the middle is left uncarved); strokes narrower than the tip.
+- The cut panel shows the deepest point and its width at the surface instead of a depth field.
+- Preview: each move drawn as wide as the groove at its deeper end (in 0.05 mm steps).
 
 ### 9.6 Validation & warnings
 Blocking (Export disabled):
@@ -320,26 +330,26 @@ Warnings (export allowed):
 
 ### 9.7 Ordering
 Within a bit's file:
-1. Operation order: Drill → V-carve → Pocket → Profile inside → Profile on-line → Chamfer → Profile outside (inside features before parts get cut free). New toolpaths are inserted in this order; the user can reorder them in Pro.
+1. Operation order: Drill → V-carve → Pocket → Profile inside → Profile on-line → Chamfer → Profile outside (inside features before parts get cut free). New toolpaths are inserted in this order; the user can reorder them in the toolpath list.
 2. Within a group: nearest-neighbor ordering from the previous end point to cut rapid travel; for closed loops, choose the start point nearest the previous end (subject to tab/ramp constraints).
 3. Depth order: all passes of one contour before moving on (keeps parts rigid; standard hobby approach). (Option "level-first" can be added later.)
 
-### 9.8 Chamfer (Pro)
+### 9.8 Chamfer
 - V-bits only, closed paths only. Bevels the edges of a shape: **outside** = the shape's own edges (a part, holes included), **inside** = the rim of a hole of this shape.
 - The user sets the **chamfer width** (how far the bevel reaches in from the edge at the surface); it's stored as the depth `width / tan(angle / 2)`, so changing to a V-bit with another angle keeps the width. Wider than the cone can reach → error with the maximum width.
 - Tool centre = the region offset by half the tip's flat (outward for outside, inward for inside), so the flat cuts down to the drawn line and the cone bevels the kept side. Passes by depth/pass, ramp entry, climb/conventional as for profiles; no finishing pass, no tabs.
 
-### 9.9 Drill (Pro)
+### 9.9 Drill
 - End mills and round-nose bits; closed paths only. One hole the size of the bit at the centre of each closed path's bounding box (duplicates within 0.01 mm merge, so a ring is one hole). A shape more than 0.5 mm wider than the bit gets a note to use Profile inside instead.
 - **Peck drilling**: feed down by depth/pass at plunge feed, pull up to +0.5 mm after every peck but the last to clear chips, feed back down (never a rapid below Z0, §12.3). Holes run nearest-neighbour.
 
-### 9.10 Two-sided jobs (Pro)
-- Each toolpath has a **side**: Top (default) or Bottom. Objects are always drawn as seen from the top; a bottom toolpath is the same outline cut from the back.
-- **Flip** (job setting): *left to right* turns the stock about its vertical centre line, *top to bottom* about its horizontal one. Bottom cuts are mirrored across that line before CAM runs (so climb/conventional, tabs and offsets stay correct), and mirrored back for the preview, so the preview and tab editing always show the design as seen from the top. The origin stays at the same corner of the machine bed, which the flipped stock covers exactly.
-- **Files**: one per side and bit; all top files first. Bottom files are named `<job>_<NN>_bottom_<bit>.nc`; the first one's header says to turn the stock over onto the pins (and change the bit if it changed) and re-zero Z only, keeping X/Y zero where it is. The Pro toolpath list shows *Top side* / *Bottom side* headings and a highlighted "Turn the stock over" step; files only move within their side.
-- **Registration holes** (Toolpaths → Registration holes, or the job panel with a pin diameter, default 6 mm): two circles on the flip line, 5 mm + a radius in from the ends, each with a Profile inside cut through the stock and 3 mm into the spoilboard (no tabs, no spoilboard warning). Each lands on itself when the stock turns over, so dowel pins put it back in place. Adding them again replaces the old ones.
-- **Working on one side**: in a two-sided job, Pro shows a *Both sides · Top · Bottom* switch next to Design / Toolpath preview. On one side, shapes cut only from the other side are hidden on the canvas and left out of clicks, ⌘A and group selection; the other side's files are hidden from the toolpath list (with a "… side hidden · Show both sides" note; file numbers stay as exported) and from the preview. Registration holes, shapes cut from both sides and shapes with no cuts yet always show. New toolpaths are added to the side shown (the top when showing both). Export always includes both sides; switching to Easy shows both.
-- Checks: bottom cuts with no registration holes cut from the top → warning; a registration hole moved off the flip line (> 0.05 mm) → warning. A dashed accent line marks the flip line on the canvas in two-sided jobs. Two-sided jobs are Pro only.
+### 9.10 Two-sided jobs (removed)
+- Removed on 2026-11-07 as confusing; use the *Hole* tool (§3) for dowel or mounting holes. Opening an older project leaves out its bottom-side cuts, says how many ("… set to run on the bottom of the stock. Cammie no longer cuts two-sided jobs, so they've been left out."), and drops its flip axis and registration markers (those holes stay as ordinary shapes with their cuts).
+
+### 9.11 Cut footprints on the design
+- In Design view (not the toolpath preview), every toolpath's footprint is shaded under the outlines at 35 % opacity, in its cut type's colour (the same colours as the toolpath list): **Engrave** a groove as wide as the bit cuts at that depth, centred on the line; **Profile outside / inside** a band one groove wide just outside / inside the line (centred on the line offset by half a groove); **Pocket** and **V-carve** the whole area (even-odd, islands stay clear); **Chamfer** a band of the chamfer's width on the kept side (into the part for outside, around the hole for inside); **Drill** a bit-sized disc at each hole centre.
+- Computed in the object's own space (`src/core/cam/cutFootprint.ts`; sizes divided by the object's average scale) and drawn with its transform, so it follows shapes live while they're dragged. It's a quick picture of the cut, not the toolpath: tabs, passes and entry moves show in the preview.
+- The *Cuts* checkbox beside Snap turns it off.
 
 ---
 
@@ -353,10 +363,10 @@ Within a bit's file:
 - Stats panel per bit: estimated run time (accounting for feed/rapid rates; GRBL acceleration not modeled, ~10–20% optimistic, labeled as such), cut length, max depth, bounding box.
 
 ### 10.1 3D view of the finished piece
-A **3D pane beside the canvas** shows what the stock will look like after every exported file has run, both sides, so the user can check what their settings do: pocket vs hole vs cut-out, depth against the stock, V and round-nose groove shapes. No carving animation.
-- **Layout**: canvas on the left, 3D on the right, with a draggable (or arrow-key) divider; the 3D pane takes 25–75 % of the width. A **3D** toggle beside Design / Toolpath preview (and the Pro ribbon's *Check → 3D*) shows or hides it. Open by default; open/closed and width are remembered (`cammie.view3d.v1`).
+A **3D pane beside the canvas** shows what the stock will look like after every exported file has run, so the user can check what their settings do: pocket vs hole vs cut-out, depth against the stock, V and round-nose groove shapes. No carving animation.
+- **Layout**: canvas on the left, 3D on the right, with a draggable (or arrow-key) divider; the 3D pane takes 25–75 % of the width. A **3D** toggle beside Design / Preview shows or hides it. Open by default; open/closed and width are remembered (`cammie.view3d.v1`).
 - **Live**: it follows every change, including shapes being dragged, resized or rotated (the canvas publishes their live position; the design and undo history still change only on release). The worker makes the toolpaths and carves them, so the page stays smooth. Whenever it's free it carves the newest design: a rough pass (~0.5 mm cells, tens of ms) and, if nothing changed meanwhile, the full one. The camera stays where the user put it; it's re-aimed only when the stock changes size, framing the whole stock for the pane's shape.
-- **Simulation** (`src/core/sim`, in a worker): the stock is two height maps over a grid seen from the top, the top surface and the bottom surface (machine Z, 0 = top, −thickness = bottom). Every move of every file presses the bit's real shape into the grid: a flat circle (end mill), a cone with its flat tip (V-bit), a ball (round-nose). Bottom files go through the same face frames as the CAM, so they land mirrored exactly as cut, raising the bottom surface. Where the surfaces meet, the stock is cut through. Cell size ≈ √(area / 600k), 0.05–0.5 mm (≈ 0.2 mm on 200 × 150 mm); the view says how accurate it is. About 0.3 s for 1.5 M cells.
+- **Simulation** (`src/core/sim`, in a worker): the stock is two height maps over a grid seen from the top, the top surface and the bottom surface (machine Z, 0 = top, −thickness = bottom). Every move of every file presses the bit's real shape into the grid: a flat circle (end mill), a cone with its flat tip (V-bit), a ball (round-nose). The bottom surface stays at −thickness; a cell is cut through once the top surface reaches it. Cell size ≈ √(area / 600k), 0.05–0.5 mm (≈ 0.2 mm on 200 × 150 mm); the view says how accurate it is. About 0.3 s for 1.5 M cells.
 - **Loose pieces**: the remaining material is split into connected pieces; any piece that doesn't reach the stock's outer edge (where it's clamped) comes loose: parts cut out without tabs, hole slugs. They're drawn lifted above the board and tinted toward the warning colour, with "N pieces come loose … add tabs".
 - **Spoilboard**: a slab under the stock (hidden when looking from below); cells where a cut went past the stock are marked red on it, and the deepest overcut is reported.
 - **Looks** (`src/core/materials/materialLooks.ts`): drawn by a shader from the position in the stock, so cut walls and pocket floors show the inside. Wood grain along X; plywood plies (odd count, ≈ 1.5 mm each) with alternating grain and glue lines between them; MDF smooth skins over a fibrous core; brushed aluminium; speckled foam; plain plastics (acrylic slightly see-through). A soft room environment lights metals.
@@ -518,7 +528,7 @@ interface Operation<S extends OperationSettings = OperationSettings> {
 All reads wrapped in try/catch with fallback to defaults (private mode / blocked storage must not break the app).
 
 **Projects** (`src/persistence/projectFile.ts`):
-- A `.cammie` file is JSON: `{ format: 'cammie-project', version: 1, jobName, job, bits }`, where `job` is the whole §4 `Job` (stock, origin, material, objects, toolpaths, flip) and `bits` the custom bits its toolpaths use, so it opens on another computer. Opening adds those bits to the library unless one with the same id exists (the user's own wins).
+- A `.cammie` file is JSON: `{ format: 'cammie-project', version: 1, jobName, job, bits }`, where `job` is the whole §4 `Job` (stock, origin, material, objects, toolpaths) and `bits` the custom bits its toolpaths use, so it opens on another computer. Opening adds those bits to the library unless one with the same id exists (the user's own wins).
 - Opening validates everything: not JSON / wrong format → "isn't a Cammie project file"; a newer `version` → "saved by a newer version"; malformed geometry or cuts → "damaged (… couldn't be read)", and nothing is loaded. Settings missing from older files get today's defaults; cuts whose object is missing are dropped. Opening clears undo history.
 - **Automatic backup**: the design is saved to IndexedDB (database `cammie`, store `backup`, one entry) 0.8 s after each change. IndexedDB rather than localStorage because traced designs can pass localStorage's ~5 MB. On start-up the backup is restored (if it has objects) with the note "Your design from last time is back. Use New to start over." The `beforeunload` prompt only appears when the latest backup failed (private mode, blocked storage).
 

@@ -5,7 +5,7 @@ import type { CutKind } from './objectFactory';
 const CAN_CUT: Record<Bit['type'], readonly CutKind[]> = {
   flat: ['on', 'outside', 'inside', 'pocket', 'drill'],
   // A cone or a ball can't cut a straight wall or a flat floor; only a cone bevels an edge.
-  vbit: ['on', 'chamfer'],
+  vbit: ['on', 'chamfer', 'vcarve'],
   round: ['on', 'drill'],
 };
 
@@ -20,12 +20,13 @@ const PLURAL: Record<Bit['type'], string> = {
 /** Why `bit` can't make a `kind` cut, in a sentence that says what to do instead. */
 export function cantCutReason(bit: Bit, kind: CutKind): string {
   if (kind === 'chamfer') return 'Chamfers need a V-bit. Pick one for this cut.';
+  if (kind === 'vcarve') return 'V-carving needs a V-bit. Pick one for this cut.';
   if (kind === 'drill') return "V-bits can't drill holes. Pick an end mill or a round-nose bit.";
-  return `${PLURAL[bit.type]} only cut on the line and ${
-    bit.type === 'vbit' ? 'chamfer edges' : 'drill'
+  return `${PLURAL[bit.type]} only ${
+    bit.type === 'vbit' ? 'cut on the line, V-carve and chamfer edges' : 'cut on the line and drill'
   }. Pick an end mill for this cut.`;
 }
 
-/** The kind of bit a new cut of this kind prefers: V-bits for lines and chamfers, end mills for the rest. */
+/** The kind of bit a new cut of this kind prefers: V-bits for lines, carving and chamfers, end mills for the rest. */
 export const preferredBitType = (kind: CutKind): Bit['type'] =>
-  kind === 'on' || kind === 'chamfer' ? 'vbit' : 'flat';
+  kind === 'on' || kind === 'chamfer' || kind === 'vcarve' ? 'vbit' : 'flat';

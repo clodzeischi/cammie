@@ -15,8 +15,10 @@ import { BitLibraryDialog } from './BitLibraryDialog';
 import { ChamferFields } from './ChamferFields';
 import { FeedsFields } from './FeedsFields';
 import { TabFields } from './TabFields';
+import { VCarveFields } from './VCarveFields';
 
 interface CutFieldsProps {
+  toolpathId: string;
   operation: Operation;
   /** `kindChanged` is true when the cut type changed, so the toolpath can move to its natural place. */
   onChange: (operation: Operation, kindChanged: boolean) => void;
@@ -24,7 +26,10 @@ interface CutFieldsProps {
 }
 
 const KIND_OPTIONS: ReadonlyArray<{ value: CutKind; label: string }> = CUT_KIND_ORDER.map(
-  (value) => ({ value, label: `${CUT_KINDS[value].pro} (${CUT_KINDS[value].hint.toLowerCase()})` }),
+  (value) => ({
+    value,
+    label: `${CUT_KINDS[value].name} (${CUT_KINDS[value].term})`,
+  }),
 );
 
 /** Cuts that may go right through the stock, so they get a "Cut through" shortcut. */
@@ -36,8 +41,8 @@ function keptDepth(op: Operation, from: Bit | undefined, to: Bit | undefined): n
   return chamferDepth(to, chamferWidth(from, op.depth));
 }
 
-/** Bit, cut type, depth, feeds, advanced options and tabs for one toolpath (Pro). */
-export function CutFields({ operation, onChange: change, onRemove }: CutFieldsProps) {
+/** Bit, cut type, depth, feeds, advanced options and tabs for one toolpath. */
+export function CutFields({ toolpathId, operation, onChange: change, onRemove }: CutFieldsProps) {
   const materialId = useJobStore((s) => s.materialId);
   const thickness = useJobStore((s) => s.stock.thickness);
   const bits = useToolingStore((s) => s.bits);
@@ -80,7 +85,15 @@ export function CutFields({ operation, onChange: change, onRemove }: CutFieldsPr
       {bit && !canCut(bit, 'outside') && (
         <p className="field-hint">Pick an end mill to cut parts out, cut holes or clear pockets.</p>
       )}
-      {operation.type === 'chamfer' && bit?.type === 'vbit' ? (
+      {operation.type === 'vcarve' ? (
+        <VCarveFields
+          toolpathIds={[toolpathId]}
+          operation={operation}
+          bit={bit}
+          thickness={thickness}
+          onChange={onChange}
+        />
+      ) : operation.type === 'chamfer' && bit?.type === 'vbit' ? (
         <ChamferFields operation={operation} bit={bit} onChange={onChange} />
       ) : (
         <NumberField

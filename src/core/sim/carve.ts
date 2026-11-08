@@ -1,8 +1,7 @@
-import type { Face } from '../job/job';
 import type { HeightField } from './heightField';
 import type { ToolShape } from './toolShape';
 
-/** A tool position: X/Y in canvas mm (as seen from the top), Z in that face's machine Z. */
+/** A tool position: X/Y in canvas mm, Z in machine Z (0 = top of the stock). */
 export interface ToolPoint {
   x: number;
   y: number;
@@ -11,22 +10,15 @@ export interface ToolPoint {
 
 /**
  * Removes everything the tool sweeps moving in a straight line from `a` to
- * `b`. Cuts from the bottom lower nothing on top: they raise the bottom
- * surface instead, measured from the flipped stock's top (the original bottom).
+ * `b`.
  *
  * For each cell the tool is taken at the point of the move nearest the cell
  * (and at both ends, for ramps); exact for level moves and plunges, and
  * within a cell for the shallow ramps Cammie writes.
  */
-export function carveMove(
-  field: HeightField,
-  tool: ToolShape,
-  face: Face,
-  a: ToolPoint,
-  b: ToolPoint,
-): void {
+export function carveMove(field: HeightField, tool: ToolShape, a: ToolPoint, b: ToolPoint): void {
   if (Math.min(a.z, b.z) >= 0) return; // above the surface the whole way
-  const { cols, rows, cell, thickness, top, bottom, spoil } = field;
+  const { cols, rows, cell, thickness, top, spoil } = field;
   const r = tool.radius;
   const c0 = Math.max(0, Math.floor((Math.min(a.x, b.x) - r) / cell));
   const c1 = Math.min(cols - 1, Math.floor((Math.max(a.x, b.x) + r) / cell));
@@ -53,12 +45,7 @@ export function carveMove(
       const i = row * cols + col;
       const past = -z - thickness;
       if (past > spoil[i]!) spoil[i] = past;
-      if (face === 'top') {
-        top[i] = Math.min(top[i]!, Math.max(z, -thickness));
-      } else {
-        // `z` below the flipped top is that far above the original bottom.
-        bottom[i] = Math.max(bottom[i]!, Math.min(-thickness - z, 0));
-      }
+      top[i] = Math.min(top[i]!, Math.max(z, -thickness));
     }
   }
 }

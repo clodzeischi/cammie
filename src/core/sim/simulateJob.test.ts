@@ -11,8 +11,8 @@ import { simulateJob } from './simulateJob';
 const CELLS = 500_000;
 
 /** A 20 mm square at canvas x 20..40, y 10..30, with these cuts. */
-const job = (...ops: Array<Operation & { face?: 'bottom' }>): Job => {
-  const base = makeJob(
+const job = (...ops: Operation[]): Job =>
+  makeJob(
     ops.map((op, i) =>
       makeObject({
         id: `o${i}`,
@@ -24,11 +24,6 @@ const job = (...ops: Array<Operation & { face?: 'bottom' }>): Job => {
       }),
     ),
   );
-  return {
-    ...base,
-    toolpaths: base.toolpaths.map((t, i) => (ops[i]!.face ? { ...t, face: 'bottom' } : t)),
-  };
-};
 
 const simulate = (j: Job) => {
   const { programs, diagnostics } = generateJob(j, DEFAULT_MACHINE_CONFIG);
@@ -101,20 +96,5 @@ describe('simulateJob', () => {
     const groove = at(field, 21, 20);
     expect(isSolid(field, groove.i)).toBe(false);
     expect(groove.spoil).toBeCloseTo(0.2, 1);
-  });
-
-  it('cuts bottom pockets up from the bottom, where they sit on the design', () => {
-    const field = simulate(job({ ...pocketOp({ depth: 2 }), face: 'bottom' }));
-    expect(at(field, 30, 20).bottom).toBeCloseTo(-4);
-    expect(at(field, 30, 20).top).toBe(0);
-    expect(at(field, 10, 20).bottom).toBe(-6);
-  });
-
-  it('opens a hole where top and bottom pockets meet', () => {
-    const field = simulate(
-      job(pocketOp({ depth: 4.5 }), { ...pocketOp({ depth: 2 }), face: 'bottom' }),
-    );
-    expect(isSolid(field, at(field, 30, 20).i)).toBe(false);
-    expect(findParts(field).loose).toEqual([]);
   });
 });
