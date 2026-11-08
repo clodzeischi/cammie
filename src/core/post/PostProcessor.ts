@@ -11,8 +11,6 @@ export interface PostContext {
   /** 1-based position of this file among the job's files. */
   fileIndex: number;
   fileCount: number;
-  /** What to do at the machine before running this file; defaults to changing the bit. */
-  setupNote?: string;
   estimatedSeconds: number;
   appVersion: string;
 }

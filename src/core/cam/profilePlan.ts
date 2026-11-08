@@ -1,6 +1,6 @@
 import type { Path, Vec2 } from '../geometry/path';
 import { applyMatrix, toMatrix } from '../geometry/transform';
-import type { CutFrame } from '../job/faces';
+import type { CutFrame } from '../job/job';
 import type { DesignObject, ProfileOperation } from '../job/job';
 import type { Feeds } from '../materials/materials';
 import type { Bit } from '../tools/bits';

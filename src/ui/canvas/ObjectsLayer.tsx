@@ -3,7 +3,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from '
 import { Group, Layer, Line, Rect, Transformer } from 'react-konva';
 import type { ObjectTransform } from '../../core/geometry/transform';
 import type { DesignObject } from '../../core/job/job';
-import { isBasicShape } from '../../core/shapes/shapeObjects';
+import { isDrawnShape } from '../../core/shapes/shapeObjects';
 import type { SelectMode } from '../../state/jobStore';
 import type { CanvasColors } from './canvasColors';
 import { snapAnchor, snapDrag, type SnapGrid } from './snapping';
@@ -19,6 +19,10 @@ interface ObjectsLayerProps {
   /** Positions while dragging, resizing or rotating (null once it's released). */
   onLiveTransform?: (transforms: Record<string, ObjectTransform> | null) => void;
   snap: SnapGrid | null;
+  /** The line or curve whose points are being edited: it doesn't move or resize meanwhile. */
+  editingId?: string | null;
+  /** Double-clicking a line or curve edits its points. */
+  onEditPoints?: (id: string) => void;
 }
 
 const readTransform = (node: Konva.Node): ObjectTransform => ({
@@ -58,6 +62,8 @@ export function ObjectsLayer(props: ObjectsLayerProps) {
     onTransform,
     onLiveTransform,
     snap,
+    editingId = null,
+    onEditPoints,
   } = props;
   const nodes = useRef(new Map<string, Konva.Group>());
   const transformer = useRef<Konva.Transformer>(null);
@@ -69,10 +75,11 @@ export function ObjectsLayer(props: ObjectsLayerProps) {
   useEffect(() => {
     const tr = transformer.current;
     if (!tr) return;
-    const selected = interactive ? selectedIds.map((id) => nodes.current.get(id)) : [];
+    const ids = interactive ? selectedIds.filter((id) => id !== editingId) : [];
+    const selected = ids.map((id) => nodes.current.get(id));
     tr.nodes(selected.filter((n): n is Konva.Group => n !== undefined));
     tr.getLayer()?.batchDraw();
-  }, [selectedIds, interactive, objects]);
+  }, [selectedIds, interactive, objects, editingId]);
 
   /** Where the dragged object, and everything moving with it, is now. */
   const movedWith = useCallback((id: string) => {
@@ -99,9 +106,9 @@ export function ObjectsLayer(props: ObjectsLayerProps) {
     return transforms;
   };
 
-  // A lone rectangle or ellipse can be stretched freely; anything else keeps its proportions.
+  // A lone drawn shape can be stretched freely; anything else keeps its proportions.
   const only = selectedIds.length === 1 ? objects.find((o) => o.id === selectedIds[0]) : undefined;
-  const freeResize = isBasicShape(only?.shape);
+  const freeResize = isDrawnShape(only?.shape);
   // Outlines have no fill, so drawing order doesn't show. Stack click areas by
   // size instead, smallest on top: a shape inside a bigger one is always
   // clickable, and the bigger one still is everywhere else.
@@ -120,8 +127,9 @@ export function ObjectsLayer(props: ObjectsLayerProps) {
           key={object.id}
           object={object}
           color={selectedIds.includes(object.id) ? colors.pathSelected : colors.path}
-          interactive={interactive}
+          movable={interactive && object.id !== editingId}
           register={register}
+          onEditPoints={onEditPoints}
           onSelect={onSelect}
           onMoving={reportMoving}
           onMoved={reportMoved}
@@ -159,8 +167,10 @@ export function ObjectsLayer(props: ObjectsLayerProps) {
 interface ObjectNodeProps {
   object: DesignObject;
   color: string;
-  interactive: boolean;
+  /** False in preview, and while the object's points are being edited. */
+  movable: boolean;
   register: (id: string, node: Konva.Group | null) => void;
+  onEditPoints?: (id: string) => void;
   onSelect: (id: string, mode: SelectMode) => void;
   onMoving: (id: string) => void;
   onMoved: (id: string) => void;
@@ -172,7 +182,8 @@ interface ObjectNodeProps {
  * of points for every object on each render would be slow.
  */
 const ObjectNode = memo(function ObjectNode(props: ObjectNodeProps) {
-  const { object, color, interactive, register, onSelect, onMoving, onMoved, snap } = props;
+  const { object, color, movable, register, onSelect, onMoving, onMoved, snap } = props;
+  const { onEditPoints } = props;
   const { id, transform } = object;
   const node = useRef<Konva.Group | null>(null);
   const ref = useCallback(
@@ -201,12 +212,13 @@ const ObjectNode = memo(function ObjectNode(props: ObjectNodeProps) {
       ref={ref}
       id={id}
       {...transform}
-      draggable={interactive}
+      draggable={movable}
       dragBoundFunc={(pos, evt) => (node.current ? snapDrag(node.current, pos, snap, evt) : pos)}
       onMouseDown={press}
       // A click that didn't drag picks just this object out of a selection.
       onClick={(e) => !e.evt.shiftKey && onSelect(id, 'replace')}
       onTap={() => onSelect(id, 'replace')}
+      onDblClick={() => object.shape?.type === 'polyline' && onEditPoints?.(id)}
       onDragMove={() => onMoving(id)}
       onDragEnd={() => onMoved(id)}
     >

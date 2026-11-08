@@ -13,7 +13,6 @@ const designOf = (s: JobState) => [
   s.stock,
   s.origin,
   s.materialId,
-  s.flip,
   s.jobName,
 ];
 const changed = (a: JobState, b: JobState) => designOf(a).some((v, i) => v !== designOf(b)[i]);
@@ -49,7 +48,9 @@ export function useProjectBackup(backup: ProjectBackup = defaultBackup()): strin
       // Don't replace anything the user has already started on.
       if (parsed?.ok && parsed.project.job.objects.length > 0 && !hasDesign()) {
         openProject(parsed.project);
-        setRestored('Your design from last time is back. Use New to start over.');
+        setRestored(
+          ['Your design from last time is back. Use New to start over.', ...parsed.notes].join(' '),
+        );
       }
       ready = true;
     });

@@ -1,15 +1,10 @@
 import type { Path, Vec2 } from '../core/geometry/path';
-import type {
-  DesignObject,
-  FlipAxis,
-  Job,
-  Operation,
-  ShapeParams,
-  Toolpath,
-} from '../core/job/job';
+import type { DesignObject, Job, Operation, Toolpath } from '../core/job/job';
 import { defaultOperation, defaultTabs } from '../core/job/objectFactory';
 import type { Bit } from '../core/tools/bits';
 import { reviveJobPrefs } from './jobPrefsRepository';
+import { OBJECT_KINDS, reviveShape } from './reviveShape';
+import { finite, isObject, oneOf, str, type Loose } from './reviveValues';
 import { reviveCustomBits } from './toolingRepositories';
 
 /** A design saved to a `.cammie` file (SPEC.md §13.4). */
@@ -36,15 +31,9 @@ export function serializeProject({ jobName, job, bits }: Project): string {
   return JSON.stringify(file);
 }
 
-export type ParseResult = { ok: true; project: Project } | { ok: false; error: string };
-
-type Loose = Record<string, unknown>;
-const isObject = (v: unknown): v is Loose =>
-  typeof v === 'object' && v !== null && !Array.isArray(v);
-const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
-const str = (v: unknown): v is string => typeof v === 'string';
-const oneOf = <T extends string>(v: unknown, options: readonly T[]): v is T =>
-  options.includes(v as T);
+/** `notes` say what an older file had that couldn't be kept. */
+export type ParseResult =
+  { ok: true; project: Project; notes: string[] } | { ok: false; error: string };
 
 /** Thrown inside the reviver; turned into a readable error by parseProject. */
 class BadFile extends Error {}
@@ -62,34 +51,8 @@ function revivePath(p: unknown): Path {
   return { closed: closed === true, points: (points as unknown[]).map(revivePoint) };
 }
 
-function reviveShape(s: unknown): ShapeParams | undefined {
-  if (!isObject(s)) return undefined;
-  if (s.type === 'rect' && finite(s.width) && finite(s.height) && finite(s.cornerRadius)) {
-    return { type: 'rect', width: s.width, height: s.height, cornerRadius: s.cornerRadius };
-  }
-  if (s.type === 'ellipse' && finite(s.width) && finite(s.height)) {
-    return { type: 'ellipse', width: s.width, height: s.height };
-  }
-  if (
-    s.type === 'text' &&
-    str(s.text) &&
-    str(s.fontId) &&
-    finite(s.capHeight) &&
-    finite(s.letterSpacing) &&
-    finite(s.lineSpacing) &&
-    oneOf(s.align, ['left', 'center', 'right'] as const)
-  ) {
-    const { text, fontId, capHeight, letterSpacing, lineSpacing, align } = s;
-    return { type: 'text', text, fontId, capHeight, letterSpacing, lineSpacing, align };
-  }
-  // Unknown shape params: the object keeps its outlines but can't be edited as a shape.
-  return undefined;
-}
-
-const KINDS: readonly DesignObject['kind'][] = ['traced-image', 'svg', 'text', 'rect', 'ellipse'];
-
 function reviveObject(o: unknown): DesignObject {
-  need(isObject(o) && str(o.id) && str(o.name) && oneOf(o.kind, KINDS), 'a design object');
+  need(isObject(o) && str(o.id) && str(o.name) && oneOf(o.kind, OBJECT_KINDS), 'a design object');
   const obj = o as Loose;
   const t = need(isObject(obj.transform) && (obj.transform as Loose), 'an object position');
   const keys = ['x', 'y', 'rotation', 'scaleX', 'scaleY'] as const;
@@ -104,7 +67,6 @@ function reviveObject(o: unknown): DesignObject {
     kind: shape ? shape.type : (obj.kind as DesignObject['kind']),
     ...(shape && { shape }),
     ...(str(obj.groupId) && { groupId: obj.groupId }),
-    ...(obj.role === 'registration' && { role: 'registration' as const }),
     paths: need(Array.isArray(obj.paths) && (obj.paths as unknown[]), 'outlines').map(revivePath),
     width: obj.width as number,
     height: obj.height as number,
@@ -160,18 +122,27 @@ function reviveOperation(op: unknown): Operation {
   };
 }
 
-function reviveToolpath(t: unknown, objectIds: ReadonlySet<string>): Toolpath | null {
+/** A toolpath, or why it was left out. */
+type RevivedToolpath = Toolpath | 'orphan' | 'bottom';
+
+function reviveToolpath(t: unknown, objectIds: ReadonlySet<string>): RevivedToolpath {
   need(isObject(t) && str(t.id) && str(t.objectId), 'a toolpath');
   const tp = t as Loose;
   // A cut whose object is gone has nothing to cut; drop it rather than refuse the file.
-  if (!objectIds.has(tp.objectId as string)) return null;
+  if (!objectIds.has(tp.objectId as string)) return 'orphan';
+  // Older files could cut from the bottom after turning the stock over. Cammie
+  // no longer does two-sided jobs; cutting those from the top would be wrong.
+  if (tp.face === 'bottom') return 'bottom';
   return {
     id: tp.id as string,
     objectId: tp.objectId as string,
     operation: reviveOperation(tp.operation),
-    ...(tp.face === 'bottom' && { face: 'bottom' as const }),
   };
 }
+
+const bottomCutsNote = (count: number) =>
+  `${count === 1 ? 'One cut was' : `${count} cuts were`} set to run on the bottom of the stock. ` +
+  `Cammie no longer cuts two-sided jobs, so ${count === 1 ? "it's" : "they've"} been left out.`;
 
 /**
  * Reads a `.cammie` file. Anything malformed is rejected with a message
@@ -200,17 +171,19 @@ export function parseProject(text: string): ParseResult {
       reviveObject,
     );
     const ids = new Set(objects.map((o) => o.id));
-    const toolpaths = need(Array.isArray(job.toolpaths) && (job.toolpaths as unknown[]), 'cuts')
-      .map((t) => reviveToolpath(t, ids))
-      .filter((t): t is Toolpath => t !== null);
-    const flip: FlipAxis = job.flip === 'top-bottom' ? 'top-bottom' : 'left-right';
+    const revived = need(Array.isArray(job.toolpaths) && (job.toolpaths as unknown[]), 'cuts').map(
+      (t) => reviveToolpath(t, ids),
+    );
+    const toolpaths = revived.filter((t): t is Toolpath => typeof t === 'object');
+    const bottomCuts = revived.filter((t) => t === 'bottom').length;
     return {
       ok: true,
       project: {
         jobName: str(data.jobName) ? data.jobName : '',
-        job: { ...prefs, objects, toolpaths, flip },
+        job: { ...prefs, objects, toolpaths },
         bits: reviveCustomBits(data.bits),
       },
+      notes: bottomCuts > 0 ? [bottomCutsNote(bottomCuts)] : [],
     };
   } catch (error) {
     if (!(error instanceof BadFile)) throw error;

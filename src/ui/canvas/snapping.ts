@@ -49,3 +49,17 @@ export function snapAnchor(
   const canvas = toScreen.copy().invert().point(pos);
   return toScreen.point(snapPoint(canvas, grid.origin, grid.spacing));
 }
+
+/** A canvas point (mm) on the nearest grid point, unless snapping is off or Alt is held. */
+export function snapCanvasPoint(p: Vec2, grid: SnapGrid | null, evt: unknown): Vec2 {
+  return grid && !bypass(evt) ? snapPoint(p, grid.origin, grid.spacing) : p;
+}
+
+/** Konva dragBoundFunc body for a point handle: the handle's centre lands on a grid point. */
+export function snapHandle(node: Konva.Node, pos: Vec2, grid: SnapGrid | null, evt: unknown): Vec2 {
+  const layer = node.getLayer();
+  if (!grid || !layer || bypass(evt)) return pos;
+  const toScreen = layer.getAbsoluteTransform();
+  const canvas = toScreen.copy().invert().point(pos);
+  return toScreen.point(snapPoint(canvas, grid.origin, grid.spacing));
+}

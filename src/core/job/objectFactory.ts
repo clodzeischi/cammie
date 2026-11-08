@@ -1,5 +1,5 @@
 import { boundsOfPaths, isEmptyBounds, type Path } from '../geometry/path';
-import { DEFAULT_VBIT_ID } from '../tools/bits';
+import { DEFAULT_VBIT_ID, type Bit } from '../tools/bits';
 import type {
   ChamferOperation,
   DesignObject,
@@ -82,6 +82,26 @@ export function withCutKind(op: Operation, kind: CutKind): Operation {
   }
   const tabs = op.type === 'profile' ? op.tabs : defaultTabs();
   return { ...base, type: 'profile', side: kind, tabs } satisfies ProfileOperation;
+}
+
+/** A hole this close (mm) to the bit's size is drilled straight down instead of cut round. */
+export const HOLE_DRILL_MATCH = 0.05;
+
+/**
+ * The cut for a round hole: drilled when the bit is the hole's size, cut
+ * round from the inside when the hole is bigger. Null when the bit is too big.
+ */
+export function holeOperation(
+  diameter: number,
+  depth: number,
+  bit: Bit,
+  thickness: number,
+): Operation | null {
+  if (Math.abs(diameter - bit.diameter) <= HOLE_DRILL_MATCH) {
+    return { ...newOperation('drill', bit.id, thickness), depth };
+  }
+  if (diameter < bit.diameter) return null;
+  return { ...newOperation('inside', bit.id, thickness), depth };
 }
 
 export interface NewObjectInput {

@@ -1,14 +1,14 @@
 import { useJobStore } from '../../state/jobStore';
-import { useModeStore } from '../../state/modeStore';
-import { useGeneratedJob } from '../../state/useGeneratedJob';
-import { DiagnosticsList } from './DiagnosticsList';
-import { JobPanel } from './JobPanel';
+import { CutPlan } from '../toolpaths/CutPlan';
 import { ObjectPanel } from './ObjectPanel';
 import { SelectionPanel } from './SelectionPanel';
 import { ToolpathPanel } from './ToolpathPanel';
 
+/**
+ * The one panel on the right. Nothing selected: the cut plan. Otherwise the
+ * inspector for what's selected: a cut, one shape, or several.
+ */
 export function Sidebar() {
-  const pro = useModeStore((s) => s.mode === 'pro');
   const toolpath = useJobStore((s) =>
     s.selectedToolpathId ? s.toolpaths.find((t) => t.id === s.selectedToolpathId) : undefined,
   );
@@ -16,20 +16,23 @@ export function Sidebar() {
   const single = useJobStore((s) =>
     s.selectedIds.length === 1 ? s.objects.find((o) => o.id === s.selectedIds[0]) : undefined,
   );
-  const { diagnostics } = useGeneratedJob();
 
+  if (!toolpath && count === 0) {
+    return (
+      <aside className="sidebar sidebar-plan">
+        <CutPlan />
+      </aside>
+    );
+  }
   return (
     <aside className="sidebar">
-      {pro && toolpath ? (
+      {toolpath ? (
         <ToolpathPanel key={toolpath.id} toolpath={toolpath} />
       ) : single ? (
         <ObjectPanel key={single.id} object={single} />
-      ) : count > 1 ? (
-        <SelectionPanel count={count} />
       ) : (
-        <JobPanel />
+        <SelectionPanel count={count} />
       )}
-      <DiagnosticsList diagnostics={diagnostics} />
     </aside>
   );
 }

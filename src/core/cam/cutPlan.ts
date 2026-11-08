@@ -1,5 +1,4 @@
 import type { Bounds, Path, Vec2 } from '../geometry/path';
-import type { Face } from '../job/job';
 import type { Feeds } from '../materials/materials';
 import type { Bit } from '../tools/bits';
 import { cutPocket, type PocketRings } from './pocket';
@@ -33,7 +32,6 @@ export interface TabPreview {
 export interface ObjectCut {
   toolpathId: string;
   objectId: string;
-  face: Face;
   label: string;
   bit: Bit;
   depth: number;

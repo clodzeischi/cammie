@@ -1,6 +1,6 @@
 import type { BitProgram } from '../../core/cam/program';
 import type { Vec2 } from '../../core/geometry/path';
-import type { CutFrame } from '../../core/job/faces';
+import type { CutFrame } from '../../core/job/job';
 import { grooveWidth } from '../../core/tools/bits';
 
 /**
@@ -29,8 +29,7 @@ export interface ProgramPreview {
 const WIDTH_STEP = 0.05;
 
 /**
- * Draws a program on the design. `frame` is the program's face, so bottom
- * cuts are mirrored back and show where they land on the design.
+ * Draws a program on the design; `frame` takes machine positions back to the canvas.
  */
 export function buildPreview(program: BitProgram, frame: CutFrame): ProgramPreview {
   const runs: ToolpathRun[] = [];

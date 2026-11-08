@@ -1,5 +1,4 @@
-import { faceOf } from './faces';
-import type { Face, Operation, Toolpath } from './job';
+import type { Operation, Toolpath } from './job';
 import { cutKindOf, type CutKind } from './objectFactory';
 
 /**
@@ -18,20 +17,15 @@ export const CUT_PRIORITY: Record<CutKind, number> = {
 
 export const cutPriority = (op: Operation) => CUT_PRIORITY[cutKindOf(op)];
 
-/** Everything on the top runs before the stock is flipped for the bottom. */
-const FACE_RANK: Record<Face, number> = { top: 0, bottom: 1 };
-
-const runRank = (t: Toolpath) => FACE_RANK[faceOf(t)] * 100 + cutPriority(t.operation);
-
 /**
  * Adds a toolpath where it naturally runs: after everything of the same or
- * earlier priority (top before bottom), before the first later one. A list
+ * earlier priority, before the first later one. A list
  * built this way cuts in the safe order (details before parts come free)
  * without any dragging.
  */
 export function insertToolpath(list: readonly Toolpath[], toolpath: Toolpath): Toolpath[] {
-  const rank = runRank(toolpath);
-  const at = list.findIndex((t) => runRank(t) > rank);
+  const rank = cutPriority(toolpath.operation);
+  const at = list.findIndex((t) => cutPriority(t.operation) > rank);
   return at < 0 ? [...list, toolpath] : [...list.slice(0, at), toolpath, ...list.slice(at)];
 }
 
@@ -46,8 +40,7 @@ export function repositionToolpath(list: readonly Toolpath[], id: string): Toolp
 }
 
 /**
- * Splits items into files: one per face and bit, every top file before any
- * bottom one; items keep list order within a file. Files run in the order of
+ * Splits items into files, one per bit; items keep list order within a file. Files run in the order of
  * each bit's last item, so the file holding the final cut-outs runs last and
  * a chamfer or engraving on another bit isn't left until after parts are cut
  * free. A list the user has reordered is contiguous per file, so this keeps
@@ -55,34 +48,33 @@ export function repositionToolpath(list: readonly Toolpath[], id: string): Toolp
  */
 export function groupIntoFiles<T>(
   items: readonly T[],
-  keyOf: (item: T) => { face: Face; bitId: string },
-): Array<{ face: Face; bitId: string; items: T[] }> {
-  const groups = new Map<string, { face: Face; bitId: string; items: T[]; last: number }>();
+  bitOf: (item: T) => string,
+): Array<{ bitId: string; items: T[] }> {
+  const groups = new Map<string, { bitId: string; items: T[]; last: number }>();
   items.forEach((item, i) => {
-    const { face, bitId } = keyOf(item);
-    const key = `${face}|${bitId}`;
-    const group = groups.get(key) ?? { face, bitId, items: [], last: i };
+    const bitId = bitOf(item);
+    const group = groups.get(bitId) ?? { bitId, items: [], last: i };
     group.items.push(item);
     group.last = i;
-    groups.set(key, group);
+    groups.set(bitId, group);
   });
   return [...groups.values()]
-    .sort((a, b) => FACE_RANK[a.face] - FACE_RANK[b.face] || a.last - b.last)
-    .map(({ face, bitId, items }) => ({ face, bitId, items }));
+    .sort((a, b) => a.last - b.last)
+    .map(({ bitId, items }) => ({ bitId, items }));
 }
 
-/** Toolpaths that share a face and a bit, i.e. one file. */
+/** Toolpaths that share a bit, i.e. one file. */
 export interface ToolpathGroup {
-  face: Face;
   bitId: string;
   toolpaths: Toolpath[];
 }
 
 /** Files in run order (see groupIntoFiles). */
 export function toolpathGroups(list: readonly Toolpath[]): ToolpathGroup[] {
-  return groupIntoFiles(list, (t) => ({ face: faceOf(t), bitId: t.operation.bitId })).map(
-    ({ face, bitId, items }) => ({ face, bitId, toolpaths: items }),
-  );
+  return groupIntoFiles(list, (t) => t.operation.bitId).map(({ bitId, items }) => ({
+    bitId,
+    toolpaths: items,
+  }));
 }
 
 const flatten = (groups: readonly ToolpathGroup[]) => groups.flatMap((g) => g.toolpaths);
@@ -100,22 +92,12 @@ export function moveToolpath(list: readonly Toolpath[], id: string, delta: -1 | 
   return flatten(groups.map((g) => (g === group ? { ...g, toolpaths } : g)));
 }
 
-/**
- * Moves a whole file (every toolpath with that face and bit) one step earlier
- * or later. Files never cross the flip: top files all run first.
- */
-export function moveGroup(
-  list: readonly Toolpath[],
-  face: Face,
-  bitId: string,
-  delta: -1 | 1,
-): Toolpath[] {
+/** Moves a whole file (every toolpath with that bit) one step earlier or later. */
+export function moveGroup(list: readonly Toolpath[], bitId: string, delta: -1 | 1): Toolpath[] {
   const groups = toolpathGroups(list);
-  const from = groups.findIndex((g) => g.face === face && g.bitId === bitId);
+  const from = groups.findIndex((g) => g.bitId === bitId);
   const to = from + delta;
-  if (from < 0 || to < 0 || to >= groups.length || groups[to]!.face !== face) {
-    return flatten(groups);
-  }
+  if (from < 0 || to < 0 || to >= groups.length) return flatten(groups);
   [groups[from], groups[to]] = [groups[to]!, groups[from]!];
   return flatten(groups);
 }
@@ -123,33 +105,18 @@ export function moveGroup(
 export const toolpathsOf = (list: readonly Toolpath[], objectId: string) =>
   list.filter((t) => t.objectId === objectId);
 
-/** The cuts Easy mode offers, in its order. Chamfers and drilling are Pro only. */
-export const EASY_CUT_KINDS: readonly CutKind[] = ['on', 'vcarve', 'outside', 'inside', 'pocket'];
-
 /**
- * Easy mode handles one bit, at most one cut per object, only its own kinds
- * of cut, and only the top face. Anything more is a Pro job, which Easy shows
- * read-only rather than simplifying away.
+ * `list` plus the toolpaths for copied objects: same cuts, new ids, placed in
+ * natural order. The cuts are taken from `source` (by default `list` itself;
+ * a paste brings its own, as the originals may have been deleted since).
  */
-export function fitsEasyMode(job: { toolpaths: readonly Toolpath[] }): boolean {
-  const bits = new Set(job.toolpaths.map((t) => t.operation.bitId));
-  const objects = new Set(job.toolpaths.map((t) => t.objectId));
-  return (
-    bits.size <= 1 &&
-    objects.size === job.toolpaths.length &&
-    job.toolpaths.every(
-      (t) => EASY_CUT_KINDS.includes(cutKindOf(t.operation)) && faceOf(t) === 'top',
-    )
-  );
-}
-
-/** The toolpaths for copied objects: same cuts, new ids, placed in natural order. */
 export function copyToolpaths(
   list: readonly Toolpath[],
   copies: ReadonlyMap<string, string>,
   newId: () => string,
+  source: readonly Toolpath[] = list,
 ): Toolpath[] {
-  return list
+  return source
     .filter((t) => copies.has(t.objectId))
     .reduce<Toolpath[]>(
       (acc, t) => insertToolpath(acc, { ...t, id: newId(), objectId: copies.get(t.objectId)! }),

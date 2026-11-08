@@ -26,7 +26,10 @@ interface CutFieldsProps {
 }
 
 const KIND_OPTIONS: ReadonlyArray<{ value: CutKind; label: string }> = CUT_KIND_ORDER.map(
-  (value) => ({ value, label: `${CUT_KINDS[value].pro} (${CUT_KINDS[value].hint.toLowerCase()})` }),
+  (value) => ({
+    value,
+    label: `${CUT_KINDS[value].name} (${CUT_KINDS[value].term})`,
+  }),
 );
 
 /** Cuts that may go right through the stock, so they get a "Cut through" shortcut. */
@@ -38,7 +41,7 @@ function keptDepth(op: Operation, from: Bit | undefined, to: Bit | undefined): n
   return chamferDepth(to, chamferWidth(from, op.depth));
 }
 
-/** Bit, cut type, depth, feeds, advanced options and tabs for one toolpath (Pro). */
+/** Bit, cut type, depth, feeds, advanced options and tabs for one toolpath. */
 export function CutFields({ toolpathId, operation, onChange: change, onRemove }: CutFieldsProps) {
   const materialId = useJobStore((s) => s.materialId);
   const thickness = useJobStore((s) => s.stock.thickness);

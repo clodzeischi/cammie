@@ -1,18 +1,23 @@
 import type Konva from 'konva';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Stage } from 'react-konva';
 import type { ObjectTabs } from '../../core/cam/program';
-import { flipLine, isTwoSided, shownOnSide } from '../../core/job/faces';
 import { anchorPoint } from '../../core/job/job';
 import { editTabsAt } from '../../core/job/tabEditing';
 import { useGridStore } from '../../state/gridStore';
 import type { ObjectTransform } from '../../core/geometry/transform';
+import { editPoints } from '../../state/drawActions';
+import { useDrawStore } from '../../state/drawStore';
 import { useDragPreviewStore } from '../../state/dragPreviewStore';
 import { useJobStore } from '../../state/jobStore';
-import { useActiveSide } from '../../state/useActiveSide';
+import { useToolingStore } from '../../state/toolingStore';
 import { useCanvasColors } from './canvasColors';
+import { DrawingLayer } from './DrawingLayer';
 import { GridControls } from './GridControls';
+import { CanvasContextMenu } from './CanvasContextMenu';
+import { CutFootprintLayer } from './CutFootprintLayer';
 import { ObjectsLayer } from './ObjectsLayer';
+import { PointEditLayer } from './PointEditLayer';
 import type { SnapGrid } from './snapping';
 import { StockLayer } from './StockLayer';
 import { TabMarkers } from './TabMarkers';
@@ -57,20 +62,30 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
   );
   const toolpaths = useJobStore((s) => s.toolpaths);
   const updateToolpath = useJobStore((s) => s.updateToolpath);
-  const flip = useJobStore((s) => s.flip);
-  const twoSided = isTwoSided({ objects, toolpaths });
-  const side = useActiveSide();
-  const shown = useMemo(
-    () => objects.filter((o) => shownOnSide(o, toolpaths, side)),
-    [objects, toolpaths, side],
-  );
   const { view, setView, fit } = useViewport(stock, size);
   const gridSpacing = useGridStore((s) => s.spacing);
   const snapOn = useGridStore((s) => s.snap);
+  const showCuts = useGridStore((s) => s.showCuts);
+  const bits = useToolingStore((s) => s.bits);
   const snap = useMemo<SnapGrid | null>(
     () => (snapOn ? { origin: anchorPoint(stock, origin), spacing: gridSpacing } : null),
     [snapOn, stock, origin, gridSpacing],
   );
+  const drawing = useDrawStore((s) => s.tool !== null);
+  const editingId = useDrawStore((s) => s.editingId);
+  const setEditing = useDrawStore((s) => s.setEditing);
+  const updateObject = useJobStore((s) => s.updateObject);
+  const editing = objects.find((o) => o.id === editingId && o.shape?.type === 'polyline');
+  // Point editing ends when its shape is no longer the one selected (or is gone).
+  useEffect(() => {
+    if (editingId && (!editing || !selectedIds.includes(editingId) || preview)) setEditing(null);
+  }, [editingId, editing, selectedIds, preview, setEditing]);
+  const visible = {
+    minX: -view.x / view.scale,
+    minY: -view.y / view.scale,
+    maxX: (size.width - view.x) / view.scale,
+    maxY: (size.height - view.y) / view.scale,
+  };
 
   const onWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
@@ -79,6 +94,19 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
   };
 
   const isStage = (e: Konva.KonvaEventObject<unknown>) => e.target === e.target.getStage();
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
+
+  /** Right-click: picks the shape under the pointer (keeping a selection it's part of), then opens the menu. */
+  const onContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    e.evt.preventDefault();
+    if (preview || useDrawStore.getState().tool) return;
+    const ids = new Set(objects.map((o) => o.id));
+    let node: Konva.Node | null = e.target;
+    while (node && !ids.has(node.id())) node = node.getParent();
+    if (node) select(node.id(), 'keep');
+    else select(null);
+    setMenuAt({ x: e.evt.clientX, y: e.evt.clientY });
+  };
   const pressedAt = useRef<{ x: number; y: number } | null>(null);
 
   /** In preview, clicking near a cut-out's toolpath adds or removes a tab. */
@@ -115,6 +143,7 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
           }}
           onClick={onPreviewClick}
           onTap={(e) => isStage(e) && select(null)}
+          onContextMenu={onContextMenu}
         >
           <StockLayer
             stock={stock}
@@ -122,10 +151,17 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
             scale={view.scale}
             gridSpacing={gridSpacing}
             colors={colors}
-            flipLine={twoSided ? flipLine(stock, flip) : null}
           />
+          {!preview && showCuts && (
+            <CutFootprintLayer
+              objects={objects}
+              toolpaths={toolpaths}
+              bits={bits}
+              colors={colors}
+            />
+          )}
           <ObjectsLayer
-            objects={shown}
+            objects={objects}
             selectedIds={selectedIds}
             interactive={!preview}
             colors={colors}
@@ -133,10 +169,34 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
             onTransform={setTransforms}
             onLiveTransform={setLiveTransforms}
             snap={snap}
+            editingId={editingId}
+            onEditPoints={editPoints}
           />
+          {!preview && editing?.shape?.type === 'polyline' && (
+            <PointEditLayer
+              object={editing}
+              shape={editing.shape}
+              scale={view.scale}
+              snap={snap}
+              colors={colors}
+              onChange={({ name, shape, paths, width, height, transform }) =>
+                updateObject(editing.id, { name, shape, paths, width, height, transform })
+              }
+            />
+          )}
+          {!preview && drawing && (
+            <DrawingLayer visible={visible} scale={view.scale} snap={snap} colors={colors} />
+          )}
           {preview && <ToolpathLayer {...preview} scale={view.scale} colors={colors} />}
           {preview && <TabMarkers tabs={preview.tabs} scale={view.scale} colors={colors} />}
         </Stage>
+      )}
+      {menuAt && <CanvasContextMenu {...menuAt} onClose={() => setMenuAt(null)} />}
+      {drawing && !preview && (
+        <p className="canvas-hint" role="status">
+          Click to place points. Click the first point to close the shape; double-click or press
+          Enter to finish an open line. Backspace takes back a point, Esc cancels.
+        </p>
       )}
       <div className="canvas-zoom">
         {!preview && <GridControls />}

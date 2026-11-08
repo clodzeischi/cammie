@@ -2,7 +2,6 @@ import { pocketOp, profileOp } from '../cam/testFixtures';
 import type { Operation, Toolpath } from './job';
 import {
   copyToolpaths,
-  fitsEasyMode,
   insertToolpath,
   moveGroup,
   moveToolpath,
@@ -71,21 +70,9 @@ describe('moving toolpaths', () => {
   });
 
   it('moves a whole file earlier or later', () => {
-    expect(ids(moveGroup(list, 'top', 'vbit-60', 1))).toEqual(['a', 'c', 'b']);
-    expect(ids(moveGroup(list, 'top', 'flat-3.175', -1))).toEqual(['a', 'c', 'b']);
-    expect(ids(moveGroup(list, 'top', 'vbit-60', -1))).toEqual(['b', 'a', 'c']);
-  });
-});
-
-describe('fitsEasyMode', () => {
-  it('allows one bit and one cut per object', () => {
-    expect(fitsEasyMode({ toolpaths: [] })).toBe(true);
-    expect(fitsEasyMode({ toolpaths: [tp('a', engrave), tp('b', engrave)] })).toBe(true);
-  });
-
-  it('rejects a second bit or a second cut on the same object', () => {
-    expect(fitsEasyMode({ toolpaths: [tp('a', engrave), tp('b', cutOut)] })).toBe(false);
-    expect(fitsEasyMode({ toolpaths: [tp('a', hole, 'x'), tp('b', cutOut, 'x')] })).toBe(false);
+    expect(ids(moveGroup(list, 'vbit-60', 1))).toEqual(['a', 'c', 'b']);
+    expect(ids(moveGroup(list, 'flat-3.175', -1))).toEqual(['a', 'c', 'b']);
+    expect(ids(moveGroup(list, 'vbit-60', -1))).toEqual(['b', 'a', 'c']);
   });
 });
 

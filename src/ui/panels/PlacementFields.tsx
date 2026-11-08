@@ -33,7 +33,7 @@ export function PlacementFields({ object, onTransform }: PlacementFieldsProps) {
 
   return (
     <fieldset>
-      <legend>Placement</legend>
+      <legend>Position & size</legend>
       <div className="field-row">
         <NumberField
           label="X"

@@ -13,7 +13,7 @@ const ALIGNMENTS: ReadonlyArray<{ value: Alignment; label: string }> = [
   { value: 'bottom', label: 'Align bottom edges' },
 ];
 
-/** Align, centre, duplicate and group the current selection. */
+/** Align, centre, duplicate and group the current selection (the inspector's last section). */
 export function ArrangeFields() {
   // Plain values so the selector result is stable between renders.
   const units = useJobStore((s) => new Set(selectedObjects(s).map(unitKey)).size);
@@ -23,7 +23,7 @@ export function ArrangeFields() {
 
   return (
     <fieldset>
-      <legend>Arrange</legend>
+      <legend>Align & group</legend>
       <div className="align-buttons" role="group" aria-label={`Align to ${target}`}>
         {ALIGNMENTS.map(({ value, label }) => (
           <button

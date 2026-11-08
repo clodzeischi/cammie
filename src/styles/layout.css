@@ -67,7 +67,7 @@
   border-right: 1px solid var(--border);
 }
 
-/* Narrower screens: New / Open / Save and Machine as icons (their tooltips say what they do). */
+/* Narrower screens: New / Open / Save as icons (their tooltips say what they do). */
 @media (max-width: 1279px) {
   .app-header .button-text,
   .app-name-text {
@@ -89,13 +89,9 @@
   display: grid;
 }
 
-/* Easy: canvas and side panel. Pro adds the toolpath list on the left. */
-.app-body-easy {
-  grid-template-columns: 1fr 300px;
-}
-
-.app-body-pro {
-  grid-template-columns: 250px 1fr 300px;
+/* Tool rail, canvas, and the one panel on the right (cut plan or inspector). */
+.app-body {
+  grid-template-columns: auto minmax(0, 1fr) 300px;
 }
 
 .workspace {
@@ -152,7 +148,7 @@
   color: var(--accent-text);
 }
 
-/* Design / Preview and, for two-sided jobs, the side shown. */
+/* Design / Preview switch and the 3D toggle. */
 .canvas-toolbar {
   position: absolute;
   top: 12px;
@@ -168,6 +164,23 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+.canvas-hint {
+  position: absolute;
+  /* Below the Design / Toolpath preview switch. */
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(560px, calc(100% - 24px));
+  margin: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 13px;
+  text-align: center;
+  pointer-events: none;
 }
 
 .canvas-zoom {

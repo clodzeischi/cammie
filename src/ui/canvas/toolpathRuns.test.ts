@@ -1,11 +1,11 @@
 import { generateJob } from '../../core/cam/generateJob';
 import { makeJob, makeObject, vcarveOp } from '../../core/cam/testFixtures';
-import { cutFrame } from '../../core/job/faces';
+import { cutFrame } from '../../core/job/job';
 import { DEFAULT_MACHINE_CONFIG } from '../../core/machine/machineConfig';
 import { buildPreview, completedRuns } from './toolpathRuns';
 
 const job = makeJob();
-const frame = cutFrame(job, 'top');
+const frame = cutFrame(job);
 const program = generateJob(job, DEFAULT_MACHINE_CONFIG).programs[0]!;
 
 describe('buildPreview', () => {

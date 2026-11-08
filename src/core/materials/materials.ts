@@ -57,7 +57,7 @@ export const MATERIALS: readonly Material[] = [
   {
     id: 'aluminum',
     name: 'Aluminum (6061), expert',
-    base: { feed: 150, plunge: 40, depthPerPass: 0.15, rpm: 10000, stepover: 20 },
+    base: { feed: 400, plunge: 100, depthPerPass: 0.15, rpm: 10000, stepover: 20 },
   },
   {
     id: 'foam',

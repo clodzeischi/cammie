@@ -1,8 +1,7 @@
 import { boundsOfPaths, boundsOfPoints, type Bounds, type Path } from '../geometry/path';
 import { transformPaths } from '../geometry/transform';
 import { cantCutReason, canCut } from '../job/bitCapabilities';
-import { faceOf, type CutFrame } from '../job/faces';
-import type { DesignObject, Job, Operation } from '../job/job';
+import type { CutFrame, DesignObject, Job, Operation } from '../job/job';
 import { cutKindOf, type CutKind } from '../job/objectFactory';
 import type { MachineConfig } from '../machine/machineConfig';
 import { overridesFor, type FeedOverrides } from '../materials/feedOverrides';
@@ -23,7 +22,7 @@ export interface CutContext {
   material: Material;
   bits: readonly Bit[];
   feedOverrides: FeedOverrides;
-  /** Canvas ↔ machine for the face this toolpath is cut from. */
+  /** Canvas ↔ machine coordinates. */
   frame: CutFrame;
 }
 
@@ -88,19 +87,12 @@ export function planObjectCut(
   );
   if (!planned) return null;
 
-  // Registration holes go into the spoilboard on purpose, so the pins have something to sit in.
   // V-carves check their own depth: it follows from the shape, not the setting.
-  if (object.role !== 'registration' && kind !== 'vcarve') {
-    // On the top of a two-sided job a loose part is lost before its bottom is cut.
-    const flippedLater =
-      ctx.frame.face === 'top' && ctx.job.toolpaths.some((t) => faceOf(t) === 'bottom');
-    checkDepth(operation.depth, kind, thickness, planned.tabsHold, flippedLater, report);
-  }
+  if (kind !== 'vcarve') checkDepth(operation.depth, kind, thickness, planned.tabsHold, report);
 
   return {
     toolpathId,
     objectId: object.id,
-    face: ctx.frame.face,
     label: `${LABEL[kind]}: ${object.name}`,
     bit,
     depth: planned.depth ?? operation.depth,
@@ -144,7 +136,6 @@ function checkDepth(
   kind: CutKind,
   thickness: number,
   tabsHold: boolean,
-  flippedLater: boolean,
   report: Report,
 ) {
   const extra = depth - thickness;
@@ -153,13 +144,6 @@ function checkDepth(
     report('warning', `cuts ${fmt(extra)} into the spoilboard.`);
   }
   if (through && (kind === 'outside' || kind === 'inside') && !tabsHold) {
-    if (flippedLater) {
-      report(
-        'warning',
-        'cuts all the way through on the top with no tabs, so the part comes loose before the stock is turned over. Add tabs, or cut it out from the bottom.',
-      );
-      return;
-    }
     report(
       'warning',
       "cuts all the way through with no tabs. Hold the part down with tape or clamps so it can't come loose.",

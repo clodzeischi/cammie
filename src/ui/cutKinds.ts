@@ -2,76 +2,76 @@ import type { CutKind } from '../core/job/objectFactory';
 import type { IconName } from './icons/Icon';
 
 interface CutKindInfo {
-  /** Pro mode's name (the usual CAM term). */
-  pro: string;
-  /** Easy mode's name, in plain words. */
-  easy: string;
-  /** What it does, for buttons and choice cards. */
+  /** What it does, in plain words: the cut's name everywhere in the app. */
+  name: string;
+  /** The usual CAM term, shown underneath for people who know it. */
+  term: string;
+  /** Where the bit runs, for menus and tooltips. */
   hint: string;
   icon: IconName;
-  /** CSS colour token for this kind of cut. */
+  /** CSS colour token for this kind of cut (canvas shading, list icons). */
   color: string;
 }
 
 export const CUT_KINDS: Record<CutKind, CutKindInfo> = {
   on: {
-    pro: 'Engrave',
-    easy: 'Engrave line',
-    hint: 'Follows the line',
+    name: 'Engrave the line',
+    term: 'Engrave',
+    hint: 'The bit follows the line',
     icon: 'engrave',
     color: 'var(--cut-on)',
   },
-  vcarve: {
-    pro: 'V-carve',
-    easy: 'Carve letters',
-    hint: 'Carves inside the shape, deeper where it is wider',
-    icon: 'vcarve',
-    color: 'var(--cut-vcarve)',
-  },
   outside: {
-    pro: 'Profile outside',
-    easy: 'Cut out',
-    hint: 'Cuts the shape free',
+    name: 'Cut it out',
+    term: 'Profile outside',
+    hint: 'Cuts around the outside, so the part comes out at its drawn size',
     icon: 'profile',
     color: 'var(--cut-outside)',
   },
   inside: {
-    pro: 'Profile inside',
-    easy: 'Cut hole',
-    hint: 'Cuts a hole of this shape',
+    name: 'Cut a hole',
+    term: 'Profile inside',
+    hint: 'Cuts around the inside, so the hole comes out at its drawn size',
     icon: 'profileIn',
     color: 'var(--cut-inside)',
   },
   pocket: {
-    pro: 'Pocket',
-    easy: 'Clear area',
-    hint: 'Hollows out the inside',
+    name: 'Clear the inside',
+    term: 'Pocket',
+    hint: 'Hollows out the whole area to a depth',
     icon: 'pocket',
     color: 'var(--cut-pocket)',
   },
+  vcarve: {
+    name: 'Carve with a V-bit',
+    term: 'V-carve',
+    hint: 'Carves inside the shape, deeper where it is wider, with sharp corners',
+    icon: 'vcarve',
+    color: 'var(--cut-vcarve)',
+  },
   chamfer: {
-    pro: 'Chamfer',
-    easy: 'Bevel edges',
+    name: 'Bevel the edges',
+    term: 'Chamfer',
     hint: 'Bevels the edges with a V-bit',
     icon: 'chamfer',
     color: 'var(--cut-chamfer)',
   },
   drill: {
-    pro: 'Drill',
-    easy: 'Drill holes',
-    hint: 'Drills a hole at the centre of each shape',
+    name: 'Drill',
+    term: 'Drill',
+    hint: 'Drills a bit-sized hole at the centre of each shape',
     icon: 'drill',
     color: 'var(--cut-drill)',
   },
 };
 
-/** Pro menu and button order: lines, carving, then cut-outs, holes, pockets, chamfers and drilling. */
+/** Menu order: lines, cut-outs and holes, clearing and carving, then finishing touches. */
 export const CUT_KIND_ORDER: readonly CutKind[] = [
   'on',
-  'vcarve',
   'outside',
   'inside',
   'pocket',
+  'vcarve',
   'chamfer',
   'drill',
 ];
