@@ -33,7 +33,7 @@ function sampleProject(): Project {
   ];
   const job = makeJob([
     makeObject({ id: 'a', groupId: 'g', operation: pocketOp({ bitId: 'custom-1' }) }),
-    makeObject({ id: 'b', operation: chamferOp({ side: 'inside' }) }),
+    makeObject({ id: 'b', pivot: 'center', operation: chamferOp({ side: 'inside' }) }),
     makeObject({ id: 'c', operation: vcarveOp({ warnDepth: 2.5 }) }),
     makeObject({ id: 'd', operation: vcarveOp() }),
     { ...rect, operation: null },

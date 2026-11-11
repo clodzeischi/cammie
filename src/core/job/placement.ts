@@ -1,6 +1,10 @@
 import { boundsOfPoints, type Bounds, type Vec2 } from '../geometry/path';
 import { applyMatrix, toMatrix, type ObjectTransform } from '../geometry/transform';
-import type { DesignObject } from './job';
+import { boxAnchor, type DesignObject, type OriginAnchor } from './job';
+
+export const DEFAULT_PIVOT: OriginAnchor = 'bottom-left';
+
+export const objectPivot = (object: DesignObject): OriginAnchor => object.pivot ?? DEFAULT_PIVOT;
 
 /** Axis-aligned canvas bounds of the object's (possibly rotated) box. */
 export function objectBounds(object: DesignObject): Bounds {
@@ -15,16 +19,21 @@ export function objectBounds(object: DesignObject): Bounds {
   return boundsOfPoints(corners);
 }
 
+/** The object's pivot on the canvas: its anchor point on the axis-aligned bounds. */
+export const pivotPoint = (object: DesignObject): Vec2 =>
+  boxAnchor(objectBounds(object), objectPivot(object));
+
 /**
- * Where the object's lower-left corner sits relative to the work origin, in
- * machine terms (X right, Y up). This is the "position" users type in.
+ * Where the object's pivot (lower-left corner unless chosen otherwise) sits
+ * relative to the work origin, in machine terms (X right, Y up). This is the
+ * "position" users type in.
  */
 export function machinePosition(object: DesignObject, origin: Vec2): Vec2 {
-  const b = objectBounds(object);
-  return { x: b.minX - origin.x, y: origin.y - b.maxY };
+  const p = pivotPoint(object);
+  return { x: p.x - origin.x, y: origin.y - p.y };
 }
 
-/** Moves the object so its lower-left corner lands on `position`. */
+/** Moves the object so its pivot lands on `position`. */
 export function withMachinePosition(
   object: DesignObject,
   origin: Vec2,
@@ -39,6 +48,13 @@ export function withMachinePosition(
   };
 }
 
+/** Shifts `changed` so its pivot is back where `before`'s was on the canvas. */
+function keepingPivot(before: DesignObject, changed: ObjectTransform): ObjectTransform {
+  const was = pivotPoint(before);
+  const now = pivotPoint({ ...before, transform: changed });
+  return { ...changed, x: changed.x + was.x - now.x, y: changed.y + was.y - now.y };
+}
+
 /** The object's own size after scaling (ignores rotation). */
 export const objectSize = (object: DesignObject) => ({
   width: object.width * object.transform.scaleX,
@@ -47,11 +63,10 @@ export const objectSize = (object: DesignObject) => ({
 
 /**
  * Resizes the object. With `keepAspect`, the other dimension follows.
- * The lower-left corner stays put, which is what people expect when typing a size.
+ * The pivot stays put, which is what people expect when typing a size.
  */
 export function withSize(
   object: DesignObject,
-  origin: Vec2,
   size: { width?: number; height?: number },
   keepAspect: boolean,
 ): ObjectTransform {
@@ -65,19 +80,13 @@ export function withSize(
     if (keepAspect) scaleX *= next / scaleY;
     scaleY = next;
   }
-  const resized = { ...object, transform: { ...object.transform, scaleX, scaleY } };
-  return withMachinePosition(resized, origin, machinePosition(object, origin));
+  return keepingPivot(object, { ...object.transform, scaleX, scaleY });
 }
 
-/** Rotates about the object's centre so it doesn't swing across the stock. */
+/**
+ * Rotates the object, then shifts it so its pivot hasn't moved: the typed
+ * X/Y stays true, and a centre pivot spins it in place.
+ */
 export function withRotation(object: DesignObject, rotation: number): ObjectTransform {
-  const b = objectBounds(object);
-  const centre = { x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2 };
-  const rotated = { ...object, transform: { ...object.transform, rotation } };
-  const rb = objectBounds(rotated);
-  return {
-    ...rotated.transform,
-    x: rotated.transform.x + centre.x - (rb.minX + rb.maxX) / 2,
-    y: rotated.transform.y + centre.y - (rb.minY + rb.maxY) / 2,
-  };
+  return keepingPivot(object, { ...object.transform, rotation });
 }

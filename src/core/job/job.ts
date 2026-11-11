@@ -1,4 +1,4 @@
-import type { Path, Vec2 } from '../geometry/path';
+import type { Bounds, Path, Vec2 } from '../geometry/path';
 import type { ObjectTransform } from '../geometry/transform';
 
 /** Where machine X0 Y0 sits on the stock. Z0 is always the top of the material. */
@@ -194,6 +194,11 @@ export interface DesignObject {
   shape?: ShapeParams;
   /** Objects sharing a group id are selected and arranged together. */
   groupId?: string;
+  /**
+   * The point of the object's box that its X/Y refers to, and that stays put
+   * when it's resized or rotated by typing; absent = bottom-left.
+   */
+  pivot?: OriginAnchor;
   /** Outlines in the object's own mm space, with the bounding box starting at (0, 0). */
   paths: Path[];
   /** Natural (unscaled) size of `paths`. */
@@ -227,9 +232,20 @@ export interface Job {
  * stock's top-left corner at (0, 0) and Y pointing down.
  */
 export function anchorPoint(stock: Stock, anchor: OriginAnchor): Vec2 {
+  return boxAnchor({ minX: 0, minY: 0, maxX: stock.width, maxY: stock.height }, anchor);
+}
+
+/** One of the 9 anchor points of a canvas box (Y down, so `top` is `minY`). */
+export function boxAnchor(box: Bounds, anchor: OriginAnchor): Vec2 {
   const [vertical, horizontal = vertical] = anchor.split('-') as [string, string?];
-  const x = horizontal === 'left' ? 0 : horizontal === 'right' ? stock.width : stock.width / 2;
-  const y = vertical === 'top' ? 0 : vertical === 'bottom' ? stock.height : stock.height / 2;
+  const x =
+    horizontal === 'left'
+      ? box.minX
+      : horizontal === 'right'
+        ? box.maxX
+        : (box.minX + box.maxX) / 2;
+  const y =
+    vertical === 'top' ? box.minY : vertical === 'bottom' ? box.maxY : (box.minY + box.maxY) / 2;
   return { x, y };
 }
 

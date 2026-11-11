@@ -106,6 +106,7 @@ interface DesignObject {
   shape?: TextShape | RectShape | EllipseShape | PolygonShape | StarShape | CogShape | PolylineShape;
                                  // params of text/shapes drawn in the app (§6.2, §6.3)
   groupId?: string;              // objects sharing one are selected/arranged together
+  pivot?: OriginAnchor;          // point of the object's box its X/Y refers to; absent = bottom-left
   paths: Path[];                 // flattened outlines in object-local mm, box starting at (0,0)
   width: number; height: number; // natural size of `paths`
   transform: { x: number; y: number; rotation: number; scaleX: number; scaleY: number };
@@ -123,6 +124,7 @@ interface Path { points: Vec2[]; closed: boolean; }
 - Editing shape params (text, font, corner radius…) rebuilds `paths`.
 - **Selection**: a click picks the object whose outline it lands on (within 5 screen px) or inside one of its closed outlines; text is picked anywhere in its box. Empty space inside another object's bounding box reaches whatever is behind. Where shapes overlap, the smaller one wins (outlines have no fill, so stacking isn't visible; click areas are stacked by size), so a shape inside a bigger one is always reachable. Click selects; Shift-click adds/removes; ⌘/Ctrl-A selects all. Pressing on an already-selected object keeps the selection so several objects drag together; a click without dragging picks just that object. Several selected objects share one transformer (move/resize/rotate together).
 - **Groups**: ⌘/Ctrl-G groups the selection, ⇧⌘/Ctrl-G ungroups. A group is a selection unit (clicking any member selects all) and moves/aligns as one. Cuts are per object: adding a toolpath gives each selected object its own.
+- **Pivot**: each object picks one of 9 points on its (axis-aligned) bounding box in *Position & size*, default lower-left. X/Y are that point's coordinates from the work origin; typing a size or rotation keeps it where it is (a centre pivot spins the shape in place). A small crosshair marks it on the canvas while one object is selected. Shape settings (corner radius, sides…) keep their own anchoring.
 - **Arrange**: move, scale (lock aspect by default), rotate, duplicate (⌘/Ctrl-D, copies offset 5 mm, copied groups become new groups), cut/copy/paste (⌘/Ctrl-X/C/V, within the app: shapes with their toolpaths; each paste of the same copy lands 5 mm further down and right, so repeated pastes don't stack; pasting works after the originals were cut), auto-arrange on the stock (§6.4), delete, align left/centre/right/top/middle/bottom (several units align to their combined box; a single unit aligns to the stock), centre on stock, nudge with arrow keys (1 mm, Shift = 10 mm).
 - **Undo/redo**: ⌘/Ctrl-Z, ⇧⌘/Ctrl-Z or Ctrl-Y, toolbar buttons; 100 steps of the design (objects + selection; stock/origin/material are settings, not undone). A burst of edits to the same fields of one object within 1 s (typing a number or text, repeated nudges) is one step. Shortcuts are ignored while typing in a field, so fields keep their own undo.
 

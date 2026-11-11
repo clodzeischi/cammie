@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ObjectTransform } from '../../core/geometry/transform';
-import { anchorPoint, type DesignObject, type TextAlign, type TextShape } from '../../core/job/job';
+import { type DesignObject, type TextAlign, type TextShape } from '../../core/job/job';
 import { withSize } from '../../core/job/placement';
 import { FONTS } from '../../core/text/fonts';
-import { useJobStore } from '../../state/jobStore';
 import { FieldShell, NumberField, SelectField } from '../common/fields';
 import { applyText, takeTextFocus, type TextResult } from '../text/textEditing';
 
@@ -36,8 +35,6 @@ function statusHint(result: TextResult | null): string | undefined {
  * i.e. including any resizing done on the canvas.
  */
 export function TextFields({ object, shape, onTransform }: TextFieldsProps) {
-  const stock = useJobStore((s) => s.stock);
-  const originAnchor = useJobStore((s) => s.origin);
   const [draft, setDraft] = useState<string | null>(null);
   const [result, setResult] = useState<TextResult | null>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
@@ -56,8 +53,7 @@ export function TextFields({ object, shape, onTransform }: TextFieldsProps) {
   const setLetterHeight = (height: number) => {
     if (!Number.isFinite(height) || height <= 0) return;
     const factor = height / (shape.capHeight * scaleY);
-    const origin = anchorPoint(stock, originAnchor);
-    onTransform(withSize(object, origin, { height: object.height * scaleY * factor }, true));
+    onTransform(withSize(object, { height: object.height * scaleY * factor }, true));
   };
 
   return (
