@@ -2,7 +2,7 @@ import { MATERIALS } from '../../core/materials/materials';
 import { useJobStore } from '../../state/jobStore';
 import { NumberField, SelectField } from '../common/fields';
 import { Modal } from '../common/Modal';
-import { OriginPicker } from './OriginPicker';
+import { OriginPicker } from './AnchorPicker';
 
 const MATERIAL_OPTIONS = MATERIALS.map((m) => ({ value: m.id, label: m.name }));
 

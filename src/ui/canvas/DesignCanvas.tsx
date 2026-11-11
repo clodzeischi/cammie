@@ -17,6 +17,7 @@ import { GridControls } from './GridControls';
 import { CanvasContextMenu } from './CanvasContextMenu';
 import { CutFootprintLayer } from './CutFootprintLayer';
 import { ObjectsLayer } from './ObjectsLayer';
+import { PivotMarker } from './PivotMarker';
 import { PointEditLayer } from './PointEditLayer';
 import type { SnapGrid } from './snapping';
 import { StockLayer } from './StockLayer';
@@ -76,6 +77,7 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
   const setEditing = useDrawStore((s) => s.setEditing);
   const updateObject = useJobStore((s) => s.updateObject);
   const editing = objects.find((o) => o.id === editingId && o.shape?.type === 'polyline');
+  const lone = selectedIds.length === 1 ? objects.find((o) => o.id === selectedIds[0]) : undefined;
   // Point editing ends when its shape is no longer the one selected (or is gone).
   useEffect(() => {
     if (editingId && (!editing || !selectedIds.includes(editingId) || preview)) setEditing(null);
@@ -172,6 +174,9 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
             editingId={editingId}
             onEditPoints={editPoints}
           />
+          {!preview && lone && !editing && !drawing && (
+            <PivotMarker object={lone} scale={view.scale} colors={colors} />
+          )}
           {!preview && editing?.shape?.type === 'polyline' && (
             <PointEditLayer
               object={editing}

@@ -49,7 +49,11 @@ export function ObjectPanel({ object }: ObjectPanelProps) {
         <PolylineFields object={object} shape={shape} onChange={rebuild} />
       )}
       <ObjectCuts objectId={object.id} />
-      <PlacementFields object={object} onTransform={setTransform} />
+      <PlacementFields
+        object={object}
+        onTransform={setTransform}
+        onPivot={(pivot) => updateObject(object.id, { pivot })}
+      />
       <ArrangeFields />
       <button
         type="button"

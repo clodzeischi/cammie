@@ -2,7 +2,7 @@ import type { Path, Vec2 } from '../core/geometry/path';
 import type { DesignObject, Job, Operation, Toolpath } from '../core/job/job';
 import { defaultOperation, defaultTabs } from '../core/job/objectFactory';
 import type { Bit } from '../core/tools/bits';
-import { reviveJobPrefs } from './jobPrefsRepository';
+import { ORIGIN_ANCHORS, reviveJobPrefs } from './jobPrefsRepository';
 import { OBJECT_KINDS, reviveShape } from './reviveShape';
 import { finite, isObject, oneOf, str, type Loose } from './reviveValues';
 import { reviveCustomBits } from './toolingRepositories';
@@ -67,6 +67,7 @@ function reviveObject(o: unknown): DesignObject {
     kind: shape ? shape.type : (obj.kind as DesignObject['kind']),
     ...(shape && { shape }),
     ...(str(obj.groupId) && { groupId: obj.groupId }),
+    ...(oneOf(obj.pivot, ORIGIN_ANCHORS) && { pivot: obj.pivot }),
     paths: need(Array.isArray(obj.paths) && (obj.paths as unknown[]), 'outlines').map(revivePath),
     width: obj.width as number,
     height: obj.height as number,
