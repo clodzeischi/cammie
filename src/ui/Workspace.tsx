@@ -6,6 +6,7 @@ import { useMachineStore } from '../state/machineStore';
 import { useGeneratedJob } from '../state/useGeneratedJob';
 import { useView3DStore } from '../state/view3dStore';
 import { DesignCanvas } from './canvas/DesignCanvas';
+import { Icon, type IconName } from './icons/Icon';
 import { buildPreview } from './canvas/toolpathRuns';
 import { PreviewBar } from './preview/PreviewBar';
 import { SplitDivider } from './SplitDivider';
@@ -13,7 +14,10 @@ import { SplitDivider } from './SplitDivider';
 // three.js is big, so the 3D view loads the first time it's opened.
 const StockView3D = lazy(() => import('./preview3d/StockView3D'));
 
-const VIEW_LABELS = { design: 'Design', preview: 'Preview' } as const;
+const VIEWS = {
+  design: { label: 'Design', icon: 'pen' },
+  preview: { label: 'Preview', icon: 'preview' },
+} as const satisfies Record<string, { label: string; icon: IconName }>;
 
 /**
  * The canvas with its Design / Toolpath preview switch (and, in preview, the
@@ -67,7 +71,8 @@ export function Workspace() {
                 className={view === v ? 'segment segment-active' : 'segment'}
                 onClick={() => setView(v)}
               >
-                {VIEW_LABELS[v]}
+                <Icon name={VIEWS[v].icon} size={16} />
+                {VIEWS[v].label}
               </button>
             ))}
           </div>
@@ -75,11 +80,10 @@ export function Workspace() {
             type="button"
             className={pane3d.open ? 'segment-toggle segment-toggle-on' : 'segment-toggle'}
             aria-pressed={pane3d.open}
-            title={
-              pane3d.open ? 'Hide the 3D view' : 'Show the finished piece in 3D, beside the design'
-            }
+            title={pane3d.open ? 'Hide the 3D view' : 'Show the finished piece in 3D'}
             onClick={pane3d.toggle}
           >
+            <Icon name="cube" size={16} />
             3D
           </button>
         </div>

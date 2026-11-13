@@ -46,6 +46,7 @@ export function AppShell() {
         <StockButton />
         <div className="app-header-actions">
           <HistoryButtons />
+          <span className="header-divider" />
           <ProjectButtons notice={restored} />
           <SettingsMenu />
           <ExportButton />

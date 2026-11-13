@@ -38,7 +38,7 @@ describe('MachineSettingsDialog', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 
-  it('cancel discards the draft', async () => {
+  it('closing without saving discards the draft', async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     render(<MachineSettingsDialog onClose={onClose} />);
@@ -46,7 +46,7 @@ describe('MachineSettingsDialog', () => {
     const safeZ = screen.getByLabelText('Safe Z');
     await user.clear(safeZ);
     await user.type(safeZ, '9');
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(screen.getByRole('button', { name: 'Close' }));
 
     expect(useMachineStore.getState().config.safeZ).toBe(DEFAULT_MACHINE_CONFIG.safeZ);
     expect(onClose).toHaveBeenCalled();

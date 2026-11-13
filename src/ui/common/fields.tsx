@@ -72,6 +72,8 @@ export function NumberField({
             placeholder={placeholder}
             value={draft ?? formatNumber(value)}
             aria-invalid={error ? true : undefined}
+            // Room for the unit, which sits inside the input.
+            style={unit ? { paddingRight: `calc(${unit.length}ch + 12px)` } : undefined}
             onFocus={() => setDraft(formatNumber(value))}
             onBlur={() => setDraft(null)}
             onChange={(e) => {

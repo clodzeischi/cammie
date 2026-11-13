@@ -1,6 +1,6 @@
-import { useId } from 'react';
 import { formatDuration, type ProgramStats } from '../../core/cam/estimate';
 import type { BitProgram } from '../../core/cam/program';
+import { Icon } from '../icons/Icon';
 
 interface PreviewBarProps {
   programs: BitProgram[];
@@ -19,11 +19,10 @@ const SLIDER_STEPS = 1000;
 /** Per-file stats, the playback scrubber and display toggles. */
 export function PreviewBar(props: PreviewBarProps) {
   const { programs, stats, activeIndex, progress } = props;
-  const sliderId = useId();
   const active = stats[activeIndex];
 
   if (programs.length === 0) {
-    return <div className="preview-bar muted">No toolpaths to show yet.</div>;
+    return <div className="preview-bar muted">Nothing to cut yet.</div>;
   }
 
   return (
@@ -46,43 +45,40 @@ export function PreviewBar(props: PreviewBarProps) {
       )}
       {active && (
         <dl className="stats">
-          <div>
+          <div title="Doesn't include acceleration, so expect 10–20% longer">
             <dt>Time</dt>
-            <dd title="Doesn't include acceleration, so expect 10–20% longer">
-              ~{formatDuration(active.seconds)}
-            </dd>
+            <dd>~{formatDuration(active.seconds)}</dd>
           </div>
           <div>
-            <dt>Cut length</dt>
+            <dt>Length</dt>
             <dd>{(active.cutLength / 1000).toFixed(2)} m</dd>
           </div>
           <div>
-            <dt>Max depth</dt>
+            <dt>Depth</dt>
             <dd>{active.maxDepth.toFixed(2)} mm</dd>
           </div>
         </dl>
       )}
-      <div className="scrubber">
-        <label htmlFor={sliderId} className="small muted">
-          Playback
-        </label>
-        <input
-          id={sliderId}
-          type="range"
-          min={0}
-          max={SLIDER_STEPS}
-          value={Math.round(progress * SLIDER_STEPS)}
-          onChange={(e) => props.onProgressChange(Number(e.target.value) / SLIDER_STEPS)}
-        />
-      </div>
-      <label className="checkbox">
-        <input
-          type="checkbox"
-          checked={props.showCutWidth}
-          onChange={(e) => props.onShowCutWidthChange(e.target.checked)}
-        />
-        Show cut width
-      </label>
+      <input
+        className="scrubber"
+        aria-label="Playback"
+        title="Play the cut back"
+        type="range"
+        min={0}
+        max={SLIDER_STEPS}
+        value={Math.round(progress * SLIDER_STEPS)}
+        onChange={(e) => props.onProgressChange(Number(e.target.value) / SLIDER_STEPS)}
+      />
+      <button
+        type="button"
+        className={props.showCutWidth ? 'icon-button icon-button-on' : 'icon-button'}
+        aria-pressed={props.showCutWidth}
+        aria-label="Show cut width"
+        title="Show cut width"
+        onClick={() => props.onShowCutWidthChange(!props.showCutWidth)}
+      >
+        <Icon name="cutWidth" size={18} />
+      </button>
     </div>
   );
 }

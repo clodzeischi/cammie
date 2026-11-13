@@ -13,23 +13,23 @@ export function HistoryButtons() {
     <div className="history-buttons" role="group" aria-label="History">
       <button
         type="button"
-        className="button"
+        className="button icon-only"
         title={`Undo (${MOD_KEY}Z)`}
         aria-label="Undo"
         disabled={!canUndo}
         onClick={undo}
       >
-        <Icon name="undo" size={16} />
+        <Icon name="undo" size={18} />
       </button>
       <button
         type="button"
-        className="button"
+        className="button icon-only"
         title={`Redo (${MOD_KEY}⇧Z)`}
         aria-label="Redo"
         disabled={!canRedo}
         onClick={redo}
       >
-        <Icon name="redo" size={16} />
+        <Icon name="redo" size={18} />
       </button>
     </div>
   );

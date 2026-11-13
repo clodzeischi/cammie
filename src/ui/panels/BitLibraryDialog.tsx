@@ -34,10 +34,6 @@ export function BitLibraryDialog({ onClose }: BitLibraryDialogProps) {
             <button type="button" className="button" onClick={() => setEditing(newBitDraft())}>
               Add a bit
             </button>
-            <span className="spacer" />
-            <button type="button" className="button button-primary" onClick={onClose}>
-              Done
-            </button>
           </>
         )
       }

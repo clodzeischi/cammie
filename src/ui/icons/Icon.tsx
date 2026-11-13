@@ -17,8 +17,9 @@ const ICONS = {
   ),
   settings: (
     <>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8" />
+      <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
+      <circle cx="15" cy="7" r="2" />
+      <circle cx="9" cy="17" r="2" />
     </>
   ),
   select: <path d="M6 3.5v15.2l4.1-3.9 2.7 6 2.6-1.2-2.7-5.9 5.6-.4z" />,
@@ -278,6 +279,42 @@ const ICONS = {
     </>
   ),
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  chevronRight: <path d="m9 6 6 6-6 6" />,
+  plus: <path d="M12 5v14M5 12h14" />,
+  minus: <path d="M5 12h14" />,
+  fit: (
+    <path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4" />
+  ),
+  centre: (
+    <>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="1.5" />
+      <path d="M12 8v8M8 12h8" />
+    </>
+  ),
+  magnet: (
+    <>
+      <path d="M6 4v8a6 6 0 0 0 12 0V4h-4v8a2 2 0 0 1-4 0V4z" />
+      <path d="M6 8h4M14 8h4" />
+    </>
+  ),
+  shading: (
+    <>
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <path d="M4 14 14 4M4 20 20 4M10 20 20 10" />
+    </>
+  ),
+  pen: (
+    <>
+      <path d="M4 20l1-4.5L15.5 5a2.1 2.1 0 0 1 3 3L8 18.5z" />
+      <path d="m13.5 7 3 3" />
+    </>
+  ),
+  cutWidth: (
+    <>
+      <rect x="3" y="8" width="18" height="8" rx="4" />
+      <path d="M7.5 12h9" strokeDasharray="1.5 2" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof ICONS;

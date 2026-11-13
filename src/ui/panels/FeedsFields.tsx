@@ -47,9 +47,7 @@ export function FeedsFields({ material, bit, showStepover }: FeedsFieldsProps) {
   return (
     <details className="advanced">
       <summary>Feeds &amp; speeds {hasOverrides && <span className="badge">custom</span>}</summary>
-      <p className="field-hint">
-        Saved for {material.name} with the {bit.name}, and used by every cut with that pair.
-      </p>
+      <p className="field-hint">Shared by every {material.name} cut with this bit.</p>
       <div className="field-row">
         {shown.map(({ key, label, unit }) => (
           <NumberField

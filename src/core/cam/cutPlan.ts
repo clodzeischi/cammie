@@ -14,10 +14,12 @@ export type CutPlan =
       kind: 'pocket';
       rings: PocketRings;
       depths: number[];
+      /** Depth already cleared by earlier cuts, where the first pass starts (0 = stock top). */
+      floor?: number;
       entry: CutLoopsParams['entry'];
       finish: CutLoopsParams | null;
     }
-  | ({ kind: 'drill' } & DrillParams)
+  | { kind: 'drill'; holes: DrillParams[] }
   | ({ kind: 'carve' } & CarveParams);
 
 /** Where tabs are and where they could go, in canvas space, for the preview editor. */
@@ -60,13 +62,18 @@ export function executePlan(writer: MoveWriter, plan: CutPlan): void {
     return;
   }
   if (plan.kind === 'drill') {
-    cutDrill(writer, plan);
+    plan.holes.forEach((holes) => cutDrill(writer, holes));
     return;
   }
   if (plan.kind === 'carve') {
     cutCarve(writer, plan);
     return;
   }
-  cutPocket(writer, { rings: plan.rings, depths: plan.depths, entry: plan.entry });
+  cutPocket(writer, {
+    rings: plan.rings,
+    depths: plan.depths,
+    entry: plan.entry,
+    floor: plan.floor ?? 0,
+  });
   if (plan.finish) cutLoops(writer, plan.finish);
 }

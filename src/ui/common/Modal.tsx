@@ -1,11 +1,13 @@
 import { useEffect, useId, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { Icon } from '../icons/Icon';
 
 interface ModalProps {
   title: string;
   onClose: () => void;
   children: ReactNode;
-  footer: ReactNode;
+  /** The dialog's action (e.g. "Add hole"). Leave out for dialogs that apply changes as they're made. */
+  footer?: ReactNode;
   /** Room for side-by-side content such as the trace preview. */
   wide?: boolean;
 }
@@ -35,8 +37,14 @@ export function Modal({ title, onClose, children, footer, wide }: ModalProps) {
       >
         <header className="modal-header">
           <h2 id={titleId}>{title}</h2>
-          <button type="button" className="icon-button" aria-label="Close" onClick={onClose}>
-            ×
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Close"
+            title="Close (Esc)"
+            onClick={onClose}
+          >
+            <Icon name="close" size={18} />
           </button>
         </header>
         <div className="modal-body">{children}</div>

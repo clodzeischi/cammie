@@ -9,7 +9,8 @@
   display: flex;
   align-items: center;
   gap: var(--gap);
-  padding: 8px 16px;
+  height: 52px;
+  padding: 0 12px 0 14px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
@@ -57,22 +58,11 @@
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
 }
 
-.project-buttons {
-  display: flex;
-  gap: 4px;
-  padding-right: 8px;
-  border-right: 1px solid var(--border);
-}
-
-/* Narrower screens: New / Open / Save as icons (their tooltips say what they do). */
-@media (max-width: 1279px) {
-  .app-header .button-text,
-  .app-name-text {
-    display: none;
-  }
+.app-header-actions .export-button {
+  margin-left: 10px;
 }
 
 .app-header .button {
@@ -91,7 +81,7 @@
 
 /* Tool rail, canvas, and the one panel on the right (cut plan or inspector). */
 .app-body {
-  grid-template-columns: auto minmax(0, 1fr) 300px;
+  grid-template-columns: auto minmax(0, 1fr) 340px;
 }
 
 .workspace {
@@ -130,22 +120,25 @@
   white-space: nowrap;
 }
 
-/* The 3D toggle beside Design / Toolpath preview. */
+/* The 3D toggle beside Design / Preview. */
 .segment-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 5px 12px;
   font: inherit;
-  font-size: 13px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 8px;
   background: var(--surface);
-  color: var(--text);
+  color: var(--text-muted);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
   cursor: pointer;
 }
 
 .segment-toggle-on {
   border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-text);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 /* Design / Preview switch and the 3D toggle. */
@@ -203,7 +196,7 @@
 
 .sidebar {
   overflow-y: auto;
-  padding: 16px;
+  padding: 0 16px 16px;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -214,16 +207,36 @@
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 
-.panel-heading {
+.panel-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
+  margin: 0 -16px;
+  padding: 12px 10px 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.panel-actions {
+  flex: none;
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+}
+
+.panel-actions .icon-button {
+  width: 30px;
+  height: 30px;
 }
 
 .panel-title {
+  min-width: 0;
   font-size: 15px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -231,7 +244,9 @@
 }
 
 .field-label {
+  font-size: 12px;
   font-weight: 500;
+  color: var(--text-muted);
 }
 
 .link-button {
@@ -298,19 +313,17 @@
   font-size: 28px;
 }
 
-/* Snap toggle and grid size, left of the zoom buttons. */
+/* Cut shading, snap and grid size, left of the zoom buttons. */
 .grid-controls {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 8px 0 6px;
-  margin-right: 4px;
-  border-right: 1px solid var(--border);
+  gap: 2px;
   font-size: 12px;
 }
 
 .grid-controls select {
   font: inherit;
+  margin-left: 4px;
   padding: 3px 4px;
   border: 1px solid var(--border);
   border-radius: 6px;

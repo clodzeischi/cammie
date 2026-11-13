@@ -44,16 +44,6 @@
   margin: 4px 10px 16px;
 }
 
-.pane-hint {
-  margin: 10px;
-  padding: 10px;
-  border-radius: var(--radius);
-  background: var(--surface-sunken);
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
 .toolpath-groups,
 .toolpath-rows {
   margin: 0;
@@ -239,69 +229,80 @@
   }
 }
 
-/* ---------- Cut panel ---------- */
-.panel-title-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.panel-title-text {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.cut-badge {
-  flex: none;
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  background: var(--surface-sunken);
-}
-
-.cut-says {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: var(--radius);
-  background: var(--surface-sunken);
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-/* ---------- A shape's cuts ---------- */
-.object-toolpaths {
+/* ---------- A shape's cuts: cards that open in place ---------- */
+.cut-cards {
   margin: 0;
   padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
-.toolpath-chip {
-  width: 100%;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  column-gap: 8px;
+.cut-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.cut-card-open {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.cut-card-head {
+  display: flex;
   align-items: center;
-  padding: 6px 8px;
+  padding-right: 4px;
+}
+
+.cut-card-toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
   font: inherit;
   text-align: left;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
+  border: none;
+  border-radius: 8px;
+  background: transparent;
   color: var(--text);
   cursor: pointer;
 }
 
-.toolpath-chip > :first-child {
-  grid-row: span 2;
+.cut-card-toggle > .icon:last-child {
+  color: var(--text-muted);
 }
 
-.toolpath-chip:hover {
-  border-color: var(--accent);
+.cut-card-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cut-card-name b {
+  font-weight: 600;
+}
+
+.cut-card-name small {
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cut-card-body {
+  padding: 4px 12px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.cut-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 10px;
 }

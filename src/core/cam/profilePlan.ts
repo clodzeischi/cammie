@@ -105,7 +105,8 @@ function planTabs(
     report('warning', 'tab height is not less than the stock thickness, so tabs are skipped.');
     return null;
   }
-  if (operation.depth <= thickness - settings.height) return null; // the cut never reaches the tabs
+  // A cut that stops short of the bottom frees nothing, and tabs would leave bumps on its floor.
+  if (operation.depth < thickness) return null;
 
   const width = settings.width ?? defaultTabWidth(bit);
   let points: Vec2[];

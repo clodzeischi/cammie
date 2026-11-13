@@ -1,11 +1,14 @@
 import { distance, type Vec2 } from '../../geometry/path';
 import { APPROACH_CLEARANCE, type MoveWriter } from './moveWriter';
+import { surfaceAt } from './passes';
 
 export interface DrillParams {
   /** Hole centres in machine coordinates. */
   points: readonly Vec2[];
   /** Depth reached by each peck; the last one is the hole's full depth. */
   depths: readonly number[];
+  /** Depth already cleared above these holes by earlier cuts (0 = stock top). */
+  floor?: number;
 }
 
 /** Nearest-neighbour order from `start`, to keep the travel between holes short. */
@@ -29,10 +32,10 @@ export function orderPoints(points: readonly Vec2[], start: Vec2): Vec2[] {
  * after every peck but the last to clear the chips. The way back down is fed
  * at plunge speed, never rapid, so the tool can't crash into a clogged hole.
  */
-export function cutDrill(writer: MoveWriter, { points, depths }: DrillParams): void {
+export function cutDrill(writer: MoveWriter, { points, depths, floor = 0 }: DrillParams): void {
   const here = writer.position;
   for (const p of orderPoints(points, { x: here.x, y: here.y })) {
-    writer.approach(p, 0);
+    writer.approach(p, surfaceAt(floor));
     depths.forEach((depth, i) => {
       writer.follow([{ x: p.x, y: p.y, z: -depth }]);
       if (i < depths.length - 1) writer.rapid(p.x, p.y, APPROACH_CLEARANCE);
