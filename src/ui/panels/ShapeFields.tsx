@@ -40,7 +40,7 @@ export function PolygonFields(props: FieldsProps<PolygonShape>) {
   const set = changer(props);
   return (
     <fieldset>
-      <legend>Polygon</legend>
+      <legend>Shape</legend>
       <NumberField
         label="Sides"
         step={1}
@@ -57,7 +57,7 @@ export function StarFields(props: FieldsProps<StarShape>) {
   const set = changer(props);
   return (
     <fieldset>
-      <legend>Star</legend>
+      <legend>Shape</legend>
       <NumberField
         label="Points"
         step={1}
@@ -84,7 +84,7 @@ export function CogFields(props: FieldsProps<CogShape>) {
   const maxDepth = round2(maxToothDepth(shape.width));
   return (
     <fieldset>
-      <legend>Cog</legend>
+      <legend>Shape</legend>
       <NumberField
         label="Teeth"
         step={1}
@@ -133,7 +133,7 @@ export function PolylineFields(props: FieldsProps<PolylineShape>) {
   const closable = shape.points.length >= MIN_POINTS.closed;
   return (
     <fieldset>
-      <legend>{shape.smoothing > 0 ? 'Curve' : 'Line'}</legend>
+      <legend>Shape</legend>
       <RangeField
         label="Smoothing"
         unit="%"
@@ -162,11 +162,11 @@ export function PolylineFields(props: FieldsProps<PolylineShape>) {
           {editing ? 'Done editing points' : 'Edit points'}
         </button>
       </div>
-      <p className="field-hint">
-        {editing
-          ? 'Drag a point to move it (it snaps to the grid when snapping is on; hold Alt to place freely). Double-click the dashed line to add a point, or a point to remove it.'
-          : 'Or double-click the shape on the canvas.'}
-      </p>
+      {editing && (
+        <p className="field-hint">
+          Drag a point to move it. Double-click the line to add one, a point to remove it.
+        </p>
+      )}
     </fieldset>
   );
 }

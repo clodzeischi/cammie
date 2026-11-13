@@ -2,13 +2,12 @@ import type { Diagnostic } from '../../core/cam/program';
 import { cutKindOf } from '../../core/job/objectFactory';
 import { moveGroup, moveToolpath, toolpathGroups } from '../../core/job/toolpaths';
 import { bitDetail, findBit } from '../../core/tools/bits';
-import { useDialogStore } from '../../state/dialogStore';
 import { useJobStore } from '../../state/jobStore';
 import { useGeneratedJob } from '../../state/useGeneratedJob';
 import { useToolingStore } from '../../state/toolingStore';
 import { bitIcon } from '../bitIcons';
 import { CUT_KINDS } from '../cutKinds';
-import { Icon } from '../icons/Icon';
+import { Icon, type IconName } from '../icons/Icon';
 import { DiagnosticsList } from '../panels/DiagnosticsList';
 
 /** The worst problem reported for each toolpath, for the dot on its row. */
@@ -24,7 +23,7 @@ function severities(diagnostics: readonly Diagnostic[]) {
 /**
  * The cut plan, shown in the right panel while nothing is selected: every
  * cut, top to bottom in cut order. Each bit is one file; the steps between
- * files say what to do at the machine. Checks and auto-arrange sit underneath.
+ * files say what to do at the machine. Checks sit underneath.
  */
 export function CutPlan() {
   const toolpaths = useJobStore((s) => s.toolpaths);
@@ -61,9 +60,7 @@ export function CutPlan() {
                 {gi > 0 && (
                   <div className="toolpath-step">
                     <Icon name="bitChange" size={16} />
-                    <span>
-                      <b>Change bit</b> to {bit?.name ?? 'the next bit'}, then re-zero Z
-                    </span>
+                    <span>Change to the {bit?.name ?? 'next bit'}, re-zero Z</span>
                   </div>
                 )}
                 <div className="toolpath-group-head">
@@ -129,7 +126,7 @@ export function CutPlan() {
                               aria-label={problem === 'error' ? 'Has an error' : 'Has a warning'}
                             />
                           )}
-                          <span className="toolpath-depth">{t.operation.depth}</span>
+                          <span className="toolpath-depth">{t.operation.depth} mm</span>
                         </button>
                         <span className="row-actions">
                           <button
@@ -168,52 +165,33 @@ export function CutPlan() {
           })}
         </ol>
       )}
+      {/* With no cuts yet, the getting-started steps already say what's missing. */}
       {groups.length > 0 && (
-        <p className="pane-hint">
-          Top to bottom is the cut order. Each bit is one file. New cuts go where they're safest:
-          holes and pockets first, cut-outs last. Click a cut to change it.
-        </p>
-      )}
-      {objects.length > 0 && (
         <div className="toolpath-checks">
           <DiagnosticsList diagnostics={diagnostics} />
-        </div>
-      )}
-      {objects.length > 1 && (
-        <div className="plan-actions">
-          <button
-            type="button"
-            className="button button-small"
-            title="Pack the shapes onto the stock to leave as much room as possible"
-            onClick={() => useDialogStore.getState().show('arrange')}
-          >
-            <Icon name="nest" size={16} /> Arrange on stock
-          </button>
         </div>
       )}
     </section>
   );
 }
 
+const STEPS: ReadonlyArray<{ icon: IconName; text: string }> = [
+  { icon: 'stock', text: 'Set your stock, top left' },
+  { icon: 'rect', text: 'Draw or import a shape' },
+  { icon: 'plus', text: 'Select it and add a cut' },
+  { icon: 'export', text: 'Check it in 3D, then export' },
+];
+
 /** What to do first, while there's nothing to cut yet. */
 function GettingStarted({ hasShapes }: { hasShapes: boolean }) {
-  const openStock = () => useDialogStore.getState().show('stock');
   return (
     <ol className="getting-started">
-      <li>
-        Set your stock: size and material, with the{' '}
-        <button type="button" className="link-button" onClick={openStock}>
-          stock button
-        </button>{' '}
-        at the top.
-      </li>
-      <li className={hasShapes ? 'done' : undefined}>
-        Draw or import a design with the tools on the left.
-      </li>
-      <li>
-        Select a shape and pick <b>Add a cut</b>: engrave it, cut it out, clear the inside…
-      </li>
-      <li>Check the preview and 3D view, then Export.</li>
+      {STEPS.map(({ icon, text }, i) => (
+        <li key={icon} className={hasShapes && i < 2 ? 'done' : undefined}>
+          <Icon name={hasShapes && i < 2 ? 'check' : icon} size={18} />
+          {text}
+        </li>
+      ))}
     </ol>
   );
 }

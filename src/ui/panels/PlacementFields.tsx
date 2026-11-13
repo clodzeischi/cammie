@@ -12,6 +12,7 @@ import {
 } from '../../core/job/placement';
 import { useJobStore } from '../../state/jobStore';
 import { NumberField } from '../common/fields';
+import { Icon } from '../icons/Icon';
 import { AnchorPicker } from './AnchorPicker';
 
 interface PlacementFieldsProps {
@@ -53,8 +54,13 @@ export function PlacementFields({ object, onTransform, onPivot }: PlacementField
   return (
     <fieldset>
       <legend>Position & size</legend>
-      <AnchorPicker label="Pivot" value={pivot} onChange={onPivot} />
-      <div className="field-row">
+      <div className="placement-grid">
+        <AnchorPicker
+          compact
+          label={`Pivot: X/Y is the shape's ${PIVOT_NAMES[pivot]}, from the work origin`}
+          value={pivot}
+          onChange={onPivot}
+        />
         <NumberField
           label="X"
           unit="mm"
@@ -71,8 +77,8 @@ export function PlacementFields({ object, onTransform, onPivot }: PlacementField
             onTransform(withMachinePosition(object, origin, { ...position, y })),
           )}
         />
-      </div>
-      <div className="field-row">
+        <span />
+        <span />
         <NumberField
           label="Width"
           unit="mm"
@@ -85,24 +91,26 @@ export function PlacementFields({ object, onTransform, onPivot }: PlacementField
           value={size.height}
           onChange={positive((height) => onTransform(withSize(object, { height }, keepAspect)))}
         />
-      </div>
-      <label className="checkbox">
-        <input
-          type="checkbox"
-          checked={keepAspect}
-          onChange={(e) => setKeepAspect(e.target.checked)}
+        <button
+          type="button"
+          className={
+            keepAspect ? 'icon-button icon-button-on aspect-lock' : 'icon-button aspect-lock'
+          }
+          aria-pressed={keepAspect}
+          aria-label="Keep proportions"
+          title="Keep proportions"
+          onClick={() => setKeepAspect(!keepAspect)}
+        >
+          <Icon name="lock" size={16} />
+        </button>
+        <span />
+        <NumberField
+          label="Rotation"
+          unit="°"
+          value={object.transform.rotation}
+          onChange={finite((rotation) => onTransform(withRotation(object, rotation)))}
         />
-        Keep proportions
-      </label>
-      <NumberField
-        label="Rotation"
-        unit="°"
-        value={object.transform.rotation}
-        onChange={finite((rotation) => onTransform(withRotation(object, rotation)))}
-      />
-      <p className="field-hint">
-        X/Y is the shape's {PIVOT_NAMES[pivot]}, measured from the work origin.
-      </p>
+      </div>
     </fieldset>
   );
 }

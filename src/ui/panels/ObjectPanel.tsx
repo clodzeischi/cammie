@@ -2,6 +2,7 @@ import type { DesignObject } from '../../core/job/job';
 import { useJobStore } from '../../state/jobStore';
 import { ArrangeFields } from './ArrangeFields';
 import { ObjectCuts } from './ObjectCuts';
+import { PanelHeader, SelectionActions } from './PanelHeader';
 import { PlacementFields } from './PlacementFields';
 import { RectFields } from './RectFields';
 import { CogFields, PolygonFields, PolylineFields, StarFields } from './ShapeFields';
@@ -12,13 +13,11 @@ interface ObjectPanelProps {
 }
 
 /**
- * The inspector for one shape, in the order it's worked on: the shape's own
- * settings, how it's cut, where it sits, then aligning and grouping.
+ * The inspector for one shape, most-used first: its cuts (each opens in
+ * place), the shape's own settings, where it sits, then aligning.
  */
 export function ObjectPanel({ object }: ObjectPanelProps) {
   const updateObject = useJobStore((s) => s.updateObject);
-  const removeObjects = useJobStore((s) => s.removeObjects);
-  const select = useJobStore((s) => s.select);
   const setTransform = (transform: DesignObject['transform']) =>
     updateObject(object.id, { transform });
   const { shape } = object;
@@ -28,14 +27,8 @@ export function ObjectPanel({ object }: ObjectPanelProps) {
 
   return (
     <section className="panel" aria-label="Selected object">
-      <div className="panel-heading">
-        <button type="button" className="link-button" onClick={() => select(null)}>
-          Done
-        </button>
-        <h2 className="panel-title" title={object.name}>
-          {object.name}
-        </h2>
-      </div>
+      <PanelHeader title={object.name} actions={<SelectionActions />} />
+      <ObjectCuts objectId={object.id} />
       {shape?.type === 'text' && (
         <TextFields object={object} shape={shape} onTransform={setTransform} />
       )}
@@ -48,20 +41,12 @@ export function ObjectPanel({ object }: ObjectPanelProps) {
       {shape?.type === 'polyline' && (
         <PolylineFields object={object} shape={shape} onChange={rebuild} />
       )}
-      <ObjectCuts objectId={object.id} />
       <PlacementFields
         object={object}
         onTransform={setTransform}
         onPivot={(pivot) => updateObject(object.id, { pivot })}
       />
       <ArrangeFields />
-      <button
-        type="button"
-        className="button button-danger"
-        onClick={() => removeObjects([object.id])}
-      >
-        Delete shape
-      </button>
     </section>
   );
 }

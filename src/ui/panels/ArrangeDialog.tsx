@@ -10,7 +10,7 @@ import { useToolingStore } from '../../state/toolingStore';
 import { NumberField } from '../common/fields';
 import { Modal } from '../common/Modal';
 
-/** Packs shapes onto the stock (Arrange on stock, in the cut plan), with its options. */
+/** Packs shapes onto the stock (Arrange on stock, in the inspector), with its options. */
 export function ArrangeDialog({ onClose }: { onClose: () => void }) {
   const toolpaths = useJobStore((s) => s.toolpaths);
   const bits = useToolingStore((s) => s.bits);
@@ -40,9 +40,6 @@ export function ArrangeDialog({ onClose }: { onClose: () => void }) {
       footer={
         <>
           <span className="spacer" />
-          <button type="button" className="button" onClick={onClose}>
-            {leftOut === null ? 'Cancel' : 'Close'}
-          </button>
           <button type="button" className="button button-primary" disabled={!valid} onClick={run}>
             Arrange
           </button>

@@ -1,7 +1,8 @@
 import { GRID_SPACINGS } from '../../core/job/grid';
 import { useGridStore } from '../../state/gridStore';
+import { Icon } from '../icons/Icon';
 
-/** Cuts shown or not, snap on/off and grid size, in the canvas's corner toolbar. */
+/** Cut shading on/off, snap on/off and grid size, in the canvas's corner toolbar. */
 export function GridControls() {
   const spacing = useGridStore((s) => s.spacing);
   const snap = useGridStore((s) => s.snap);
@@ -12,20 +13,26 @@ export function GridControls() {
 
   return (
     <div className="grid-controls">
-      <label
-        className="checkbox"
-        title="Shade what each cut removes: a groove on the line, a band outside or inside it, or a filled pocket"
+      <button
+        type="button"
+        className={showCuts ? 'icon-button icon-button-on' : 'icon-button'}
+        aria-pressed={showCuts}
+        aria-label="Shade cuts"
+        title="Shade what each cut removes"
+        onClick={() => setShowCuts(!showCuts)}
       >
-        <input type="checkbox" checked={showCuts} onChange={(e) => setShowCuts(e.target.checked)} />
-        Cuts
-      </label>
-      <label
-        className="checkbox"
-        title="Objects and resize handles snap to the grid. Hold Alt/Option while dragging to place freely."
+        <Icon name="shading" size={18} />
+      </button>
+      <button
+        type="button"
+        className={snap ? 'icon-button icon-button-on' : 'icon-button'}
+        aria-pressed={snap}
+        aria-label="Snap to grid"
+        title="Snap to grid (hold Alt to place freely)"
+        onClick={() => setSnap(!snap)}
       >
-        <input type="checkbox" checked={snap} onChange={(e) => setSnap(e.target.checked)} />
-        Snap
-      </label>
+        <Icon name="magnet" size={18} />
+      </button>
       <select
         aria-label="Grid size"
         title="Grid size"

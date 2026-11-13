@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { defaultTabWidth } from '../../core/cam/profilePlan';
 import { canCut } from '../../core/job/bitCapabilities';
 import type { Operation } from '../../core/job/job';
@@ -11,7 +10,6 @@ import { NumberField, SelectField } from '../common/fields';
 import { CUT_KIND_ORDER, CUT_KINDS } from '../cutKinds';
 import { AdvancedCutFields } from './AdvancedCutFields';
 import { depthHint, round2 } from './describeCut';
-import { BitLibraryDialog } from './BitLibraryDialog';
 import { ChamferFields } from './ChamferFields';
 import { FeedsFields } from './FeedsFields';
 import { TabFields } from './TabFields';
@@ -22,7 +20,6 @@ interface CutFieldsProps {
   operation: Operation;
   /** `kindChanged` is true when the cut type changed, so the toolpath can move to its natural place. */
   onChange: (operation: Operation, kindChanged: boolean) => void;
-  onRemove: () => void;
 }
 
 const KIND_OPTIONS: ReadonlyArray<{ value: CutKind; label: string }> = CUT_KIND_ORDER.map(
@@ -42,11 +39,10 @@ function keptDepth(op: Operation, from: Bit | undefined, to: Bit | undefined): n
 }
 
 /** Bit, cut type, depth, feeds, advanced options and tabs for one toolpath. */
-export function CutFields({ toolpathId, operation, onChange: change, onRemove }: CutFieldsProps) {
+export function CutFields({ toolpathId, operation, onChange: change }: CutFieldsProps) {
   const materialId = useJobStore((s) => s.materialId);
   const thickness = useJobStore((s) => s.stock.thickness);
   const bits = useToolingStore((s) => s.bits);
-  const [libraryOpen, setLibraryOpen] = useState(false);
 
   const onChange = (next: Operation) => change(next, cutKindOf(next) !== cutKindOf(operation));
   const kind = cutKindOf(operation);
@@ -65,17 +61,13 @@ export function CutFields({ toolpathId, operation, onChange: change, onRemove }:
   const depthValid = Number.isFinite(operation.depth) && operation.depth > 0;
 
   return (
-    <fieldset>
-      <legend>Cut</legend>
+    <div className="cut-fields">
       <SelectField
         label="Bit"
         value={operation.bitId}
         options={bits.map((b) => ({ value: b.id, label: b.name }))}
         onChange={setBit}
       />
-      <button type="button" className="link-button" onClick={() => setLibraryOpen(true)}>
-        Manage bits…
-      </button>
       <SelectField
         label="Cut type"
         value={kind}
@@ -83,7 +75,7 @@ export function CutFields({ toolpathId, operation, onChange: change, onRemove }:
         onChange={(k) => onChange(withCutKind(operation, k))}
       />
       {bit && !canCut(bit, 'outside') && (
-        <p className="field-hint">Pick an end mill to cut parts out, cut holes or clear pockets.</p>
+        <p className="field-hint">Cut-outs, holes and pockets need an end mill.</p>
       )}
       {operation.type === 'vcarve' ? (
         <VCarveFields
@@ -108,7 +100,7 @@ export function CutFields({ toolpathId, operation, onChange: change, onRemove }:
       )}
       {THROUGH_KINDS.includes(kind) && operation.depth !== throughDepth && (
         <button type="button" className="link-button" onClick={() => set({ depth: throughDepth })}>
-          Cut through the stock ({throughDepth} mm)
+          Cut through ({throughDepth} mm)
         </button>
       )}
 
@@ -120,15 +112,10 @@ export function CutFields({ toolpathId, operation, onChange: change, onRemove }:
         <TabFields
           tabs={operation.tabs}
           autoWidth={defaultTabWidth(bit)}
-          through={operation.depth > thickness - operation.tabs.height}
+          through={operation.depth >= thickness}
           onChange={(tabs) => onChange({ ...operation, tabs })}
         />
       )}
-
-      <button type="button" className="button button-danger" onClick={onRemove}>
-        Delete toolpath
-      </button>
-      {libraryOpen && <BitLibraryDialog onClose={() => setLibraryOpen(false)} />}
-    </fieldset>
+    </div>
   );
 }

@@ -7,29 +7,19 @@ export function SettingsMenu() {
   const show = useDialogStore((s) => s.show);
   return (
     <MenuButton
-      className="button"
+      className="button icon-only"
       title="Machine and bits"
       ariaLabel="Settings"
       menuLabel="Settings"
       align="right"
       items={
         <>
-          <MenuItem
-            icon="machine"
-            label="Machine…"
-            detail="Work area, speeds, spindle, G-code"
-            onClick={() => show('machine')}
-          />
-          <MenuItem
-            icon="bits"
-            label="Bits…"
-            detail="Built-in bits and your own"
-            onClick={() => show('bits')}
-          />
+          <MenuItem icon="machine" label="Machine…" onClick={() => show('machine')} />
+          <MenuItem icon="bits" label="Bits…" onClick={() => show('bits')} />
         </>
       }
     >
-      <Icon name="settings" size={16} />
+      <Icon name="settings" size={18} />
     </MenuButton>
   );
 }

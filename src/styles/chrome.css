@@ -4,11 +4,11 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
+  padding: 4px 8px;
+  border: 1px solid transparent;
   border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
+  background: transparent;
+  color: var(--text-muted);
   font: inherit;
   font-size: 13px;
   white-space: nowrap;
@@ -21,14 +21,21 @@
 }
 
 .stock-button:hover {
+  border-color: var(--border);
   background: var(--surface-sunken);
+  color: var(--text);
 }
 
 .history-buttons {
   display: flex;
-  gap: 4px;
-  padding-right: 8px;
-  border-right: 1px solid var(--border);
+  gap: 2px;
+}
+
+.header-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--border);
 }
 
 .export-badge {
@@ -184,35 +191,37 @@
   border-right: 0;
 }
 
-.plan-actions {
-  margin: 0 10px 16px;
-}
-
-.plan-actions .button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
 .getting-started {
-  margin: 10px;
-  padding: 10px 10px 10px 30px;
-  border-radius: var(--radius);
+  margin: 12px;
+  padding: 6px;
+  list-style: none;
+  border-radius: 8px;
   background: var(--surface-sunken);
-  color: var(--text-muted);
   font-size: 13px;
-  line-height: 1.5;
 }
 
-.getting-started li + li {
-  margin-top: 6px;
+.getting-started li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+}
+
+.getting-started .icon {
+  color: var(--accent);
 }
 
 .getting-started li.done {
-  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.getting-started li.done .icon {
+  color: var(--cut-inside);
 }
 
 .add-cut-button {
   align-self: flex-start;
-  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }

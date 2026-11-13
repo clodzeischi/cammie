@@ -28,11 +28,7 @@ export function TabFields({ tabs, autoWidth, through, onChange }: TabFieldsProps
       </label>
       {tabs.enabled && (
         <>
-          {!through && (
-            <p className="field-hint">
-              Tabs only apply once the cut goes deeper than the tab height.
-            </p>
-          )}
+          {!through && <p className="field-hint">Only for cuts that go right through.</p>}
           <div className="field-row">
             <NumberField
               label="Per loop"
@@ -52,12 +48,11 @@ export function TabFields({ tabs, autoWidth, through, onChange }: TabFieldsProps
             unit="mm"
             placeholder={`Auto (${Math.round(autoWidth * 10) / 10})`}
             value={tabs.width ?? Number.NaN}
-            hint="Includes the bit, so the tab left on the part is about this minus the bit diameter."
             onChange={(v) => set({ width: optional(v) })}
           />
           <p className="field-hint">
-            {tabs.manual ? `${tabs.manual.length} tab(s) placed by hand.` : 'Placed automatically.'}{' '}
-            Click the cut in Preview to add or remove tabs.
+            {tabs.manual ? `${tabs.manual.length} placed by hand. ` : ''}Click the cut in Preview to
+            add or remove tabs.
           </p>
           {tabs.manual && (
             <button type="button" className="link-button" onClick={() => set({ manual: null })}>

@@ -1,5 +1,5 @@
 import type Konva from 'konva';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Stage } from 'react-konva';
 import type { ObjectTabs } from '../../core/cam/program';
 import { anchorPoint } from '../../core/job/job';
@@ -13,8 +13,8 @@ import { useJobStore } from '../../state/jobStore';
 import { useToolingStore } from '../../state/toolingStore';
 import { useCanvasColors } from './canvasColors';
 import { DrawingLayer } from './DrawingLayer';
+import { Icon } from '../icons/Icon';
 import { GridControls } from './GridControls';
-import { CanvasContextMenu } from './CanvasContextMenu';
 import { CutFootprintLayer } from './CutFootprintLayer';
 import { ObjectsLayer } from './ObjectsLayer';
 import { PivotMarker } from './PivotMarker';
@@ -96,19 +96,6 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
   };
 
   const isStage = (e: Konva.KonvaEventObject<unknown>) => e.target === e.target.getStage();
-  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
-
-  /** Right-click: picks the shape under the pointer (keeping a selection it's part of), then opens the menu. */
-  const onContextMenu = (e: Konva.KonvaEventObject<PointerEvent>) => {
-    e.evt.preventDefault();
-    if (preview || useDrawStore.getState().tool) return;
-    const ids = new Set(objects.map((o) => o.id));
-    let node: Konva.Node | null = e.target;
-    while (node && !ids.has(node.id())) node = node.getParent();
-    if (node) select(node.id(), 'keep');
-    else select(null);
-    setMenuAt({ x: e.evt.clientX, y: e.evt.clientY });
-  };
   const pressedAt = useRef<{ x: number; y: number } | null>(null);
 
   /** In preview, clicking near a cut-out's toolpath adds or removes a tab. */
@@ -145,7 +132,8 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
           }}
           onClick={onPreviewClick}
           onTap={(e) => isStage(e) && select(null)}
-          onContextMenu={onContextMenu}
+          // No right-click menu: every command has one home in the panel or a shortcut.
+          onContextMenu={(e) => e.evt.preventDefault()}
         >
           <StockLayer
             stock={stock}
@@ -196,33 +184,44 @@ export function DesignCanvas({ preview }: DesignCanvasProps) {
           {preview && <TabMarkers tabs={preview.tabs} scale={view.scale} colors={colors} />}
         </Stage>
       )}
-      {menuAt && <CanvasContextMenu {...menuAt} onClose={() => setMenuAt(null)} />}
       {drawing && !preview && (
         <p className="canvas-hint" role="status">
-          Click to place points. Click the first point to close the shape; double-click or press
-          Enter to finish an open line. Backspace takes back a point, Esc cancels.
+          Click to add points · click the first point to close · Enter to finish · Esc to cancel
         </p>
       )}
       <div className="canvas-zoom">
-        {!preview && <GridControls />}
-        <button
-          type="button"
-          className="icon-button"
-          aria-label="Zoom in"
-          onClick={() => zoomCentre(1.25)}
-        >
-          +
-        </button>
+        {!preview && (
+          <>
+            <GridControls />
+            <span className="toolbar-divider" />
+          </>
+        )}
         <button
           type="button"
           className="icon-button"
           aria-label="Zoom out"
+          title="Zoom out"
           onClick={() => zoomCentre(0.8)}
         >
-          −
+          <Icon name="minus" size={18} />
         </button>
-        <button type="button" className="button button-small" onClick={fit}>
-          Fit
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Zoom in"
+          title="Zoom in"
+          onClick={() => zoomCentre(1.25)}
+        >
+          <Icon name="plus" size={18} />
+        </button>
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Fit"
+          title="Fit the stock in view"
+          onClick={fit}
+        >
+          <Icon name="fit" size={18} />
         </button>
       </div>
     </div>

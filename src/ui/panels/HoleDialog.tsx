@@ -45,9 +45,6 @@ export function HoleDialog({ onClose }: { onClose: () => void }) {
       footer={
         <>
           <span className="spacer" />
-          <button type="button" className="button" onClick={onClose}>
-            Cancel
-          </button>
           <button
             type="button"
             className="button button-primary"

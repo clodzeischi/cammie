@@ -88,9 +88,6 @@ export function TraceDialog({
             {result ? `${outlineCount} outline${outlineCount === 1 ? '' : 's'}` : 'Tracing…'}
           </span>
           <span className="spacer" />
-          <button type="button" className="button" onClick={onClose}>
-            Cancel
-          </button>
           <button
             type="button"
             className="button button-primary"

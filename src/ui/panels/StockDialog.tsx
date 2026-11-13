@@ -11,9 +11,9 @@ interface StockDialogProps {
 }
 
 /**
- * Stock size, material and work origin (Setup → Stock & material, or the
- * summary in the header). Changes apply as they're typed and are remembered
- * for the next job.
+ * Stock size, material and work origin (the stock summary in the header).
+ * Changes apply as they're typed and are remembered for the next job, so
+ * there's nothing to confirm: × or Esc closes it.
  */
 export function StockDialog({ onClose }: StockDialogProps) {
   const stock = useJobStore((s) => s.stock);
@@ -29,21 +29,10 @@ export function StockDialog({ onClose }: StockDialogProps) {
   };
 
   return (
-    <Modal
-      title="Stock & material"
-      onClose={onClose}
-      footer={
-        <>
-          <span className="spacer" />
-          <button type="button" className="button button-primary" onClick={onClose}>
-            Done
-          </button>
-        </>
-      }
-    >
+    <Modal title="Stock & material" onClose={onClose}>
       <fieldset>
         <legend>Stock</legend>
-        <div className="field-row">
+        <div className="field-row field-row-3">
           <NumberField
             label="Width"
             unit="mm"
@@ -56,13 +45,13 @@ export function StockDialog({ onClose }: StockDialogProps) {
             value={stock.height}
             onChange={positive((height) => setStock({ height }))}
           />
+          <NumberField
+            label="Thickness"
+            unit="mm"
+            value={stock.thickness}
+            onChange={positive((thickness) => setStock({ thickness }))}
+          />
         </div>
-        <NumberField
-          label="Thickness"
-          unit="mm"
-          value={stock.thickness}
-          onChange={positive((thickness) => setStock({ thickness }))}
-        />
         <SelectField
           label="Material"
           value={materialId}

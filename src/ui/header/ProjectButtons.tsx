@@ -5,6 +5,7 @@ import { useJobStore } from '../../state/jobStore';
 import { currentProject, openProject } from '../../state/projectActions';
 import { IS_MAC, MOD_KEY } from '../common/platform';
 import { Toast, type ToastMessage } from '../common/Toast';
+import { MenuButton, MenuItem } from '../common/Menu';
 import { Icon } from '../icons/Icon';
 
 interface ProjectButtonsProps {
@@ -12,7 +13,7 @@ interface ProjectButtonsProps {
   notice: string | null;
 }
 
-/** New, Open and Save for `.cammie` project files, with ⌘O / ⌘S. */
+/** The File menu: New, Open and Save for `.cammie` project files, with ⌘O / ⌘S. */
 export function ProjectButtons({ notice }: ProjectButtonsProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
@@ -71,37 +72,28 @@ export function ProjectButtons({ notice }: ProjectButtonsProps) {
   }, [save]);
 
   return (
-    <div className="project-buttons" role="group" aria-label="Project">
-      <button
-        type="button"
-        className="button"
-        title="Start a new design"
-        aria-label="New"
-        onClick={startNew}
+    <>
+      <MenuButton
+        className="button icon-only"
+        title="File"
+        ariaLabel="File"
+        menuLabel="File"
+        align="right"
+        items={
+          <>
+            <MenuItem icon="newFile" label="New" onClick={startNew} />
+            <MenuItem
+              icon="open"
+              label="Open…"
+              shortcut={`${MOD_KEY}O`}
+              onClick={() => inputRef.current?.click()}
+            />
+            <MenuItem icon="save" label="Save" shortcut={`${MOD_KEY}S`} onClick={save} />
+          </>
+        }
       >
-        <Icon name="newFile" size={16} />
-        <span className="button-text">New</span>
-      </button>
-      <button
-        type="button"
-        className="button"
-        title={`Open a ${PROJECT_EXTENSION} project (${MOD_KEY}O)`}
-        aria-label="Open"
-        onClick={() => inputRef.current?.click()}
-      >
-        <Icon name="open" size={16} />
-        <span className="button-text">Open</span>
-      </button>
-      <button
-        type="button"
-        className="button"
-        title={`Save the design as a ${PROJECT_EXTENSION} file (${MOD_KEY}S)`}
-        aria-label="Save"
-        onClick={save}
-      >
-        <Icon name="save" size={16} />
-        <span className="button-text">Save</span>
-      </button>
+        <Icon name="open" size={18} />
+      </MenuButton>
       <input
         ref={inputRef}
         type="file"
@@ -111,6 +103,6 @@ export function ProjectButtons({ notice }: ProjectButtonsProps) {
         onChange={(e) => void open(e.target.files?.[0])}
       />
       {shown && <Toast message={shown} onDismiss={dismiss} />}
-    </div>
+    </>
   );
 }

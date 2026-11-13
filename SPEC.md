@@ -39,32 +39,39 @@ stale `cammie.mode.v1` key is ignored. The ribbon was replaced by the tool rail 
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────┐
-│ Cammie [job name] [▣ MDF · 200×150×12 mm]     ↶ ↷  New Open Save  ⚙  [Export •2]│
+│ Cammie  job name  ▣ MDF · 200×150×12 mm                 ↶ ↷ │ 🗀  ⚙  [Export •2]│
 ├────┬─────────────────────────────────────────────────┬─────────────────────────┤
-│ ↖  │          [Design | Preview] [3D]                │ CUT PLAN                │
-│ ✎  │                                                 │ ① V-bit 60°             │
-│ ∿  │                                                 │    Star · Engrave …     │
-│ ── │                  canvas                         │ ↻ Change bit            │
-│ T  │                                                 │ ② End mill 3.175        │
-│ ▭ ◯│                                                 │    Rect · Cut it out    │
-│ ⬡ ☆│                                                 │ Checks                  │
-│ ⚙ ⊙│                                                 │ [Arrange on stock]      │
-│ ── │                                                 │  (or, with a selection, │
-│ ⤓  │                    Cuts ☑ Snap ☑ 10 mm − + Fit  │   the inspector)        │
+│ ↖  │        [✎ Design | ▷ Preview] [⬡ 3D]            │ Rectangle      ⧉ 🗑 ✕   │
+│ ✎  │                                                 │ CUTS                    │
+│ ∿  │                                                 │ ┌ ▣ Cut it out      ⌃ 🗑┐│
+│ ── │                  canvas                         │ │  bit, depth, feeds… ││
+│ T  │                                                 │ └────────────────────┘│
+│ ▭ ◯│                                                 │ [+ Add a cut]           │
+│ ⬡ ☆│                                                 │ SHAPE · POSITION & SIZE │
+│ ⚙ ⊙│                                                 │ ARRANGE  ⊫ ⊪ … ⊞ ▦      │
+│ ── │                                                 │                         │
+│ ⤓  │                     ▨ ⋓ 10 mm │ − + ⛶          │ (nothing selected:      │
+│    │                                                 │  the cut plan)          │
 └────┴─────────────────────────────────────────────────┴─────────────────────────┘
 ```
 
-- **Header**: job name; the **stock button** ("MDF · 200 × 150 × 12 mm"), the only place to change stock size, material and work origin (a dialog; changes apply as typed); Undo/Redo; *New* (asks first if there's a design), *Open…* (⌘/Ctrl-O) and *Save* (⌘/Ctrl-S, downloads `<job>.cammie`, §13.4); **⚙ Settings** menu (*Machine…*, *Bits…*); **Export**, with a red count of problems that block it or an amber count of warnings (tooltip says where to look; nothing shown for an empty job).
+**Every command has one home.** There is no right-click menu (removed 2026-11-11): each command
+lives in exactly one visible place, plus its keyboard shortcut. Rarely changed things (stock,
+machine, bits, files) sit quietly in the header; what's used on every shape (cuts) comes first in
+the panel. Labels are short; longer explanations are tooltips.
+
+- **Header**: job name; beside it the **stock** in one quiet line ("MDF · 200 × 150 × 12 mm"), the only place to change stock size, material and work origin (a dialog; changes apply as typed, so it has no Done button); Undo/Redo icons; the **File** menu (folder icon: *New*, asking first if there's a design; *Open…* ⌘/Ctrl-O; *Save* ⌘/Ctrl-S, downloads `<job>.cammie`, §13.4); **⚙ Settings** menu (*Machine…*, *Bits…*, the only way to the bit library); **Export**, with a red count of problems that block it or an amber count of warnings (tooltip says where to look; nothing shown for an empty job).
+- **Dialogs** close with × or Esc. Dialogs that apply changes as they're made (stock, bits) have no footer; the others have only their action (*Add hole*, *Arrange*, *Save*…), no Cancel.
 - **Tool rail** (left; icons with tooltips giving name, key and what it does). Single-key shortcuts when not typing and no modifier is held: *Select* V, *Line* L, *Curve* C · *Text* T, *Rectangle* R, *Circle* E, *Polygon* P, *Star* S, *Cog* G, *Hole* H · *Import* I. Line/Curve show pressed while drawing; Select stops drawing and point editing.
-- **Canvas toolbar**: *Design | Preview* (§10) and the **3D** toggle (§10.1), each in exactly one place. Bottom right: *Cuts*, *Snap*, grid size, zoom, Fit.
-- **Right panel** (always there, 300 px):
-  - **Nothing selected → Cut plan**: every cut in cut order, one group per bit (= one `.nc` file) with a "Change bit, then re-zero Z" step between groups; rows and whole files move up/down; rows show a dot when they have a warning or error; clicking a row opens that cut. Underneath: **Checks** (§9.6; clicking one opens its cut or shape) and *Arrange on stock* (§6.4, with two or more shapes). An empty job shows four getting-started steps instead (set stock → draw or import → select a shape and *Add a cut* → preview and Export).
-  - **One shape → inspector**, in working order: the shape's own settings (text, corner radius, sides, teeth, smoothing…); **Cuts** (its cuts, each opening its settings, and one **+ Add a cut** menu); **Position & size**; **Align & group**; *Delete shape*. *Done* deselects (back to the plan).
-  - **Several shapes**: *+ Add a cut to N shapes*, Align & group, Delete.
-  - **A cut** (from the plan or the shape): one plain sentence saying what it will do, then its settings (§9). "← shape name" goes back to the shape.
+- **Canvas toolbar**: *Design | Preview* (§10) and the **3D** toggle (§10.1), each in exactly one place, with icons. Bottom right, as icons: shade cuts, snap, grid size | zoom out, zoom in, fit.
+- **Right panel** (always there, 340 px):
+  - **Nothing selected → Cut plan**: every cut in cut order, one group per bit (= one `.nc` file) with a "Change to the …, re-zero Z" step between groups; rows and whole files move up/down; rows show a dot when they have a warning or error; clicking a row selects its shape with that cut open. Underneath: **Checks** (§9.6; clicking one opens its cut or shape). With no cuts yet it shows four short getting-started steps instead (stock → draw or import → add a cut → check in 3D and export), ticking off the first two once there are shapes.
+  - **One shape → inspector**. A sticky title row: the shape's name and icon buttons *Duplicate*, *Group*/*Ungroup* (when possible), *Delete* and *✕* (deselect, back to the plan; also Esc). Then, most-used first: **Cuts** (a card per cut; clicking one opens its settings in place, one at a time, with a delete icon; **+ Add a cut**, the accent button while the shape has none); **Shape** (text, corner radius, sides, teeth, smoothing…); **Position & size** (a small pivot grid beside X/Y, W/H with a proportions lock, rotation; the pivot's meaning is its tooltip); **Arrange** (one row of icons: six alignments, *Centre on stock*, *Arrange on stock…*).
+  - **Several shapes**: the same title row ("N shapes"), *+ Add a cut to N shapes*, Arrange.
+  - **A cut's settings** (§9): bit, cut type, depth (or the V-carve / chamfer fields), *Feeds & speeds* and *Advanced* folded away, tabs for cut-outs and holes. The card's tooltip is one plain sentence saying what it will do.
 - **Cut names are plain words**, with the CAM term underneath in menus and the cut panel: *Engrave the line* (Engrave), *Cut it out* (Profile outside), *Cut a hole* (Profile inside), *Clear the inside* (Pocket), *Carve with a V-bit* (V-carve), *Bevel the edges* (Chamfer), *Drill*. "Toolpath" doesn't appear in the interface; the code keeps its names.
-- **Add a cut** menu: each kind with its icon in the cut's colour, the plain name, and "term · what it does". Picking one adds it to every selected shape with a suitable bit (see `bitForNewCut`) and opens it.
-- **Right-click on the canvas**: on a shape, it's picked (keeping a selection it belongs to) and the menu offers *Add a cut* (the same list), *Edit points* (lines and curves), Cut/Copy/Paste, Duplicate, Group/Ungroup, Delete, with their shortcuts. On empty canvas: Paste, Select all, *Arrange on stock…*, *Stock & material…*.
+- **Add a cut** menu: each kind with its icon in the cut's colour, the plain name, and the CAM term. Picking one adds it to every selected shape with a suitable bit (see `bitForNewCut`) and opens it.
+- **Keyboard only**: Cut/Copy/Paste (⌘X/C/V), Select all (⌘A); Delete/Backspace deletes the selected shapes (a cut is deleted with its card's delete icon).
 - **New shapes start uncut**.
 - **Hole** (tool rail, H): asks for diameter (default 6 mm), depth (default stock + 0.2 mm, i.e. through) and an end mill (default: the one the job already uses for holes). Adds a circle named "Hole Ø…" with a **Drill** cut when the bit is within 0.05 mm of the hole's size, otherwise **Cut a hole**; a bit wider than the hole is refused. The hole is then an ordinary shape.
 - **Canvas**: stock rectangle drawn to scale, mm grid, rulers, selectable origin marker, dashed outline of machine work area. Pan (space/middle-drag), zoom (wheel/pinch).
@@ -179,7 +186,7 @@ interface Path { points: Vec2[]; closed: boolean; }
 - **Editing points**: double-click the shape (or *Edit points* in the panel) to show a handle on every point and a dashed line joining them. Dragging a handle moves that point (snapping like drawing); double-clicking the dashed line adds a point there, double-clicking a handle removes it (never below 2 points open / 3 closed). Other points stay where they were. While editing, the shape doesn't drag or show resize handles; Esc, Enter, *Done editing points* or selecting something else ends it.
 
 ### 6.4 Auto-arrange (nesting)
-- *Arrange on stock* (cut plan, or right-click on empty canvas) packs shapes onto the stock so the space left over is one large area: the selection (with whole groups), or every shape. Unselected shapes stay put and are worked around.
+- *Arrange on stock* (the Arrange row in the inspector) packs shapes onto the stock so the space left over is one large area: the selection, with whole groups (⌘A first for every shape). Unselected shapes stay put and are worked around.
 - Parts: a group, or a shape together with every shape whose box lies entirely inside its box (text on a plaque). Shapes that merely overlap, like pasted copies, are separate parts.
 - Each part is packed by the box around its actual outline. Unless *Keep each shape's rotation* is ticked (remembered in `cammie.arrange.v1`), it may turn by 90° or to the angle that gives the tightest box (from the convex hull; the best box has a side along a hull edge).
 - Packing: MaxRects free-space list, top-left first; each part takes the spot and turn whose bottom edge, then right edge, is lowest. Several orders (area, longest side, height, width) are tried; the layout leaving fewest parts out, then the most compact one, wins. *Spacing* (default: widest groove any toolpath cuts + 2 mm, rounded up to 0.5 mm) is kept between parts and from the stock's edges.
@@ -314,7 +321,7 @@ interface TabSettings { enabled: boolean; count: number; width: number; height: 
 - Chains that touch form a piece (roughly a letter); each piece is joined into as few continuous lines as possible (starting at dead ends) and carved completely before the next, nearest first. Lines are simplified in 3D to 0.01 mm.
 - Step-down: pass floors from `passDepths(deepest, depthPerPass)`. The first pass follows every line flattened at its floor; later passes only the stretches below the previous floor. Lines are split exactly where they cross each floor, so slopes stay true.
 - **No flat-bottom / clearing tool yet** (phase 6). Warnings: deeper than the cut's "Warn deeper than" (default half the stock thickness, settable per cut); deeper than the stock; wider than the bit by more than 0.3 mm (the middle is left uncarved); strokes narrower than the tip.
-- The cut panel shows the deepest point and its width at the surface instead of a depth field.
+- The cut's settings show the deepest point and its width at the surface instead of a depth field.
 - Preview: each move drawn as wide as the groove at its deeper end (in 0.05 mm steps).
 
 ### 9.6 Validation & warnings
@@ -352,7 +359,7 @@ Within a bit's file:
 ### 9.11 Cut footprints on the design
 - In Design view (not the toolpath preview), every toolpath's footprint is shaded under the outlines at 35 % opacity, in its cut type's colour (the same colours as the toolpath list): **Engrave** a groove as wide as the bit cuts at that depth, centred on the line; **Profile outside / inside** a band one groove wide just outside / inside the line (centred on the line offset by half a groove); **Pocket** and **V-carve** the whole area (even-odd, islands stay clear); **Chamfer** a band of the chamfer's width on the kept side (into the part for outside, around the hole for inside); **Drill** a bit-sized disc at each hole centre.
 - Computed in the object's own space (`src/core/cam/cutFootprint.ts`; sizes divided by the object's average scale) and drawn with its transform, so it follows shapes live while they're dragged. It's a quick picture of the cut, not the toolpath: tabs, passes and entry moves show in the preview.
-- The *Cuts* checkbox beside Snap turns it off.
+- The *shade cuts* icon beside Snap turns it off.
 
 ---
 

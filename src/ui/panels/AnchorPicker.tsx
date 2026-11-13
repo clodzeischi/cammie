@@ -7,14 +7,38 @@ interface AnchorPickerProps {
   hint?: string;
   value: OriginAnchor;
   onChange: (anchor: OriginAnchor) => void;
+  /** Just the small grid, with the label as its tooltip. */
+  compact?: boolean;
 }
 
 const anchorName = (anchor: OriginAnchor) =>
   anchor === 'center' ? 'center' : anchor.replace('-', ' ');
 
 /** 3 × 3 grid of points on a box (the stock, or a shape); one is picked. */
-export function AnchorPicker({ label, hint, value, onChange }: AnchorPickerProps) {
+export function AnchorPicker({ label, hint, value, onChange, compact }: AnchorPickerProps) {
   const labelId = useId();
+  if (compact) {
+    return (
+      <div
+        className="origin-picker origin-picker-compact"
+        role="radiogroup"
+        aria-label={label}
+        title={label}
+      >
+        {ORIGIN_ANCHORS.map((anchor) => (
+          <button
+            key={anchor}
+            type="button"
+            role="radio"
+            aria-checked={anchor === value}
+            aria-label={anchorName(anchor)}
+            className={anchor === value ? 'origin-dot origin-dot-active' : 'origin-dot'}
+            onClick={() => onChange(anchor)}
+          />
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="field">
       <span className="field-label" id={labelId}>

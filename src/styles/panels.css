@@ -26,6 +26,33 @@
   background: var(--accent);
 }
 
+/* The shape's pivot, beside its X / Y and size fields. */
+.origin-picker-compact {
+  width: 44px;
+  height: 44px;
+  padding: 3px;
+  align-self: end;
+}
+
+.origin-picker-compact .origin-dot {
+  width: 9px;
+  height: 9px;
+  border-width: 1.5px;
+}
+
+/* Pivot | X | Y  /  – | W | H | lock  /  – | Rotation */
+.placement-grid {
+  display: grid;
+  grid-template-columns: 44px 1fr 1fr 30px;
+  gap: 10px 8px;
+  align-items: end;
+}
+
+.aspect-lock {
+  width: 30px;
+  height: 31px;
+}
+
 /* ---------- Checks ---------- */
 .checks {
   margin: 0;
@@ -102,13 +129,6 @@
 .scrubber {
   flex: 1;
   min-width: 160px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.scrubber input {
-  flex: 1;
 }
 
 /* ---------- Trace dialog ---------- */
@@ -209,24 +229,19 @@ input[type='checkbox'] {
 /* ---------- Arrange & text ---------- */
 .align-buttons {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 0;
 }
 
 .align-buttons .icon-button {
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--border);
+  width: 30px;
+  height: 30px;
 }
 
 .button-row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-}
-
-/* A label for controls that aren't a single input (e.g. the alignment buttons). */
-.field-label {
-  font-weight: 500;
 }
 
 /* In the side panel the segmented control sits flat, like an input. */
@@ -239,4 +254,23 @@ input[type='checkbox'] {
   flex: 1;
   padding: 5px 4px;
   font-size: 12px;
+}
+
+/* Checks under the cut plan: headed like the plan, quiet until hovered. */
+.toolpath-checks .panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.check .link-button {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.check .link-button:hover {
+  color: var(--accent);
+  text-decoration: none;
 }

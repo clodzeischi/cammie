@@ -87,20 +87,14 @@ export default function StockView3D() {
             </button>
           ))}
         </div>
-        {result && (
+        {result && (loose > 0 || result.maxSpoil > 0.01) && (
           <ul className="stock-3d-notes small">
             {loose > 0 && (
               <li className="stock-3d-loose">
-                {loose === 1 ? '1 piece comes loose' : `${loose} pieces come loose`} (shown lifted
-                out and highlighted). Add tabs if it should stay put.
+                {loose === 1 ? '1 piece comes loose' : `${loose} pieces come loose`}: add tabs
               </li>
             )}
-            {result.maxSpoil > 0.01 && (
-              <li>Cuts up to {round2(result.maxSpoil)} mm into the spoilboard.</li>
-            )}
-            <li className="muted">
-              Shows the result of every file, accurate to about {round2(result.cell)} mm.
-            </li>
+            {result.maxSpoil > 0.01 && <li>{round2(result.maxSpoil)} mm into the spoilboard</li>}
           </ul>
         )}
       </div>

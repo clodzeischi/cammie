@@ -16,7 +16,7 @@ export function RectFields({ object, shape, onChange }: RectFieldsProps) {
   const max = round2(maxCornerRadius(shape.width, shape.height));
   return (
     <fieldset>
-      <legend>Rectangle</legend>
+      <legend>Shape</legend>
       <NumberField
         label="Corner radius"
         unit="mm"

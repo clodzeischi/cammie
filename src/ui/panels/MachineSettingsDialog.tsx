@@ -36,9 +36,6 @@ export function MachineSettingsDialog({ onClose }: MachineSettingsDialogProps) {
             Reset to defaults
           </button>
           <span className="spacer" />
-          <button type="button" className="button" onClick={onClose}>
-            Cancel
-          </button>
           <button
             type="button"
             className="button button-primary"

@@ -90,8 +90,45 @@ h2 {
   cursor: pointer;
 }
 
-.icon-button:hover {
+.icon-button:hover:not(:disabled) {
   background: var(--surface-sunken);
+  color: var(--text);
+}
+
+.icon-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+}
+
+.icon-button-on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* Icon-only buttons in the header: borderless until hovered. */
+.button.icon-only {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.button.icon-only:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.button.icon-only[aria-expanded='true'] {
+  background: var(--surface-sunken);
+  color: var(--text);
 }
 
 /* ---------- Forms ---------- */
@@ -111,18 +148,22 @@ fieldset {
 }
 
 legend {
-  padding: 0 0 4px;
+  padding: 0 0 2px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.07em;
   color: var(--text-muted);
 }
 
 .field-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: var(--gap);
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.field-row-3 {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .field {
@@ -133,7 +174,9 @@ legend {
 }
 
 .field label {
+  font-size: 12px;
   font-weight: 500;
+  color: var(--text-muted);
 }
 
 .field input,
@@ -141,7 +184,7 @@ legend {
 .field textarea {
   font: inherit;
   width: 100%;
-  padding: 6px 8px;
+  padding: 5px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-sunken);
@@ -152,16 +195,20 @@ legend {
   border-color: var(--danger);
 }
 
+/* The unit sits inside the input, on the right. */
 .input-with-unit {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
 }
 
 .unit {
+  position: absolute;
+  right: 8px;
   color: var(--text-muted);
   font-size: 12px;
   white-space: nowrap;
+  pointer-events: none;
 }
 
 .code-input {
@@ -191,6 +238,9 @@ legend {
 }
 
 .segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 4px 12px;
   font: inherit;
   border: none;
@@ -275,4 +325,16 @@ legend {
 .toast-info {
   background: var(--text);
   color: var(--bg);
+}
+
+.icon-button-danger:hover:not(:disabled) {
+  color: var(--danger);
+}
+
+.toolbar-divider {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--border);
 }
