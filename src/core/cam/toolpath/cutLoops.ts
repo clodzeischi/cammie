@@ -4,7 +4,7 @@ import { orderPaths } from '../ordering';
 import { Loop } from './loop';
 import { loopPass } from './loopPass';
 import type { MoveWriter } from './moveWriter';
-import { rampLength } from './passes';
+import { rampLength, surfaceAt } from './passes';
 import { assignTabPoints, tabIntervals } from './tabs';
 
 export interface TabPlan {
@@ -22,6 +22,8 @@ export interface CutLoopsParams {
   depths: readonly number[];
   entry: EntryStyle;
   tabs: TabPlan | null;
+  /** Depth already cleared under these paths by earlier cuts, where cutting starts (0 = stock top). */
+  floor?: number;
 }
 
 /**
@@ -30,7 +32,7 @@ export interface CutLoopsParams {
  * plunge and go back and forth, so the tool stays in its groove.
  */
 export function cutLoops(writer: MoveWriter, params: CutLoopsParams): void {
-  const { paths, depths, entry, tabs } = params;
+  const { paths, depths, entry, tabs, floor = 0 } = params;
   const here = writer.position;
   const ordered = orderPaths(paths, { x: here.x, y: here.y }).paths;
   const closed = ordered.filter((p) => p.closed).map((p) => new Loop(p));
@@ -40,9 +42,9 @@ export function cutLoops(writer: MoveWriter, params: CutLoopsParams): void {
   for (const path of ordered) {
     if (path.closed) {
       const centres = tabCentres[loopIndex] ?? [];
-      cutClosed(writer, closed[loopIndex++]!, depths, entry, tabs, centres);
+      cutClosed(writer, closed[loopIndex++]!, depths, entry, tabs, centres, floor);
     } else {
-      cutOpen(writer, path, depths);
+      cutOpen(writer, path, depths, floor);
     }
     writer.retract();
   }
@@ -55,11 +57,12 @@ function cutClosed(
   entry: EntryStyle,
   tabs: TabPlan | null,
   centres: number[],
+  floor: number,
 ) {
   const intervals = tabs ? tabIntervals(centres, tabs.width) : [];
-  writer.approach(loop.pointAt(0), 0);
+  writer.approach(loop.pointAt(0), surfaceAt(floor));
   let s = 0;
-  let z = 0;
+  let z = surfaceAt(floor);
   for (const depth of depths) {
     const toZ = -depth;
     const pass = loopPass({
@@ -77,8 +80,8 @@ function cutClosed(
   }
 }
 
-function cutOpen(writer: MoveWriter, path: Path, depths: readonly number[]) {
-  writer.approach(path.points[0]!, 0);
+function cutOpen(writer: MoveWriter, path: Path, depths: readonly number[], floor: number) {
+  writer.approach(path.points[0]!, surfaceAt(floor));
   let points = path.points;
   for (const depth of depths) {
     const start = points[0]!;

@@ -6,6 +6,8 @@ import {
   EndType,
   FillRule,
   JoinType,
+  areaD,
+  differenceD,
   inflatePathsD,
   unionD,
   type PathsD,
@@ -64,6 +66,32 @@ export function offsetRegion(region: readonly Path[], delta: number): Path[] {
       ARC_TOLERANCE,
     ),
   );
+}
+
+/**
+ * The area a round tool of `radius` sweeps following each path: a band around
+ * a closed loop (a disc when the loop is smaller than the tool), a rounded
+ * stroke along an open line, a disc at a single point. Oriented like `regionOf`.
+ */
+export function sweepPaths(paths: readonly Path[], radius: number): Path[] {
+  const swept = paths.flatMap((p) => {
+    const points = p.points.map(({ x, y }) => ({ x, y }));
+    if (points.length === 0) return [];
+    // A lone point has no direction to stroke along; give it a zero-length segment.
+    const line = points.length === 1 ? [points[0]!, { ...points[0]! }] : points;
+    const end = p.closed && points.length >= 3 ? EndType.Joined : EndType.Round;
+    return inflatePathsD([line], radius, JoinType.Round, end, 2, PRECISION, ARC_TOLERANCE);
+  });
+  return fromClipper(unionD(swept, [], FillRule.NonZero, PRECISION));
+}
+
+/**
+ * Area of `region` that lies outside all of `cover` (mm²). Both are oriented
+ * like `regionOf`, so overlapping covers simply add up.
+ */
+export function uncoveredArea(region: readonly Path[], cover: readonly Path[]): number {
+  const rest = differenceD(toClipper(region), toClipper(cover), FillRule.NonZero, PRECISION);
+  return Math.abs(rest.reduce((sum, p) => sum + areaD(p), 0));
 }
 
 /** Solid boundary (true) or hole boundary (false), per the orientation rule above. */

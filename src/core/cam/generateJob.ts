@@ -5,6 +5,7 @@ import type { MachineConfig } from '../machine/machineConfig';
 import { findMaterial } from '../materials/materials';
 import { BUILT_IN_BITS, type Bit } from '../tools/bits';
 import type { FeedOverrides } from '../materials/feedOverrides';
+import { startOnClearedFloors } from './clearedFloors';
 import { executePlan, type ObjectCut } from './cutPlan';
 import { planObjectCut } from './objectCut';
 import { MoveWriter } from './toolpath/moveWriter';
@@ -74,19 +75,28 @@ export function generateJob(
   const carveDepths = Object.fromEntries(
     cuts.filter((cut) => cut.plan.kind === 'carve').map((cut) => [cut.toolpathId, cut.depth]),
   );
-  return { programs: buildPrograms(cuts, machine), diagnostics, tabs, carveDepths };
+  const files = groupIntoFiles(cuts, (cut) => cut.bit.id).map(({ items }) => items);
+  const stacked = startOnClearedFloors(files);
+  for (const { cut, message } of stacked.notes) {
+    diagnostics.push({
+      severity: 'warning',
+      message: `${cut.label}: ${message}`,
+      objectId: cut.objectId,
+      toolpathId: cut.toolpathId,
+    });
+  }
+  return { programs: buildPrograms(stacked.files, machine), diagnostics, tabs, carveDepths };
 }
 
 /**
- * One program per bit, in the order the toolpath list gives (see
- * groupIntoFiles), cuts in list order within a file. New
- * toolpaths are placed so this is the safe order (see insertToolpath) unless
- * the user moves them.
+ * One program per file. Files come in the order the toolpath list gives (see
+ * groupIntoFiles), cuts in list order within a file; new toolpaths are placed
+ * so this is the safe order (see insertToolpath) unless the user moves them.
+ * Cuts inside material an earlier one already removed start on that floor
+ * (see startOnClearedFloors).
  */
-function buildPrograms(cuts: ObjectCut[], machine: MachineConfig): BitProgram[] {
-  const groups = groupIntoFiles(cuts, (cut) => cut.bit.id);
-
-  return groups.map(({ items: group }) => {
+function buildPrograms(files: ObjectCut[][], machine: MachineConfig): BitProgram[] {
+  return files.map((group) => {
     let position: Vec2 = { x: 0, y: 0 };
     const sections: ProgramSection[] = group.map((cut) => {
       const writer = new MoveWriter(machine.safeZ, cut.feeds, position);

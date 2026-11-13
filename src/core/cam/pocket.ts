@@ -4,7 +4,7 @@ import type { CutDirection, EntryStyle } from '../job/job';
 import { Loop } from './toolpath/loop';
 import { loopPass } from './toolpath/loopPass';
 import type { MoveWriter } from './toolpath/moveWriter';
-import { rampLength } from './toolpath/passes';
+import { rampLength, surfaceAt } from './toolpath/passes';
 
 export interface PocketRings {
   /** Rings by offset level: [0] hugs the walls, the last is innermost. */
@@ -98,6 +98,8 @@ export interface PocketMovesParams {
   rings: PocketRings;
   depths: readonly number[];
   entry: EntryStyle;
+  /** Depth already cleared over the whole pocket by earlier cuts (0 = stock top). */
+  floor?: number;
 }
 
 /** The ring nearest `p`, and where on it (mm along it) the tool should join it. */
@@ -117,9 +119,12 @@ function nearestRing(rings: readonly Loop[], p: Vec2): { index: number; s: numbe
  * and a rectangle's ring only has four corners. Between neighbouring rings the
  * tool stays down; anywhere else it lifts, travels and eases back in.
  */
-export function cutPocket(writer: MoveWriter, { rings, depths, entry }: PocketMovesParams): void {
+export function cutPocket(
+  writer: MoveWriter,
+  { rings, depths, entry, floor = 0 }: PocketMovesParams,
+): void {
   const maxLink = rings.step * 2 + 0.01;
-  let previousZ = 0;
+  let previousZ = surfaceAt(floor);
   for (const depth of depths) {
     const z = -depth;
     let linked = false;

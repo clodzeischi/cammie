@@ -296,6 +296,7 @@ interface TabSettings { enabled: boolean; count: number; width: number; height: 
 - Defaults: enabled when depth ≥ stock thickness; count by perimeter (≈ 1 per 100 mm, min 3, max 8); width = 4 mm + bit Ø; height = 1.5 mm.
 - Auto-placement: per loop (outer contours **and** the slugs of inside cuts), count = perimeter/100 mm clamped to 3–8 and reduced so tabs keep at least one tab-length apart; positions evenly spaced, each nudged up to ¼ spacing away from corners sharper than 20°.
 - **Manual editing**: in preview, clicking within 10 px of a tab removes it; clicking within 10 px of a tabbable loop adds one at the nearest point. The first edit freezes the current automatic tabs as hand-placed ones, stored in the object's own coordinates so they move with it. "Go back to automatic tabs" clears them.
+- Only cuts that go through (depth ≥ stock thickness) get tabs: a blind cut frees nothing, and tabs would leave bumps on its floor (e.g. a counterbore).
 - Implementation: only passes below `-(thickness - tabHeight)` lift over tabs; the lift is a vertical move at the tab edges (trapezoidal ramps over tabs are a later improvement). Tabs are planned on the finished contour and snap onto the roughing loops too. With tabs active, the "through cut, hold the part down" warning goes away.
 
 ### 9.4 Pocket
@@ -354,6 +355,13 @@ Within a bit's file:
 - The *Cuts* checkbox beside Snap turns it off.
 
 ---
+
+### 9.12 Stacked cuts
+- A cut that lies inside material an earlier cut already removed starts on that floor instead of at the top of the stock: a screw's through hole inside its counterbore, holes in a pocket floor. "Earlier" is run order: files in order, cuts in list order within each (§9.7), across bits.
+- Only flat end mills count as clearing (round-nose and V-bits don't leave a flat floor). A tabbed cut counts only down to the top of its tabs. Several earlier cuts can share the job (two pockets side by side).
+- Checked per loop, per drilled hole and per pocket: the area the tool sweeps (bit radius around its path) must lie wholly inside what earlier cuts cleared, to within 0.01 mm; anything that only partly overlaps starts at the top. The tool still rapids only to 0.5 mm above the stock and feeds down to the floor (§12.3); the first pass then starts there, keeping the normal passes below it. A loop or hole already cut to its full depth is left out.
+- When a cut runs **before** the one that would clear its top (Drill is listed before *Cut a hole* by default), it starts at the top and gets a warning naming that cut: "runs before "…", which clears the top of it. Move it after that cut so it starts … down instead of at the top."
+- Code: `src/core/cam/clearedFloors.ts`, run by `generateJob` once cuts are in files. Bounding boxes are compared first, so unrelated cuts cost no polygon work.
 
 ## 10. Toolpath Preview (2D, v1)
 

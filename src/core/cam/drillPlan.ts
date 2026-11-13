@@ -44,7 +44,10 @@ export function planDrill(
     );
   }
   return {
-    plan: { kind: 'drill', points, depths: passDepths(operation.depth, feeds.depthPerPass) },
+    plan: {
+      kind: 'drill',
+      holes: [{ points, depths: passDepths(operation.depth, feeds.depthPerPass) }],
+    },
     allPaths: points.map((p) => ({ closed: false, points: [p] })),
     tabs: null,
     tabsHold: false,

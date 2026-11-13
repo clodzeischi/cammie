@@ -19,3 +19,6 @@ export function finishingDepths(depth: number, depthPerPass: number): number[] {
 /** Distance along the path needed to descend `drop` mm at the ramp angle. */
 export const rampLength = (drop: number): number =>
   drop / Math.tan((RAMP_ANGLE_DEG * Math.PI) / 180);
+
+/** Z of the surface left by cutting `floor` mm down (0 = the stock top, never -0). */
+export const surfaceAt = (floor: number): number => (floor > 0 ? -floor : 0);
