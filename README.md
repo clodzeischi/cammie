@@ -15,14 +15,11 @@ npm run lint     # ESLint
 npm run build    # type-check + production build into dist/
 ```
 
-## Deploy (Firebase Hosting)
+## Deploy (GitHub Pages)
 
-One-time setup: `firebase login`, then `firebase use --add` to pick your Firebase project
-(this creates `.firebaserc`).
-
-```sh
-npm run deploy
-```
+Every push to `main` runs [the Pages workflow](.github/workflows/pages.yml): it tests,
+builds, and publishes `dist/` to https://cammiecnc.com. To redeploy without a new commit,
+run the workflow by hand from the Actions tab.
 
 ## Code layout
 

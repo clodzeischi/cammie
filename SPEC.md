@@ -12,7 +12,7 @@ Status: Draft v1 · 2026-10-17
 1. **Dead-simple workflow**: import SVG/PNG (or add text/shapes) → pick material & bit → pick operation → export G-code. No CAM vocabulary required to get a good first result.
 2. **Correct, safe GRBL 1.1 output** that runs in gSender without edits.
 3. **Runs anywhere a desktop browser runs** (Linux, macOS, Windows, ChromeOS, tablets). No install, no account.
-4. **Static hosting only** (Firebase Hosting). All processing happens client-side.
+4. **Static hosting only** (GitHub Pages). All processing happens client-side.
 
 ## 2. Non-goals (v1)
 
@@ -483,7 +483,7 @@ CAM produces a machine-agnostic `ToolpathProgram` (list of moves: rapid/feed wit
 | Zip export | `jszip` |
 | Tests | Vitest (unit, golden G-code snapshots), Playwright (a few smoke e2e) |
 | Lint/format | ESLint + Prettier |
-| Hosting | Firebase Hosting (static `dist/`, SPA rewrite, long cache on hashed assets) |
+| Hosting | GitHub Pages (static `dist/`, custom domain cammiecnc.com) |
 
 ### 13.2 Module layout
 Rule of thumb: **files stay under ~500 lines**; split by responsibility before that. Core CAM code is framework-free pure TypeScript, so it can be unit-tested and reasoned about without React.
@@ -550,9 +550,10 @@ All reads wrapped in try/catch with fallback to defaults (private mode / blocked
 - **Automatic backup**: the design is saved to IndexedDB (database `cammie`, store `backup`, one entry) 0.8 s after each change. IndexedDB rather than localStorage because traced designs can pass localStorage's ~5 MB. On start-up the backup is restored (if it has objects) with the note "Your design from last time is back. Use New to start over." The `beforeunload` prompt only appears when the latest backup failed (private mode, blocked storage).
 
 ### 13.5 Hosting
-- `firebase.json`: public `dist`, SPA rewrite to `/index.html`, `Cache-Control: immutable` for `/assets/**`, short cache for `index.html`.
-- No Firebase SDK in the app (no backend, no analytics in v1).
-- Deploy: `npm run build && firebase deploy --only hosting` (optional GitHub Action later).
+- GitHub Pages, served at the root of the custom domain `cammiecnc.com` (so Vite's default `base: '/'` holds). HTTPS via GitHub's Let's Encrypt certificate.
+- The app has no client-side routes, so no SPA fallback is needed. Pages sets its own short cache headers; hashed asset names keep updates safe.
+- No backend, no analytics in v1.
+- Deploy: `.github/workflows/pages.yml` tests, builds and publishes `dist/` on every push to `main`.
 
 ---
 
